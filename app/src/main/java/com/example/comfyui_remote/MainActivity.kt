@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.NavHost
@@ -44,7 +46,8 @@ class MainActivity : ComponentActivity() {
         
         val database = AppDatabase.getDatabase(this)
         val repository = WorkflowRepository(database.workflowDao())
-        val viewModelFactory = MainViewModelFactory(repository)
+        val userPreferencesRepository = com.example.comfyui_remote.data.UserPreferencesRepository(this)
+        val viewModelFactory = MainViewModelFactory(repository, userPreferencesRepository)
         val viewModel = ViewModelProvider(this, viewModelFactory)[MainViewModel::class.java]
 
         setContent {
@@ -90,7 +93,8 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
-    val serverAddress by viewModel.serverAddress.collectAsState()
+    val host by viewModel.host.collectAsState()
+    val port by viewModel.port.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
 
     Column(
@@ -112,9 +116,19 @@ fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
-            value = serverAddress,
-            onValueChange = { viewModel.updateServerAddress(it) },
-            label = { Text("Server Address (IP:Port)") },
+            value = host,
+            onValueChange = { viewModel.updateHost(it) },
+            label = { Text("Host IP (e.g. 192.168.1.10)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        OutlinedTextField(
+            value = port,
+            onValueChange = { viewModel.updatePort(it) },
+            label = { Text("Port (Default: 8188)") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -125,9 +139,8 @@ fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
                   if (connectionState == WebSocketState.CONNECTED) {
                       viewModel.disconnect()
                   } else {
+                      viewModel.saveConnection() // Persist
                       viewModel.connect()
-                      // For now, allow navigation immediately or we could wait for state change
-                      // onConnect() -> We call this when user wants to proceed to workflows
                   }
             },
             modifier = Modifier.fillMaxWidth()

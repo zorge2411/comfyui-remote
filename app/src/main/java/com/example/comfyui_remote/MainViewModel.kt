@@ -14,10 +14,55 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 
-class MainViewModel(private val repository: WorkflowRepository) : ViewModel() {
+import com.example.comfyui_remote.data.UserPreferencesRepository
+import kotlinx.coroutines.flow.first
 
-    private val _serverAddress = MutableStateFlow("192.168.1.X:8188")
+class MainViewModel(
+    private val repository: WorkflowRepository,
+    private val userPreferencesRepository: UserPreferencesRepository
+) : ViewModel() {
+
+    // Split state for UI
+    private val _host = MutableStateFlow("")
+    val host: StateFlow<String> = _host.asStateFlow()
+    
+    private val _port = MutableStateFlow("8188")
+    val port: StateFlow<String> = _port.asStateFlow()
+
+    private val _serverAddress = MutableStateFlow("")
     val serverAddress: StateFlow<String> = _serverAddress.asStateFlow()
+    
+    init {
+        // Load saved values
+        viewModelScope.launch {
+            val savedHost = userPreferencesRepository.savedHost.first()
+            val savedPort = userPreferencesRepository.savedPort.first()
+            _host.value = savedHost
+            _port.value = savedPort.toString()
+            updateServerAddressFull()
+        }
+    }
+
+    private fun updateServerAddressFull() {
+        _serverAddress.value = "${_host.value}:${_port.value}"
+    }
+
+    fun updateHost(newHost: String) {
+        _host.value = newHost
+        updateServerAddressFull()
+    }
+    
+    fun updatePort(newPort: String) {
+        _port.value = newPort
+        updateServerAddressFull()
+    }
+    
+    fun saveConnection() {
+        viewModelScope.launch {
+            val p = _port.value.toIntOrNull() ?: 8188
+            userPreferencesRepository.saveConnectionDetails(_host.value, p)
+        }
+    }
 
     private var comfyWebSocket: ComfyWebSocket? = null
     // In a real app, inject this via Hilt
@@ -171,11 +216,14 @@ class MainViewModel(private val repository: WorkflowRepository) : ViewModel() {
     }
 }
 
-class MainViewModelFactory(private val repository: WorkflowRepository) : ViewModelProvider.Factory {
+class MainViewModelFactory(
+    private val repository: WorkflowRepository,
+    private val userPreferencesRepository: UserPreferencesRepository
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return MainViewModel(repository) as T
+            return MainViewModel(repository, userPreferencesRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

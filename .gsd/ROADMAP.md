@@ -55,3 +55,28 @@
   - [x] Execution Loop Complete (Image Result)
   - [x] Dynamic UI with Generated Image
   - [ ] App Icon (Partial)
+
+### Phase 5: Import & Connection Refinements
+
+**Status**: ✅ Done
+**Objective**: Import existing workflows and display them in UI; save latest IP/Port (default 8188).
+**Depends on**: Phase 4
+
+**Tasks**:
+
+- [x] Save latest connected IP + Port (Persistence)
+- [x] Split IP and Port inputs (Default 8188)
+- [x] Refine Workflow Import UI (Robustness Verified)
+
+### Phase 6: Navigation & UX Flow
+
+**Status**: ⬜ Not Started
+**Objective**: Implement seamless navigation with Bottom Bar and auto-redirects.
+**Depends on**: Phase 5
+
+**Tasks**:
+
+- [ ] Implement Bottom Navigation Bar (Home / Workflows)
+- [ ] Auto-navigate to Workflows on Connect
+- [ ] Home Button -> Connection Screen
+- [ ] Workflows Button -> Workflow List Screen

@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.comfyui_remote.app-mergeDebugResources-54:/values-kn/values-kn.xml",
+            "outputFile": "com.example.comfyui_remote.app-mergeDebugResources-56:/values-kn/values-kn.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\peter\\.gradle\\caches\\transforms-4\\ed30313b2bf39846bc679259647b32a6\\transformed\\core-1.12.0\\res\\values-kn\\values-kn.xml",
+                    "source": "C:\\Users\\peter\\.gradle\\caches\\transforms-4\\7c14acb23dedac381eb87ccf1f92d5c4\\transformed\\core-1.12.0\\res\\values-kn\\values-kn.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9",
                         "startColumns": "4,4,4,4,4,4,4,4",
@@ -21,7 +21,7 @@
                     }
                 },
                 {
-                    "source": "C:\\Users\\peter\\.gradle\\caches\\transforms-4\\b1dea8c9bd98feb1b3cd51ee5c4904b9\\transformed\\ui-release\\res\\values-kn\\values-kn.xml",
+                    "source": "C:\\Users\\peter\\.gradle\\caches\\transforms-4\\c005f130f3031628955d4deee8b75f20\\transformed\\ui-release\\res\\values-kn\\values-kn.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
@@ -38,7 +38,7 @@
                     }
                 },
                 {
-                    "source": "C:\\Users\\peter\\.gradle\\caches\\transforms-4\\3069d1ae2ff2c50f46965d9e6736b6fd\\transformed\\material3-release\\res\\values-kn\\values-kn.xml",
+                    "source": "C:\\Users\\peter\\.gradle\\caches\\transforms-4\\3901497f9b5c1f7444b6be4f3ddf3b38\\transformed\\material3-release\\res\\values-kn\\values-kn.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
@@ -55,7 +55,7 @@
                     }
                 },
                 {
-                    "source": "C:\\Users\\peter\\.gradle\\caches\\transforms-4\\44fa8a3bd67f0e45b310fc2e3822c80b\\transformed\\foundation-release\\res\\values-kn\\values-kn.xml",
+                    "source": "C:\\Users\\peter\\.gradle\\caches\\transforms-4\\1a01a2b9928cc52c2a9d97c840bb2f2d\\transformed\\foundation-release\\res\\values-kn\\values-kn.xml",
                     "from": {
                         "startLines": "2,3",
                         "startColumns": "4,4",
