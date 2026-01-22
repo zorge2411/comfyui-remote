@@ -32,6 +32,14 @@ class MainViewModel(
     private val _serverAddress = MutableStateFlow("")
     val serverAddress: StateFlow<String> = _serverAddress.asStateFlow()
     
+    // One-shot event logic for navigation
+    private val _shouldNavigateToWorkflows = MutableStateFlow(false)
+    val shouldNavigateToWorkflows: StateFlow<Boolean> = _shouldNavigateToWorkflows.asStateFlow()
+    
+    fun onNavigatedToWorkflows() {
+        _shouldNavigateToWorkflows.value = false
+    }
+    
     init {
         // Load saved values
         viewModelScope.launch {
@@ -196,6 +204,8 @@ class MainViewModel(
     fun disconnect() {
         comfyWebSocket?.disconnect()
         comfyWebSocket = null
+        _connectionState.value = WebSocketState.DISCONNECTED
+        _shouldNavigateToWorkflows.value = false
     }
     
     fun importWorkflow(name: String, json: String) {

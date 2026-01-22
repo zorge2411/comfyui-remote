@@ -15,10 +15,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,6 +46,9 @@ import com.example.comfyui_remote.network.WebSocketState
 import com.example.comfyui_remote.ui.WorkflowListScreen
 import com.example.comfyui_remote.ui.theme.ComfyUI_front_endTheme
 
+import androidx.compose.runtime.LaunchedEffect
+import androidx.navigation.compose.currentBackStackEntryAsState
+
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,31 +63,63 @@ class MainActivity : ComponentActivity() {
         setContent {
             ComfyUI_front_endTheme {
                 val navController = rememberNavController()
+                val navBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = navBackStackEntry?.destination?.route
                 
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    NavHost(navController = navController, startDestination = "connection") {
+                Scaffold(
+                    bottomBar = {
+                        if (currentRoute != "remote_control") { // Hide on dynamic form
+                            NavigationBar {
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Filled.Home, contentDescription = "Home") },
+                                    label = { Text("Home") },
+                                    selected = currentRoute == "connection",
+                                    onClick = {
+                                        navController.navigate("connection") {
+                                            popUpTo(navController.graph.startDestinationId) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
+                                )
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Filled.List, contentDescription = "Workflows") },
+                                    label = { Text("Workflows") },
+                                    selected = currentRoute == "workflows",
+                                    onClick = {
+                                        navController.navigate("workflows") {
+                                            popUpTo(navController.graph.startDestinationId) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                ) { innerPadding ->
+                    NavHost(
+                        navController = navController, 
+                        startDestination = "connection",
+                         modifier = Modifier.padding(innerPadding)
+                    ) {
                         composable("connection") {
                             ConnectionScreen(viewModel) {
-                                // On successful connection trigger (user interaction)
                                 navController.navigate("workflows")
                             }
                         }
                         composable("workflows") {
                             WorkflowListScreen(viewModel) { workflow ->
-                                viewModel.parseWorkflowInputs(workflow.jsonContent) // Pre-parse if needed
-                                // We need to pass the workflow ID or object. For simple navigation:
-                                // Ideally use a shared ViewModel or proper NavType. 
-                                // Since we have shared VM, we can set a "currentWorkflow" or just pass ID.
-                                // Let's simplify: Set current in VM and navigate.
+                                viewModel.parseWorkflowInputs(workflow.jsonContent)
                                 viewModel.selectWorkflow(workflow)
                                 navController.navigate("remote_control")
                             }
                         }
                         composable("remote_control") {
-                            // retrieve selected
                             val workflow = viewModel.selectedWorkflow.value
                             if (workflow != null) {
                                 com.example.comfyui_remote.ui.DynamicFormScreen(viewModel, workflow)
@@ -96,6 +138,15 @@ fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
     val host by viewModel.host.collectAsState()
     val port by viewModel.port.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
+    val shouldNavigate by viewModel.shouldNavigateToWorkflows.collectAsState()
+    
+    // Auto-navigate ONLY when the signal is raised
+    LaunchedEffect(shouldNavigate) {
+        if (shouldNavigate) {
+             onConnect()
+             viewModel.onNavigatedToWorkflows() // Consume the event
+        }
+    }
 
     Column(
         modifier = Modifier

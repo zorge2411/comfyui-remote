@@ -70,13 +70,13 @@
 
 ### Phase 6: Navigation & UX Flow
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Done
 **Objective**: Implement seamless navigation with Bottom Bar and auto-redirects.
 **Depends on**: Phase 5
 
 **Tasks**:
 
-- [ ] Implement Bottom Navigation Bar (Home / Workflows)
-- [ ] Auto-navigate to Workflows on Connect
-- [ ] Home Button -> Connection Screen
-- [ ] Workflows Button -> Workflow List Screen
+- [x] Implement Bottom Navigation Bar (Home / Workflows)
+- [x] Auto-navigate to Workflows on Connect
+- [x] Home Button -> Connection Screen
+- [x] Workflows Button -> Workflow List Screen
