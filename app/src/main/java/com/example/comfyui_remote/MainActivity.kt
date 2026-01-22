@@ -3,7 +3,6 @@ package com.example.comfyui_remote
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,22 +27,47 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.example.comfyui_remote.data.AppDatabase
+import com.example.comfyui_remote.data.WorkflowRepository
 import com.example.comfyui_remote.network.WebSocketState
+import com.example.comfyui_remote.ui.WorkflowListScreen
 import com.example.comfyui_remote.ui.theme.ComfyUI_front_endTheme
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: MainViewModel by viewModels()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        val database = AppDatabase.getDatabase(this)
+        val repository = WorkflowRepository(database.workflowDao())
+        val viewModelFactory = MainViewModelFactory(repository)
+        val viewModel = ViewModelProvider(this, viewModelFactory)[MainViewModel::class.java]
+
         setContent {
             ComfyUI_front_endTheme {
+                val navController = rememberNavController()
+                
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    ConnectionScreen(viewModel)
+                    NavHost(navController = navController, startDestination = "connection") {
+                        composable("connection") {
+                            ConnectionScreen(viewModel) {
+                                // On successful connection trigger (user interaction)
+                                navController.navigate("workflows")
+                            }
+                        }
+                        composable("workflows") {
+                            WorkflowListScreen(viewModel) { workflow ->
+                                // navigate to run screen (Phase 3)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -52,7 +76,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConnectionScreen(viewModel: MainViewModel) {
+fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
     val serverAddress by viewModel.serverAddress.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
 
@@ -89,11 +113,20 @@ fun ConnectionScreen(viewModel: MainViewModel) {
                       viewModel.disconnect()
                   } else {
                       viewModel.connect()
+                      // For now, allow navigation immediately or we could wait for state change
+                      // onConnect() -> We call this when user wants to proceed to workflows
                   }
             },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(if (connectionState == WebSocketState.CONNECTED) "Disconnect" else "Connect")
+        }
+        
+        if (connectionState == WebSocketState.CONNECTED) {
+             Spacer(modifier = Modifier.height(16.dp))
+             Button(onClick = onConnect, modifier = Modifier.fillMaxWidth()) {
+                 Text("Go to Workflows")
+             }
         }
     }
 }

@@ -1,7 +1,7 @@
 # STATE.md
 
 > **Updated**: 2026-01-22
-> **Phase**: 2. Workflow Parsing & Management
+> **Phase**: 3. Remote Control Interface
 > **Status**: Planning
 
 ## Current Context
