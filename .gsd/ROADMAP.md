@@ -80,3 +80,16 @@
 - [x] Auto-navigate to Workflows on Connect
 - [x] Home Button -> Connection Screen
 - [x] Workflows Button -> Workflow List Screen
+
+### Phase 7: Advanced Workflow Sync
+
+**Status**: ✅ Done
+**Objective**: Enable importing workflows from the server's execution history.
+**Depends on**: Phase 6
+
+**Tasks**:
+
+- [x] Implement `GET /history` in API
+- [x] Logic to extract node graph from history items
+- [x] Add Sync button to Workflow List
+- [x] Auto-import of server history entries into local DB

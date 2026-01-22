@@ -11,6 +11,9 @@ interface ComfyApiService {
     
     @POST("prompt")
     suspend fun queuePrompt(@Body prompt: PromptRequest): PromptResponse
+    
+    @GET("history")
+    suspend fun getHistory(): JsonObject
 }
 
 data class PromptRequest(val prompt: JsonObject, val client_id: String? = null)

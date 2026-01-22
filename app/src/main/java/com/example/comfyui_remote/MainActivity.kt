@@ -75,12 +75,12 @@ class MainActivity : ComponentActivity() {
                                     label = { Text("Home") },
                                     selected = currentRoute == "connection",
                                     onClick = {
+                                        // Simple navigation back to start
                                         navController.navigate("connection") {
-                                            popUpTo(navController.graph.startDestinationId) {
-                                                saveState = true
+                                            popUpTo("connection") {
+                                                inclusive = false
                                             }
                                             launchSingleTop = true
-                                            restoreState = true
                                         }
                                     }
                                 )
@@ -90,7 +90,7 @@ class MainActivity : ComponentActivity() {
                                     selected = currentRoute == "workflows",
                                     onClick = {
                                         navController.navigate("workflows") {
-                                            popUpTo(navController.graph.startDestinationId) {
+                                            popUpTo("connection") {
                                                 saveState = true
                                             }
                                             launchSingleTop = true

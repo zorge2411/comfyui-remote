@@ -11,6 +11,10 @@ class WorkflowRepository(private val workflowDao: WorkflowDao) {
         workflowDao.insert(workflow)
     }
 
+    suspend fun insert(workflow: WorkflowEntity) {
+        workflowDao.insert(workflow)
+    }
+
     suspend fun updateWorkflow(workflow: WorkflowEntity) {
         workflowDao.update(workflow)
     }

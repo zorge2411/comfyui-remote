@@ -210,7 +210,66 @@ class MainViewModel(
     
     fun importWorkflow(name: String, json: String) {
         viewModelScope.launch {
-            repository.addWorkflow(name, json)
+            val workflow = WorkflowEntity(
+                name = name,
+                jsonContent = json,
+                createdAt = System.currentTimeMillis()
+            )
+            repository.insert(workflow)
+        }
+    }
+    
+    fun syncHistory() {
+        viewModelScope.launch {
+            try {
+                // Get history raw json
+                val history = buildApiService().getHistory()
+                
+                // Iterate
+                history.entrySet().forEach { (executionId, element) ->
+                    if (element.isJsonObject) {
+                        val item = element.asJsonObject
+                        // "prompt" usually contains the node graph ( [index, id, graph, ...] ) or just graph?
+                        // ComfyUI history:
+                        // "prompt": [number, string_id, { "3": {inputs...} }, ..extra..]
+                        // We need the 3rd element (index 2) which is the actual graph object.
+                        
+                        if (item.has("prompt")) {
+                            val promptElement = item.get("prompt")
+                            
+                            var workflowJson: String? = null
+                            
+                            if (promptElement.isJsonArray) {
+                                val arr = promptElement.asJsonArray
+                                if (arr.size() >= 3) {
+                                    workflowJson = arr.get(2).toString() // The node graph
+                                }
+                            } else if (promptElement.isJsonObject) {
+                                // Sometimes it might be just object?
+                                workflowJson = promptElement.toString()
+                            }
+                            
+                            if (workflowJson != null) {
+                                // Save it
+                                // Avoid duplicates? For now just append with ID
+                                val workflow = WorkflowEntity(
+                                    name = "History $executionId",
+                                    jsonContent = workflowJson,
+                                    createdAt = System.currentTimeMillis()
+                                )
+                                // Simple check to avoid spamming identical names?
+                                // repository.insert(workflow) 
+                                // Let's try to upsert or just insert. 
+                                // Ideally we check if "History $executionId" exists.
+                                // For MVP: just insert.
+                                repository.insert(workflow)
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 

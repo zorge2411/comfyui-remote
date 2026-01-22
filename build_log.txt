@@ -11,8 +11,10 @@
 > Task :app:parseDebugLocalResources UP-TO-DATE
 > Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
 > Task :app:extractDeepLinksDebug UP-TO-DATE
-> Task :app:processDebugMainManifest
-> Task :app:processDebugManifest
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
 > Task :app:javaPreCompileDebug UP-TO-DATE
 > Task :app:mergeDebugShaders UP-TO-DATE
 > Task :app:compileDebugShaders NO-SOURCE
@@ -29,13 +31,11 @@
 > Task :app:validateSigningDebug UP-TO-DATE
 > Task :app:writeDebugAppMetadata UP-TO-DATE
 > Task :app:writeDebugSigningConfigVersions UP-TO-DATE
-> Task :app:processDebugManifestForPackage
-> Task :app:processDebugResources
 > Task :app:kspDebugKotlin
 
 > Task :app:compileDebugKotlin
-w: file:///D:/Antigravity/ComfyUI%20frontend/app/src/main/java/com/example/comfyui_remote/MainActivity.kt:88:64 'List: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.List
 w: file:///D:/Antigravity/ComfyUI%20frontend/app/src/main/java/com/example/comfyui_remote/MainViewModel.kt:136:21 Variable 'response' is never used
+w: file:///D:/Antigravity/ComfyUI%20frontend/app/src/main/java/com/example/comfyui_remote/MainViewModel.kt:226:62 Elvis operator (?:) always returns the left operand of non-nullable type JsonObject
 
 > Task :app:compileDebugJavaWithJavac UP-TO-DATE
 > Task :app:processDebugJavaRes UP-TO-DATE
@@ -47,4 +47,4 @@ w: file:///D:/Antigravity/ComfyUI%20frontend/app/src/main/java/com/example/comfy
 > Task :app:assembleDebug
 
 BUILD SUCCESSFUL in 6s
-34 actionable tasks: 11 executed, 23 up-to-date
+34 actionable tasks: 7 executed, 27 up-to-date
