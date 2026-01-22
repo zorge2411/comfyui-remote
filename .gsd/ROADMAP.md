@@ -14,14 +14,14 @@
 
 ### Phase 1: Foundation & Connectivity
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Done
 **Objective**: Establish the Android project structure and prove communication with ComfyUI.
 
 - **Deliverables**:
-  - Android Studio Project (Kotlin/Compose)
-  - Network Layer (Retrofit/OkHttp + WebSocket)
-  - "Server Status" Indicator (Green light when connected)
-  - Basic settings screen for Host IP/Port
+  - [x] Android Studio Project (Kotlin/Compose)
+  - [x] Network Layer (Retrofit/OkHttp + WebSocket)
+  - [x] "Server Status" Indicator (Green light when connected)
+  - [x] Basic settings screen for Host IP/Port
 
 ### Phase 2: Workflow Parsing & Forms
 

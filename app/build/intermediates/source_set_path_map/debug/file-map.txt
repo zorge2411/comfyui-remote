@@ -1,0 +1,48 @@
+com.example.comfyui_remote.app-savedstate-ktx-1.2.1-0 C:\Users\peter\.gradle\caches\transforms-4\0068287cb3259855c7bcb7c6501d6719\transformed\savedstate-ktx-1.2.1\res
+com.example.comfyui_remote.app-animation-core-release-1 C:\Users\peter\.gradle\caches\transforms-4\031aa720ec4e6406f0a3c3e32ced5382\transformed\animation-core-release\res
+com.example.comfyui_remote.app-lifecycle-viewmodel-ktx-2.7.0-2 C:\Users\peter\.gradle\caches\transforms-4\0394e6203ac84cbb2e2a6fe00897395d\transformed\lifecycle-viewmodel-ktx-2.7.0\res
+com.example.comfyui_remote.app-core-runtime-2.2.0-3 C:\Users\peter\.gradle\caches\transforms-4\06d2ad03802c1e51ac386785a5e0ee35\transformed\core-runtime-2.2.0\res
+com.example.comfyui_remote.app-ui-tooling-release-4 C:\Users\peter\.gradle\caches\transforms-4\0c0ebf222b870ea33231211daf8fdd9a\transformed\ui-tooling-release\res
+com.example.comfyui_remote.app-lifecycle-runtime-2.7.0-5 C:\Users\peter\.gradle\caches\transforms-4\107e107e9b9434da2de2d9e01f286130\transformed\lifecycle-runtime-2.7.0\res
+com.example.comfyui_remote.app-ui-unit-release-6 C:\Users\peter\.gradle\caches\transforms-4\10e8558ca78c971fcfb7aaa078d31a13\transformed\ui-unit-release\res
+com.example.comfyui_remote.app-runtime-saveable-release-7 C:\Users\peter\.gradle\caches\transforms-4\19ef48b96f9db8cb404f5bcc74a26bab\transformed\runtime-saveable-release\res
+com.example.comfyui_remote.app-appcompat-resources-1.6.1-8 C:\Users\peter\.gradle\caches\transforms-4\21995a4e9c24e2208a125aaccd8ff6d4\transformed\appcompat-resources-1.6.1\res
+com.example.comfyui_remote.app-animation-release-9 C:\Users\peter\.gradle\caches\transforms-4\2ed6102a7bbcee91c342e7db487ae894\transformed\animation-release\res
+com.example.comfyui_remote.app-customview-poolingcontainer-1.0.0-10 C:\Users\peter\.gradle\caches\transforms-4\2fc86facf3b4622c57eaf1fac1dbb4f4\transformed\customview-poolingcontainer-1.0.0\res
+com.example.comfyui_remote.app-material-release-11 C:\Users\peter\.gradle\caches\transforms-4\3c46aff357f3f39dd0ecb98ef3ff3aa5\transformed\material-release\res
+com.example.comfyui_remote.app-lifecycle-viewmodel-savedstate-2.7.0-12 C:\Users\peter\.gradle\caches\transforms-4\41b7d5c5adee32a0099c2b6bfd74c396\transformed\lifecycle-viewmodel-savedstate-2.7.0\res
+com.example.comfyui_remote.app-material-ripple-release-13 C:\Users\peter\.gradle\caches\transforms-4\45c0f0c48f616ac3be7b898056c5ec1e\transformed\material-ripple-release\res
+com.example.comfyui_remote.app-core-ktx-1.12.0-14 C:\Users\peter\.gradle\caches\transforms-4\5f409638f16e5b47978cff78f651ba01\transformed\core-ktx-1.12.0\res
+com.example.comfyui_remote.app-annotation-experimental-1.4.0-15 C:\Users\peter\.gradle\caches\transforms-4\6439269115422a83034e278f229bd920\transformed\annotation-experimental-1.4.0\res
+com.example.comfyui_remote.app-ui-graphics-release-16 C:\Users\peter\.gradle\caches\transforms-4\64f0a1eeec43f04cec37f8c541653b34\transformed\ui-graphics-release\res
+com.example.comfyui_remote.app-ui-release-17 C:\Users\peter\.gradle\caches\transforms-4\670e4b2f06832d82278b47ef7d1077e7\transformed\ui-release\res
+com.example.comfyui_remote.app-material-icons-core-release-18 C:\Users\peter\.gradle\caches\transforms-4\69c1076c0939601cb517153718695fa8\transformed\material-icons-core-release\res
+com.example.comfyui_remote.app-activity-1.8.2-19 C:\Users\peter\.gradle\caches\transforms-4\7a98fd0780f5608057f9eadf94371de5\transformed\activity-1.8.2\res
+com.example.comfyui_remote.app-ui-util-release-20 C:\Users\peter\.gradle\caches\transforms-4\7dd2634cb98d5d6ce5a1353f9d108b1a\transformed\ui-util-release\res
+com.example.comfyui_remote.app-ui-geometry-release-21 C:\Users\peter\.gradle\caches\transforms-4\8162418a81b7542c1c8c776749104426\transformed\ui-geometry-release\res
+com.example.comfyui_remote.app-ui-test-manifest-1.6.1-22 C:\Users\peter\.gradle\caches\transforms-4\835313238ae5c13636caca6acaa6d678\transformed\ui-test-manifest-1.6.1\res
+com.example.comfyui_remote.app-coil-base-2.6.0-23 C:\Users\peter\.gradle\caches\transforms-4\8923e580442835698b123339b3da7c39\transformed\coil-base-2.6.0\res
+com.example.comfyui_remote.app-foundation-release-24 C:\Users\peter\.gradle\caches\transforms-4\8d373c1293b89652ede68a21888063ab\transformed\foundation-release\res
+com.example.comfyui_remote.app-foundation-layout-release-25 C:\Users\peter\.gradle\caches\transforms-4\8fa8eb0b1b8cc41ac6d29d6a7d205aab\transformed\foundation-layout-release\res
+com.example.comfyui_remote.app-ui-tooling-data-release-26 C:\Users\peter\.gradle\caches\transforms-4\a8dddb1d1817aae8a312b393cd5fadf9\transformed\ui-tooling-data-release\res
+com.example.comfyui_remote.app-material3-release-27 C:\Users\peter\.gradle\caches\transforms-4\af4b53a570b449b4136234e9a783a75b\transformed\material3-release\res
+com.example.comfyui_remote.app-ui-text-release-28 C:\Users\peter\.gradle\caches\transforms-4\b7873070ea5a73393bd0ee063c423c3a\transformed\ui-text-release\res
+com.example.comfyui_remote.app-profileinstaller-1.3.1-29 C:\Users\peter\.gradle\caches\transforms-4\bce5c464317dd75bf1dd68b734ec69b9\transformed\profileinstaller-1.3.1\res
+com.example.comfyui_remote.app-runtime-release-30 C:\Users\peter\.gradle\caches\transforms-4\bcefb966bb54148d952bc0ead1b9e66b\transformed\runtime-release\res
+com.example.comfyui_remote.app-startup-runtime-1.1.1-31 C:\Users\peter\.gradle\caches\transforms-4\bf429387c8d00be3cd94c21fccfbe391\transformed\startup-runtime-1.1.1\res
+com.example.comfyui_remote.app-lifecycle-process-2.7.0-32 C:\Users\peter\.gradle\caches\transforms-4\c029ec0f56f5d43d79267b93efaedc87\transformed\lifecycle-process-2.7.0\res
+com.example.comfyui_remote.app-lifecycle-viewmodel-2.7.0-33 C:\Users\peter\.gradle\caches\transforms-4\c54eedb14956e16f54fddf900a7ca1cf\transformed\lifecycle-viewmodel-2.7.0\res
+com.example.comfyui_remote.app-activity-ktx-1.8.2-34 C:\Users\peter\.gradle\caches\transforms-4\c9b7eb6d03948582498ad3f364c539e2\transformed\activity-ktx-1.8.2\res
+com.example.comfyui_remote.app-savedstate-1.2.1-35 C:\Users\peter\.gradle\caches\transforms-4\cd508757f6378451ae31f38717cd1713\transformed\savedstate-1.2.1\res
+com.example.comfyui_remote.app-lifecycle-livedata-core-2.7.0-36 C:\Users\peter\.gradle\caches\transforms-4\e437895efc00d84aea4fd793f963698b\transformed\lifecycle-livedata-core-2.7.0\res
+com.example.comfyui_remote.app-lifecycle-runtime-ktx-2.7.0-37 C:\Users\peter\.gradle\caches\transforms-4\e789ff2c98ab7e966311cdecf4ff8590\transformed\lifecycle-runtime-ktx-2.7.0\res
+com.example.comfyui_remote.app-ui-tooling-preview-release-38 C:\Users\peter\.gradle\caches\transforms-4\f0f582d3b75f1bd13a5a00e9be97c8fd\transformed\ui-tooling-preview-release\res
+com.example.comfyui_remote.app-emoji2-1.3.0-39 C:\Users\peter\.gradle\caches\transforms-4\f714175710540bf1c1dae13ffac5ef9e\transformed\emoji2-1.3.0\res
+com.example.comfyui_remote.app-activity-compose-1.8.2-40 C:\Users\peter\.gradle\caches\transforms-4\f78711c36799a488f0a05733f3d14b1b\transformed\activity-compose-1.8.2\res
+com.example.comfyui_remote.app-core-1.12.0-41 C:\Users\peter\.gradle\caches\transforms-4\f8474c90249afec82ddb6a683f209f8d\transformed\core-1.12.0\res
+com.example.comfyui_remote.app-resValues-42 D:\Antigravity\ComfyUI frontend\app\build\generated\res\resValues\debug
+com.example.comfyui_remote.app-packageDebugResources-43 D:\Antigravity\ComfyUI frontend\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
+com.example.comfyui_remote.app-packageDebugResources-44 D:\Antigravity\ComfyUI frontend\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
+com.example.comfyui_remote.app-merged_res-45 D:\Antigravity\ComfyUI frontend\app\build\intermediates\merged_res\debug
+com.example.comfyui_remote.app-debug-46 D:\Antigravity\ComfyUI frontend\app\src\debug\res
+com.example.comfyui_remote.app-main-47 D:\Antigravity\ComfyUI frontend\app\src\main\res
