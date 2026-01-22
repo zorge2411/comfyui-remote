@@ -1,24 +1,29 @@
 package com.example.comfyui_remote.domain
 
-sealed class InputField(val label: String, open val nodeTitle: String) {
+sealed class InputField(
+    val label: String,
+    open val nodeTitle: String,
+    open val nodeId: String,
+    open val fieldName: String
+) {
     data class StringInput(
-        val nodeId: String,
-        val fieldName: String,
+        override val nodeId: String,
+        override val fieldName: String,
         val value: String,
         override val nodeTitle: String
-    ) : InputField("Text", nodeTitle)
+    ) : InputField("Text", nodeTitle, nodeId, fieldName)
 
     data class IntInput(
-        val nodeId: String,
-        val fieldName: String,
+        override val nodeId: String,
+        override val fieldName: String,
         val value: Int,
         override val nodeTitle: String
-    ) : InputField("Number", nodeTitle)
+    ) : InputField("Number", nodeTitle, nodeId, fieldName)
 
     data class SeedInput(
-        val nodeId: String,
-        val fieldName: String,
+        override val nodeId: String,
+        override val fieldName: String,
         val value: Long,
         override val nodeTitle: String
-    ) : InputField("Seed", nodeTitle)
+    ) : InputField("Seed", nodeTitle, nodeId, fieldName)
 }

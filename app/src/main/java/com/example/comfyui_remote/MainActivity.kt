@@ -64,7 +64,20 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("workflows") {
                             WorkflowListScreen(viewModel) { workflow ->
-                                // navigate to run screen (Phase 3)
+                                viewModel.parseWorkflowInputs(workflow.jsonContent) // Pre-parse if needed
+                                // We need to pass the workflow ID or object. For simple navigation:
+                                // Ideally use a shared ViewModel or proper NavType. 
+                                // Since we have shared VM, we can set a "currentWorkflow" or just pass ID.
+                                // Let's simplify: Set current in VM and navigate.
+                                viewModel.selectWorkflow(workflow)
+                                navController.navigate("remote_control")
+                            }
+                        }
+                        composable("remote_control") {
+                            // retrieve selected
+                            val workflow = viewModel.selectedWorkflow.value
+                            if (workflow != null) {
+                                com.example.comfyui_remote.ui.DynamicFormScreen(viewModel, workflow)
                             }
                         }
                     }

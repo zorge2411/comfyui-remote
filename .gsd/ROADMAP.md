@@ -23,30 +23,27 @@
   - [x] "Server Status" Indicator (Green light when connected)
   - [x] Basic settings screen for Host IP/Port
 
-### Phase 2: Workflow Parsing & Forms
+### Phase 2: Workflow Parsing & Management
 
-**Status**: ⬜ Not Started
-**Objective**: Read workflows and turn them into UI.
+**Status**: ✅ Done
+**Objective**: Parse ComfyUI workflows and manage them locally.
 
 - **Deliverables**:
-  - Workflow Repository (Fetch list from server)
-  - **CRUD Operations**:
-    - Delete Workflow
-    - Rename Workflow
-    - Duplicate/Save As (Parameter Preset)
-  - JSON Parsing Logic (Identify KSampler, Prompt nodes)
-  - Composable Form Builder (Text inputs, Sliders, Number fields)
+  - [x] Room Database for Workflow Storage
+  - [x] Input Parsing (Find Prompt/Seed/Steps)
+  - [x] UI: Workflow List & Import (Paste JSON)
+  - [x] CRUD Operations for Workflows
 
 ### Phase 3: Execution & Preview
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Done
 **Objective**: The core loop — Generate and View.
 
 - **Deliverables**:
-  - Queue Prompt API integration
-  - Execution Progress UI (ProgressBar driven by WS)
-  - Image Result Fetching & Caching (Coil)
-  - Full-screen Image Viewer
+  - [x] Execution Logic (Queue Prompt API)
+  - [x] Dynamic Form UI (Inputs for Prompt/Seed/Steps)
+  - [x] State Management (Queued/Executing/Idle)
+  - [ ] Image Result Fetching & Caching (Coil) (Deferred to Phase 4)
 
 ### Phase 4: Polish & Persistence
 

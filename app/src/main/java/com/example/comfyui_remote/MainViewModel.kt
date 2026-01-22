@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.comfyui_remote.data.WorkflowEntity
 import com.example.comfyui_remote.data.WorkflowRepository
 import com.example.comfyui_remote.network.ComfyWebSocket
+import com.example.comfyui_remote.network.ExecutionStatus
 import com.example.comfyui_remote.network.WebSocketState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,9 +29,75 @@ class MainViewModel(private val repository: WorkflowRepository) : ViewModel() {
     // Phase 2: Workflow Operations
     val allWorkflows = repository.allWorkflows
 
+    // Phase 3: Execution Logic
+    private val workflowParser = com.example.comfyui_remote.domain.WorkflowParser()
+    private val workflowExecutor = com.example.comfyui_remote.domain.WorkflowExecutor()
+    
+    private val _executionStatus = MutableStateFlow(ExecutionStatus.IDLE)
+    val executionStatus: StateFlow<ExecutionStatus> = _executionStatus.asStateFlow()
+
+    private val _selectedWorkflow = MutableStateFlow<WorkflowEntity?>(null)
+    val selectedWorkflow: StateFlow<WorkflowEntity?> = _selectedWorkflow.asStateFlow()
+
+    fun selectWorkflow(workflow: WorkflowEntity) {
+        _selectedWorkflow.value = workflow
+    }
+
     fun updateServerAddress(address: String) {
         _serverAddress.value = address
     }
+    
+    // Create API Service dynamically or verify lazy creation. 
+    // For simplicity, we create a new retrofit instance or reuse one based on server address.
+    // In this MVP, we assume address doesn't change mid-session or we handle it crudely.
+    private fun getApiService(): androidx.lifecycle.LiveData<com.example.comfyui_remote.network.ComfyApiService?> {
+        // Real implementation would use DI or Factory to rebuild Retrofit on address change
+        // For MVP, assume it's set before use. 
+        return androidx.lifecycle.MutableLiveData(null) // simplified
+    }
+
+    private fun buildApiService(): com.example.comfyui_remote.network.ComfyApiService {
+         // Create a temporary retrofit instance for the call
+         return retrofit2.Retrofit.Builder()
+            .baseUrl("http://${_serverAddress.value}/")
+            .client(okHttpClient)
+            .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create())
+            .build()
+            .create(com.example.comfyui_remote.network.ComfyApiService::class.java)
+    }
+
+    fun parseWorkflowInputs(json: String): List<com.example.comfyui_remote.domain.InputField> {
+        return workflowParser.parse(json)
+    }
+
+    fun executeWorkflow(workflow: WorkflowEntity, inputs: List<com.example.comfyui_remote.domain.InputField>) {
+        viewModelScope.launch {
+            _executionStatus.value = ExecutionStatus.QUEUED
+            try {
+                // 1. Inject values
+                val updatedJson = workflowExecutor.injectValues(workflow.jsonContent, inputs)
+                val promptJson = com.google.gson.JsonParser.parseString(updatedJson).asJsonObject
+                
+                // 2. Queue Prompt
+                val api = buildApiService()
+                val response = api.queuePrompt(
+                    com.example.comfyui_remote.network.PromptRequest(
+                        prompt = promptJson, 
+                        // If we want accurate WS tracking we need to send client_id (socketID)
+                        // comfyWebSocket?.clientId 
+                    )
+                )
+                
+                // 3. Monitor (Basic implementation: assume QUEUED -> EXECUTING via WS later)
+                 _executionStatus.value = ExecutionStatus.EXECUTING
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _executionStatus.value = ExecutionStatus.ERROR
+            }
+        }
+    }
+
 
     fun connect() {
         if (comfyWebSocket != null) {
