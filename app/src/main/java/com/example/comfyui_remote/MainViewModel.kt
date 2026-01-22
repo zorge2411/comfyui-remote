@@ -99,6 +99,9 @@ class MainViewModel(private val repository: WorkflowRepository) : ViewModel() {
     }
 
 
+    private val _generatedImage = MutableStateFlow<String?>(null)
+    val generatedImage: StateFlow<String?> = _generatedImage.asStateFlow()
+
     fun connect() {
         if (comfyWebSocket != null) {
             disconnect()
@@ -110,7 +113,38 @@ class MainViewModel(private val repository: WorkflowRepository) : ViewModel() {
                     _connectionState.value = state
                 }
             }
+            viewModelScope.launch {
+                 ws.messages.collect { message ->
+                     if (message != null) {
+                         handleMessage(message)
+                     }
+                 }
+            }
             ws.connect()
+        }
+    }
+
+    private fun handleMessage(json: String) {
+        try {
+            val obj = com.google.gson.JsonParser.parseString(json).asJsonObject
+            val type = obj.get("type").asString
+            if (type == "executed") {
+                val data = obj.getAsJsonObject("data")
+                val output = data.getAsJsonObject("output")
+                if (output != null && output.has("images")) {
+                    val images = output.getAsJsonArray("images")
+                    if (images.size() > 0) {
+                        val image = images.get(0).asJsonObject
+                        val filename = image.get("filename").asString
+                        // Construct URL: http://host/view?filename=...
+                        val url = "http://${_serverAddress.value}/view?filename=$filename&type=output"
+                        _generatedImage.value = url
+                        _executionStatus.value = ExecutionStatus.FINISHED
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Ignore parsing errors for non-matching messages
         }
     }
 

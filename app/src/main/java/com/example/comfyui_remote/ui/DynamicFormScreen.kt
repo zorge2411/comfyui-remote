@@ -139,7 +139,18 @@ fun DynamicFormScreen(
                 }
             }
             
-            // Image Result Placeholder (Next Step)
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            val image by viewModel.generatedImage.collectAsState()
+            if (image != null) {
+                Text("Result:", style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+                coil.compose.AsyncImage(
+                    model = image,
+                    contentDescription = "Generated Image",
+                    modifier = Modifier.fillMaxWidth().height(300.dp)
+                )
+            }
         }
     }
 }

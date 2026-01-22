@@ -37,13 +37,13 @@
 w: file:///D:/Antigravity/ComfyUI%20frontend/app/src/main/java/com/example/comfyui_remote/MainViewModel.kt:83:21 Variable 'response' is never used
 
 > Task :app:compileDebugJavaWithJavac UP-TO-DATE
-> Task :app:processDebugJavaRes
-> Task :app:mergeDebugJavaResource
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:mergeDebugJavaResource UP-TO-DATE
 > Task :app:dexBuilderDebug
 > Task :app:mergeProjectDexDebug
 > Task :app:packageDebug
 > Task :app:createDebugApkListingFileRedirect UP-TO-DATE
 > Task :app:assembleDebug
 
-BUILD SUCCESSFUL in 10s
-34 actionable tasks: 8 executed, 26 up-to-date
+BUILD SUCCESSFUL in 5s
+34 actionable tasks: 6 executed, 28 up-to-date
