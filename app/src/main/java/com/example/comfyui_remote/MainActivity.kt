@@ -18,6 +18,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -37,6 +39,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -56,8 +60,16 @@ class MainActivity : ComponentActivity() {
         
         val database = AppDatabase.getDatabase(this)
         val repository = WorkflowRepository(database.workflowDao())
+        val mediaRepository = com.example.comfyui_remote.data.MediaRepository(database.generatedMediaDao())
         val userPreferencesRepository = com.example.comfyui_remote.data.UserPreferencesRepository(this)
-        val viewModelFactory = MainViewModelFactory(repository, userPreferencesRepository)
+        val app = application as ComfyApplication
+        val viewModelFactory = MainViewModelFactory(
+            app,
+            repository, 
+            mediaRepository, 
+            userPreferencesRepository,
+            app.connectionRepository
+        )
         val viewModel = ViewModelProvider(this, viewModelFactory)[MainViewModel::class.java]
 
         setContent {
@@ -98,6 +110,34 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 )
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Filled.Search, contentDescription = "Gallery") },
+                                    label = { Text("Gallery") },
+                                    selected = currentRoute == "gallery",
+                                    onClick = {
+                                        navController.navigate("gallery") {
+                                            popUpTo("connection") {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
+                                )
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings") },
+                                    label = { Text("Settings") },
+                                    selected = currentRoute == "settings",
+                                    onClick = {
+                                        navController.navigate("settings") {
+                                            popUpTo("connection") {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
+                                )
                             }
                         }
                     }
@@ -118,6 +158,23 @@ class MainActivity : ComponentActivity() {
                                 viewModel.selectWorkflow(workflow)
                                 navController.navigate("remote_control")
                             }
+                        }
+                        composable("gallery") {
+                            com.example.comfyui_remote.ui.GalleryScreen(viewModel) { media ->
+                                navController.navigate("media_detail/${media.id}")
+                            }
+                        }
+                        composable(
+                            route = "media_detail/{mediaId}",
+                            arguments = listOf(navArgument("mediaId") { type = NavType.LongType })
+                        ) { backStackEntry ->
+                            val mediaId = backStackEntry.arguments?.getLong("mediaId") ?: 0L
+                            com.example.comfyui_remote.ui.MediaDetailScreen(viewModel, mediaId) {
+                                navController.popBackStack()
+                            }
+                        }
+                        composable("settings") {
+                            com.example.comfyui_remote.ui.SettingsScreen(viewModel)
                         }
                         composable("remote_control") {
                             val workflow = viewModel.selectedWorkflow.value

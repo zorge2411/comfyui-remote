@@ -16,6 +16,7 @@ class UserPreferencesRepository(private val context: Context) {
     
     private val HOST_KEY = stringPreferencesKey("host_ip")
     private val PORT_KEY = intPreferencesKey("host_port")
+    private val SAVE_FOLDER_URI_KEY = stringPreferencesKey("save_folder_uri")
 
     val savedHost: Flow<String> = context.dataStore.data
         .map { preferences ->
@@ -26,6 +27,17 @@ class UserPreferencesRepository(private val context: Context) {
         .map { preferences ->
             preferences[PORT_KEY] ?: 8188 
         }
+
+    val saveFolderUri: Flow<String?> = context.dataStore.data
+        .map { preferences ->
+            preferences[SAVE_FOLDER_URI_KEY]
+        }
+
+    suspend fun saveSaveFolderUri(uri: String) {
+        context.dataStore.edit { preferences ->
+            preferences[SAVE_FOLDER_URI_KEY] = uri
+        }
+    }
 
     suspend fun saveConnectionDetails(host: String, port: Int) {
         context.dataStore.edit { preferences ->

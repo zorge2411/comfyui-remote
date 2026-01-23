@@ -31,6 +31,11 @@ class WorkflowExecutor {
                                     inputsObj.addProperty(input.fieldName, input.value)
                                 }
                             }
+                            is InputField.ModelInput -> {
+                                if (inputsObj.has(input.fieldName)) {
+                                    inputsObj.addProperty(input.fieldName, input.value)
+                                }
+                            }
                         }
                     }
                 }

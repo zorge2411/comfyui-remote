@@ -68,6 +68,10 @@ dependencies {
     // Image Loading
     implementation(libs.coil)
 
+    // Video Playback
+    implementation("androidx.media3:media3-exoplayer:1.2.1")
+    implementation("androidx.media3:media3-ui:1.2.1")
+
     // Data & Parsing
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
@@ -75,6 +79,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.gson)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.documentfile)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -1,16 +1,21 @@
 package com.example.comfyui_remote
 
+import android.app.Application
+import android.content.Intent
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.comfyui_remote.data.ConnectionRepository
 import com.example.comfyui_remote.data.WorkflowEntity
 import com.example.comfyui_remote.data.WorkflowRepository
-import com.example.comfyui_remote.network.ComfyWebSocket
 import com.example.comfyui_remote.network.ExecutionStatus
 import com.example.comfyui_remote.network.WebSocketState
+import com.example.comfyui_remote.service.ExecutionService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 
@@ -18,9 +23,12 @@ import com.example.comfyui_remote.data.UserPreferencesRepository
 import kotlinx.coroutines.flow.first
 
 class MainViewModel(
+    application: Application,
     private val repository: WorkflowRepository,
-    private val userPreferencesRepository: UserPreferencesRepository
-) : ViewModel() {
+    private val mediaRepository: com.example.comfyui_remote.data.MediaRepository,
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val connectionRepository: ConnectionRepository
+) : AndroidViewModel(application) {
 
     // Split state for UI
     private val _host = MutableStateFlow("")
@@ -36,6 +44,9 @@ class MainViewModel(
     private val _shouldNavigateToWorkflows = MutableStateFlow(false)
     val shouldNavigateToWorkflows: StateFlow<Boolean> = _shouldNavigateToWorkflows.asStateFlow()
     
+    private val _saveFolderUri = MutableStateFlow<String?>(null)
+    val saveFolderUri: StateFlow<String?> = _saveFolderUri.asStateFlow()
+    
     fun onNavigatedToWorkflows() {
         _shouldNavigateToWorkflows.value = false
     }
@@ -47,12 +58,33 @@ class MainViewModel(
             val savedPort = userPreferencesRepository.savedPort.first()
             _host.value = savedHost
             _port.value = savedPort.toString()
+            _saveFolderUri.value = userPreferencesRepository.saveFolderUri.first()
             updateServerAddressFull()
+        }
+        
+        // Observe global connection state from Repository
+        viewModelScope.launch {
+            connectionRepository.connectionState.collect { state ->
+                // Auto-navigate on successful connection if not already there?
+                // Or just expose state. 
+                // The original logic was inside connect(), but now it's reactive.
+            }
+        }
+        
+        // Observe messages from Repository
+        viewModelScope.launch {
+            connectionRepository.messages.collect { message ->
+                handleMessage(message)
+            }
         }
     }
 
     private fun updateServerAddressFull() {
-        _serverAddress.value = "${_host.value}:${_port.value}"
+        // Strip protocol if user added it
+        val cleanHost = _host.value
+            .removePrefix("http://")
+            .removePrefix("https://")
+        _serverAddress.value = "${cleanHost}:${_port.value}"
     }
 
     fun updateHost(newHost: String) {
@@ -72,15 +104,27 @@ class MainViewModel(
         }
     }
 
-    private var comfyWebSocket: ComfyWebSocket? = null
-    // In a real app, inject this via Hilt
-    private val okHttpClient = OkHttpClient.Builder().build()
+    fun saveSaveFolderUri(uri: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.saveSaveFolderUri(uri)
+            _saveFolderUri.value = uri
+        }
+    }
 
-    private val _connectionState = MutableStateFlow(WebSocketState.DISCONNECTED)
-    val connectionState: StateFlow<WebSocketState> = _connectionState.asStateFlow()
+    // Direct access for UI
+    val connectionState: StateFlow<WebSocketState> = connectionRepository.connectionState
 
     // Phase 2: Workflow Operations
     val allWorkflows = repository.allWorkflows
+
+    // Phase 8/9: Gallery Data
+    val allMedia = mediaRepository.allMedia
+
+    fun getMediaById(id: Long): kotlinx.coroutines.flow.Flow<com.example.comfyui_remote.data.GeneratedMediaEntity?> {
+        return mediaRepository.allMedia.map { list ->
+            list.find { it.id == id }
+        }
+    }
 
     // Phase 3: Execution Logic
     private val workflowParser = com.example.comfyui_remote.domain.WorkflowParser()
@@ -100,14 +144,8 @@ class MainViewModel(
         _serverAddress.value = address
     }
     
-    // Create API Service dynamically or verify lazy creation. 
-    // For simplicity, we create a new retrofit instance or reuse one based on server address.
-    // In this MVP, we assume address doesn't change mid-session or we handle it crudely.
-    private fun getApiService(): androidx.lifecycle.LiveData<com.example.comfyui_remote.network.ComfyApiService?> {
-        // Real implementation would use DI or Factory to rebuild Retrofit on address change
-        // For MVP, assume it's set before use. 
-        return androidx.lifecycle.MutableLiveData(null) // simplified
-    }
+    // Create API Service dynamically
+    private val okHttpClient = OkHttpClient.Builder().build()
 
     private fun buildApiService(): com.example.comfyui_remote.network.ComfyApiService {
          // Create a temporary retrofit instance for the call
@@ -136,12 +174,11 @@ class MainViewModel(
                 val response = api.queuePrompt(
                     com.example.comfyui_remote.network.PromptRequest(
                         prompt = promptJson, 
-                        // If we want accurate WS tracking we need to send client_id (socketID)
-                        // comfyWebSocket?.clientId 
+                        client_id = connectionRepository.clientId 
                     )
                 )
                 
-                // 3. Monitor (Basic implementation: assume QUEUED -> EXECUTING via WS later)
+                // 3. Monitor
                  _executionStatus.value = ExecutionStatus.EXECUTING
 
             } catch (e: Exception) {
@@ -155,57 +192,119 @@ class MainViewModel(
     private val _generatedImage = MutableStateFlow<String?>(null)
     val generatedImage: StateFlow<String?> = _generatedImage.asStateFlow()
 
-    fun connect() {
-        if (comfyWebSocket != null) {
-            disconnect()
-        }
+    private val _availableModels = MutableStateFlow<List<String>>(emptyList())
+    val availableModels: StateFlow<List<String>> = _availableModels.asStateFlow()
 
-        comfyWebSocket = ComfyWebSocket(okHttpClient, _serverAddress.value).also { ws ->
-            viewModelScope.launch {
-                ws.connectionState.collect { state ->
-                    _connectionState.value = state
-                }
+    fun fetchAvailableModels() {
+        viewModelScope.launch {
+            try {
+                val api = buildApiService()
+                val models = api.getModels("checkpoints")
+                _availableModels.value = models
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // In a real app, expose error state
             }
-            viewModelScope.launch {
-                 ws.messages.collect { message ->
-                     if (message != null) {
-                         handleMessage(message)
-                     }
-                 }
-            }
-            ws.connect()
         }
+    }
+
+    fun connect() {
+        // Start Foreground Service
+        val context = getApplication<Application>()
+        val serviceIntent = Intent(context, ExecutionService::class.java)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            context.startForegroundService(serviceIntent)
+        } else {
+            context.startService(serviceIntent)
+        }
+        
+        // Connect via Repository
+        val p = _port.value.toIntOrNull() ?: 8188
+        connectionRepository.connect(_host.value, p)
+        fetchAvailableModels()
+    }
+    
+    fun disconnect() {
+        connectionRepository.disconnect()
+        _shouldNavigateToWorkflows.value = false
+        
+        // Stop Service
+        val context = getApplication<Application>()
+        context.stopService(Intent(context, ExecutionService::class.java))
     }
 
     private fun handleMessage(json: String) {
         try {
             val obj = com.google.gson.JsonParser.parseString(json).asJsonObject
             val type = obj.get("type").asString
-            if (type == "executed") {
-                val data = obj.getAsJsonObject("data")
-                val output = data.getAsJsonObject("output")
-                if (output != null && output.has("images")) {
-                    val images = output.getAsJsonArray("images")
-                    if (images.size() > 0) {
-                        val image = images.get(0).asJsonObject
-                        val filename = image.get("filename").asString
-                        // Construct URL: http://host/view?filename=...
-                        val url = "http://${_serverAddress.value}/view?filename=$filename&type=output"
-                        _generatedImage.value = url
+            
+            when (type) {
+                "execution_start" -> {
+                    // Confirm execution has begun
+                    _executionStatus.value = ExecutionStatus.EXECUTING
+                }
+                "executing" -> {
+                    val data = obj.getAsJsonObject("data")
+                    // When node is null, the prompt execution is complete
+                    if (data.has("node") && data.get("node").isJsonNull) {
                         _executionStatus.value = ExecutionStatus.FINISHED
                     }
+                }
+                "executed" -> {
+                    val data = obj.getAsJsonObject("data")
+                    val output = data.getAsJsonObject("output")
+                    if (output != null && output.has("images")) {
+                        val images = output.getAsJsonArray("images")
+                        if (images.size() > 0) {
+                            val image = images.get(0).asJsonObject
+                            val filename = image.get("filename").asString
+                            val subfolder = if (image.has("subfolder")) image.get("subfolder").asString else null
+                            
+                            // Construct URL: http://host/view?filename=...
+                            val url = "http://${_serverAddress.value}/view?filename=$filename&type=output"
+                            _generatedImage.value = url
+
+                            // Phase 8: Auto-save metadata
+                            viewModelScope.launch {
+                                val hostParts = _serverAddress.value.split(":")
+                                val host = hostParts.getOrNull(0) ?: ""
+                                val port = hostParts.getOrNull(1)?.toIntOrNull() ?: 8188
+                                
+                                val extension = filename.substringAfterLast('.', "").lowercase()
+                                val isVideo = extension in listOf("mp4", "gif", "webm", "mkv")
+                                val type = if (isVideo) "VIDEO" else "IMAGE"
+                                
+                                mediaRepository.insert(
+                                    com.example.comfyui_remote.data.GeneratedMediaEntity(
+                                        workflowName = _selectedWorkflow.value?.name ?: "Unknown",
+                                        fileName = filename,
+                                        subfolder = subfolder,
+                                        serverHost = host,
+                                        serverPort = port,
+                                        mediaType = type
+                                    )
+                                )
+                                
+                                // Update workflow with the generated image name
+                                _selectedWorkflow.value?.let { workflow ->
+                                    repository.insert(workflow.copy(lastImageName = filename))
+                                }
+                            }
+                        }
+                    }
+                    // Always transition to FINISHED on 'executed'
+                    _executionStatus.value = ExecutionStatus.FINISHED
+                }
+                "execution_error" -> {
+                    _executionStatus.value = ExecutionStatus.ERROR
+                }
+                "status" -> {
+                    // Could track queue remaining here if needed
                 }
             }
         } catch (e: Exception) {
             // Ignore parsing errors for non-matching messages
         }
-    }
-
-    fun disconnect() {
-        comfyWebSocket?.disconnect()
-        comfyWebSocket = null
-        _connectionState.value = WebSocketState.DISCONNECTED
-        _shouldNavigateToWorkflows.value = false
     }
     
     fun importWorkflow(name: String, json: String) {
@@ -229,10 +328,6 @@ class MainViewModel(
                 history.entrySet().forEach { (executionId, element) ->
                     if (element.isJsonObject) {
                         val item = element.asJsonObject
-                        // "prompt" usually contains the node graph ( [index, id, graph, ...] ) or just graph?
-                        // ComfyUI history:
-                        // "prompt": [number, string_id, { "3": {inputs...} }, ..extra..]
-                        // We need the 3rd element (index 2) which is the actual graph object.
                         
                         if (item.has("prompt")) {
                             val promptElement = item.get("prompt")
@@ -245,23 +340,16 @@ class MainViewModel(
                                     workflowJson = arr.get(2).toString() // The node graph
                                 }
                             } else if (promptElement.isJsonObject) {
-                                // Sometimes it might be just object?
                                 workflowJson = promptElement.toString()
                             }
                             
                             if (workflowJson != null) {
-                                // Save it
-                                // Avoid duplicates? For now just append with ID
+                                val name = extractNameFromHistoryItem(item, executionId)
                                 val workflow = WorkflowEntity(
-                                    name = "History $executionId",
+                                    name = name,
                                     jsonContent = workflowJson,
                                     createdAt = System.currentTimeMillis()
                                 )
-                                // Simple check to avoid spamming identical names?
-                                // repository.insert(workflow) 
-                                // Let's try to upsert or just insert. 
-                                // Ideally we check if "History $executionId" exists.
-                                // For MVP: just insert.
                                 repository.insert(workflow)
                             }
                         }
@@ -273,26 +361,72 @@ class MainViewModel(
         }
     }
 
+    private fun extractNameFromHistoryItem(item: com.google.gson.JsonObject, executionId: String): String {
+        try {
+            if (item.has("extra_data")) {
+                val extraData = item.getAsJsonObject("extra_data")
+                if (extraData.has("extra_pnginfo")) {
+                    val pngInfo = extraData.getAsJsonObject("extra_pnginfo")
+                    if (pngInfo.has("workflow")) {
+                        val workflow = pngInfo.getAsJsonObject("workflow")
+                        if (workflow.has("extra")) {
+                            val extra = workflow.getAsJsonObject("extra")
+                            if (extra.has("name")) {
+                                return extra.get("name").asString
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Ignore extraction errors
+        }
+        
+        // Fallback to timestamped history
+        val date = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(java.util.Date())
+        return "History $date"
+    }
+
+    fun renameWorkflow(workflow: WorkflowEntity, newName: String) {
+        viewModelScope.launch {
+            repository.insert(workflow.copy(name = newName))
+        }
+    }
+
     fun deleteWorkflow(workflow: WorkflowEntity) {
         viewModelScope.launch {
             repository.deleteWorkflow(workflow)
         }
     }
 
+    fun deleteMedia(mediaList: List<com.example.comfyui_remote.data.GeneratedMediaEntity>) {
+        viewModelScope.launch {
+            mediaRepository.delete(mediaList)
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
-        disconnect()
+        // Do NOT disconnect automatically on ViewModel clear anymore 
+        // because we want background persistence!
+        // But if the User explicitly closes the app task, the Service *might* get killed or stay alive 
+        // depending on START_STICKY. Standard behavior is to keep it unless user Force Stops.
+        // However, if we want "Close App = Disconnect", we should verify. 
+        // For "Background Persistence", we usually want it to stay until explicitly disconnected.
     }
 }
 
 class MainViewModelFactory(
+    private val application: Application,
     private val repository: WorkflowRepository,
-    private val userPreferencesRepository: UserPreferencesRepository
+    private val mediaRepository: com.example.comfyui_remote.data.MediaRepository,
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val connectionRepository: ConnectionRepository
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return MainViewModel(repository, userPreferencesRepository) as T
+            return MainViewModel(application, repository, mediaRepository, userPreferencesRepository, connectionRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

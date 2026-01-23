@@ -42,7 +42,7 @@ public final class WorkflowDao_Impl implements WorkflowDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR ABORT INTO `workflows` (`id`,`name`,`jsonContent`,`createdAt`) VALUES (nullif(?, 0),?,?,?)";
+        return "INSERT OR REPLACE INTO `workflows` (`id`,`name`,`jsonContent`,`createdAt`,`lastImageName`) VALUES (nullif(?, 0),?,?,?,?)";
       }
 
       @Override
@@ -52,6 +52,11 @@ public final class WorkflowDao_Impl implements WorkflowDao {
         statement.bindString(2, entity.getName());
         statement.bindString(3, entity.getJsonContent());
         statement.bindLong(4, entity.getCreatedAt());
+        if (entity.getLastImageName() == null) {
+          statement.bindNull(5);
+        } else {
+          statement.bindString(5, entity.getLastImageName());
+        }
       }
     };
     this.__deletionAdapterOfWorkflowEntity = new EntityDeletionOrUpdateAdapter<WorkflowEntity>(__db) {
@@ -71,7 +76,7 @@ public final class WorkflowDao_Impl implements WorkflowDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "UPDATE OR ABORT `workflows` SET `id` = ?,`name` = ?,`jsonContent` = ?,`createdAt` = ? WHERE `id` = ?";
+        return "UPDATE OR ABORT `workflows` SET `id` = ?,`name` = ?,`jsonContent` = ?,`createdAt` = ?,`lastImageName` = ? WHERE `id` = ?";
       }
 
       @Override
@@ -81,7 +86,12 @@ public final class WorkflowDao_Impl implements WorkflowDao {
         statement.bindString(2, entity.getName());
         statement.bindString(3, entity.getJsonContent());
         statement.bindLong(4, entity.getCreatedAt());
-        statement.bindLong(5, entity.getId());
+        if (entity.getLastImageName() == null) {
+          statement.bindNull(5);
+        } else {
+          statement.bindString(5, entity.getLastImageName());
+        }
+        statement.bindLong(6, entity.getId());
       }
     };
   }
@@ -157,6 +167,7 @@ public final class WorkflowDao_Impl implements WorkflowDao {
           final int _cursorIndexOfName = CursorUtil.getColumnIndexOrThrow(_cursor, "name");
           final int _cursorIndexOfJsonContent = CursorUtil.getColumnIndexOrThrow(_cursor, "jsonContent");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
+          final int _cursorIndexOfLastImageName = CursorUtil.getColumnIndexOrThrow(_cursor, "lastImageName");
           final List<WorkflowEntity> _result = new ArrayList<WorkflowEntity>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final WorkflowEntity _item;
@@ -168,7 +179,13 @@ public final class WorkflowDao_Impl implements WorkflowDao {
             _tmpJsonContent = _cursor.getString(_cursorIndexOfJsonContent);
             final long _tmpCreatedAt;
             _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
-            _item = new WorkflowEntity(_tmpId,_tmpName,_tmpJsonContent,_tmpCreatedAt);
+            final String _tmpLastImageName;
+            if (_cursor.isNull(_cursorIndexOfLastImageName)) {
+              _tmpLastImageName = null;
+            } else {
+              _tmpLastImageName = _cursor.getString(_cursorIndexOfLastImageName);
+            }
+            _item = new WorkflowEntity(_tmpId,_tmpName,_tmpJsonContent,_tmpCreatedAt,_tmpLastImageName);
             _result.add(_item);
           }
           return _result;

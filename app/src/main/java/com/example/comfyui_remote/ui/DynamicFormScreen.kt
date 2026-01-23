@@ -10,9 +10,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +40,7 @@ import com.example.comfyui_remote.domain.InputField
 import com.example.comfyui_remote.network.ExecutionStatus
 import kotlin.random.Random
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DynamicFormScreen(
     viewModel: MainViewModel,
@@ -114,6 +120,42 @@ fun DynamicFormScreen(
                                 }
                             }
                         )
+                    }
+                    is InputField.ModelInput -> {
+                        val availableModels by viewModel.availableModels.collectAsState()
+                        var expanded by remember { mutableStateOf(false) }
+
+                        ExposedDropdownMenuBox(
+                            expanded = expanded,
+                            onExpandedChange = { expanded = !expanded },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = inputField.value,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("${inputField.nodeTitle} (Model)") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                                modifier = Modifier.menuAnchor().fillMaxWidth()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                availableModels.forEach { modelName ->
+                                    DropdownMenuItem(
+                                        text = { Text(text = modelName) },
+                                        onClick = {
+                                            inputs = inputs.toMutableList().also {
+                                                it[index] = inputField.copy(value = modelName)
+                                            }
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))

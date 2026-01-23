@@ -26,4 +26,11 @@ sealed class InputField(
         val value: Long,
         override val nodeTitle: String
     ) : InputField("Seed", nodeTitle, nodeId, fieldName)
+
+    data class ModelInput(
+        override val nodeId: String,
+        override val fieldName: String,
+        val value: String,
+        override val nodeTitle: String
+    ) : InputField("Model", nodeTitle, nodeId, fieldName)
 }

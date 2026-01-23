@@ -16,7 +16,7 @@ interface WorkflowDao {
     @Query("SELECT * FROM workflows ORDER BY createdAt DESC")
     fun getAll(): Flow<List<WorkflowEntity>>
 
-    @Insert
+    @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
     suspend fun insert(workflow: WorkflowEntity)
 
     @Update
@@ -26,9 +26,10 @@ interface WorkflowDao {
     suspend fun delete(workflow: WorkflowEntity)
 }
 
-@Database(entities = [WorkflowEntity::class], version = 1)
+@Database(entities = [WorkflowEntity::class, GeneratedMediaEntity::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun workflowDao(): WorkflowDao
+    abstract fun generatedMediaDao(): GeneratedMediaDao
 
     companion object {
         @Volatile
@@ -40,7 +41,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "comfy_database"
-                ).build()
+                )
+                    .fallbackToDestructiveMigration()
+                    .build()
                 INSTANCE = instance
                 instance
             }

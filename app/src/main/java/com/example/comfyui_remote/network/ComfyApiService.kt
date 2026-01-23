@@ -4,6 +4,7 @@ import com.google.gson.JsonObject
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Path
 
 interface ComfyApiService {
     @GET("system_stats")
@@ -14,6 +15,11 @@ interface ComfyApiService {
     
     @GET("history")
     suspend fun getHistory(): JsonObject
+    @GET("models/{folder}")
+    suspend fun getModels(@Path("folder") folder: String): List<String>
+
+    @GET("object_info")
+    suspend fun getObjectInfo(): JsonObject
 }
 
 data class PromptRequest(val prompt: JsonObject, val client_id: String? = null)

@@ -5,10 +5,14 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import okio.ByteString
+import java.util.UUID
 
 class ComfyWebSocket(
     private val client: OkHttpClient,
@@ -17,15 +21,17 @@ class ComfyWebSocket(
 
     private var webSocket: WebSocket? = null
 
+    val clientId: String = UUID.randomUUID().toString()
+
     private val _connectionState = MutableStateFlow(WebSocketState.DISCONNECTED)
     val connectionState: StateFlow<WebSocketState> = _connectionState.asStateFlow()
 
-    private val _messages = MutableStateFlow<String?>(null)
-    val messages: StateFlow<String?> = _messages.asStateFlow()
+    private val _messages = MutableSharedFlow<String>(replay = 0, extraBufferCapacity = 64)
+    val messages: SharedFlow<String> = _messages.asSharedFlow()
 
     fun connect() {
         val request = Request.Builder()
-            .url("ws://$serverAddress/ws")
+            .url("ws://$serverAddress/ws?clientId=$clientId")
             .build()
 
         _connectionState.value = WebSocketState.CONNECTING
@@ -36,7 +42,7 @@ class ComfyWebSocket(
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
-                _messages.value = text
+                _messages.tryEmit(text)
             }
 
             override fun onMessage(webSocket: WebSocket, bytes: ByteString) {

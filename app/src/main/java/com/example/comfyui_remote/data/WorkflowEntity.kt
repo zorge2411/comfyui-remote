@@ -9,5 +9,6 @@ data class WorkflowEntity(
     val id: Long = 0,
     val name: String,
     val jsonContent: String,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val lastImageName: String? = null
 )

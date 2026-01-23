@@ -31,6 +31,19 @@ class WorkflowParser {
                                             nodeTitle = title
                                         )
                                     )
+
+                                }
+                            }
+                            "CheckpointLoaderSimple" -> {
+                                if (inputsObj.has("ckpt_name")) {
+                                    inputs.add(
+                                        InputField.ModelInput(
+                                            nodeId = nodeId,
+                                            fieldName = "ckpt_name",
+                                            value = inputsObj.get("ckpt_name").asString,
+                                            nodeTitle = title
+                                        )
+                                    )
                                 }
                             }
                             "KSampler" -> {

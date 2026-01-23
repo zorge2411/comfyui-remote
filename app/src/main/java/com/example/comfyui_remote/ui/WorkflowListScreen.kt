@@ -12,7 +12,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -44,6 +46,7 @@ fun WorkflowListScreen(
 ) {
     val workflows by viewModel.allWorkflows.collectAsState(initial = emptyList())
     var showImportDialog by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf<WorkflowEntity?>(null) }
 
     Scaffold(
         topBar = {
@@ -74,6 +77,7 @@ fun WorkflowListScreen(
                         WorkflowItem(
                             workflow = workflow,
                             onDelete = { viewModel.deleteWorkflow(workflow) },
+                            onRename = { showRenameDialog = workflow },
                             onClick = { onWorkflowValidation(workflow) }
                         )
                     }
@@ -91,12 +95,42 @@ fun WorkflowListScreen(
             }
         )
     }
+
+    showRenameDialog?.let { workflow ->
+        var newName by remember { mutableStateOf(workflow.name) }
+        AlertDialog(
+            onDismissRequest = { showRenameDialog = null },
+            title = { Text("Rename Workflow") },
+            text = {
+                androidx.compose.material3.OutlinedTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    label = { Text("Workflow Name") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    viewModel.renameWorkflow(workflow, newName)
+                    showRenameDialog = null
+                }) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showRenameDialog = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @Composable
 fun WorkflowItem(
     workflow: WorkflowEntity,
     onDelete: () -> Unit,
+    onRename: () -> Unit,
     onClick: () -> Unit
 ) {
     Card(
@@ -113,11 +147,14 @@ fun WorkflowItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = workflow.name, style = MaterialTheme.typography.titleMedium)
+                Text(text = workflow.lastImageName ?: workflow.name, style = MaterialTheme.typography.titleMedium)
                 Text(
                     text = "Created: ${java.text.SimpleDateFormat("yyyy-MM-dd").format(java.util.Date(workflow.createdAt))}",
                     style = MaterialTheme.typography.bodySmall
                 )
+            }
+            IconButton(onClick = onRename) {
+                Icon(Icons.Default.Edit, contentDescription = "Rename")
             }
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "Delete")
