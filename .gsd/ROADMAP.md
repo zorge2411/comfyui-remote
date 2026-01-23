@@ -1,14 +1,18 @@
 # ROADMAP.md
 
-> **Current Phase**: Phase 1
-> **Milestone**: v1.0 MVP
+> **Current Milestone**: Milestone 2: Gallery
+> **Goal**: Show all generated images/videos with a premium experience.
 
-## Must-Haves (from SPEC)
+## Must-Haves
 
-- [ ] Connect to ComfyUI (HTTP/WS)
-- [ ] List Workflows
-- [ ] Dynamic Input Form
-- [ ] Image Preview & Save
+- [ ] Image view with zoom
+- [ ] Persistent storage for generated media metadata
+- [ ] Gallery Grid UI
+
+## Nice-to-Haves
+
+- [ ] Video playback support
+- [ ] Multi-select delete
 
 ## Phases
 
@@ -93,3 +97,80 @@
 - [x] Logic to extract node graph from history items
 - [x] Add Sync button to Workflow List
 - [x] Auto-import of server history entries into local DB
+- [x] Auto-import of server history entries into local DB
+
+### Phase 8: Gallery Foundation
+
+**Status**: ✅ Done
+**Objective**: Implement database persistence for generated images (metadata and local paths).
+
+### Phase 9: Gallery UI
+
+**Status**: ✅ Done
+**Objective**: Create a grid-based gallery screen to browse history.
+
+### Phase 10: Media Detail & Zoom
+
+**Status**: ✅ Done
+**Objective**: Full-screen view with pinch-to-zoom capabilities.
+
+### Phase 11: Video Playback Support
+
+**Status**: ✅ Done
+**Objective**: Support viewing generated GIFs/MP4s within the gallery.
+
+### Phase 12: Visual Branding (App Icon)
+
+**Status**: ✅ Done
+**Objective**: Modernize the app presence with a custom ComfyUI-inspired icon.
+
+### Phase 13: Model Selection
+
+**Status**: ✅ Done
+**Objective**: Allow users to select different checkpoint models (safetensors) for image generation.
+
+**Tasks**:
+
+- [ ] Add API endpoint to fetch available models from ComfyUI server
+- [ ] Add model selection dropdown to Dynamic Form
+- [ ] Update workflow execution to use selected model
+- [x] Persist last selected model per workflow
+
+### Phase 14: Expanded API Support
+
+**Status**: ✅ Done
+**Objective**: achieve full API parity with standard Python examples, including `object_info` for dynamic node metadata.
+
+**Tasks**:
+
+- [x] Implement `getObjectInfo` endpoint
+- [x] Create data models for Object Info
+- [x] Verify `client_id` propagation in all requests
+
+### Phase 15: Background Persistence
+
+**Status**: 🚧 Planned
+**Objective**: Ensure the application maintains connection and execution state when minimized.
+
+**Tasks**:
+
+- [ ] Create `ComfyApplication` class for app-level dependency management
+- [ ] Extract WebSocket logic to `ConnectionRepository`
+- [ ] Implement `ExecutionService` (Foreground Service) to keep connection alive
+- [ ] Update `MainViewModel` to observe Repository instead of owning WebSocket
+- [ ] Add Notification permission and display status notification
+
+### Phase 16: Icon Refinement
+
+**Status**: 🚧 Planned
+**Objective**: Create 5 new premium icon options for user selection.
+
+**Tasks**:
+
+- [ ] Generate 5 distinct icon concepts
+- [ ] Add chosen icon to project
+
+### Backlog
+
+- [ ] Swipe function in gallery (navigation between detail views)
+- [ ] Option to select specific folder for saving generated images
