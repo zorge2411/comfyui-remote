@@ -162,7 +162,7 @@
 
 ### Phase 16: Icon Refinement
 
-**Status**: 🚧 Planned
+**Status**: 🔄 In Progress
 **Objective**: Create 5 new premium icon options for user selection.
 
 **Tasks**:
@@ -170,7 +170,19 @@
 - [ ] Generate 5 distinct icon concepts
 - [ ] Add chosen icon to project
 
+### Phase 17: Premium Gallery Experience
+
+**Status**: 🚧 Planned
+**Objective**: Implement Hero transitions, Gestures, Sharing, Wallpaper, Multi-select, and Info overlay.
+
+**Tasks**:
+
+- [ ] Hero Transitions (Grid -> Detail)
+- [ ] Swipe to Dismiss & Double-tap Zoom
+- [ ] Share Sheet & Set Wallpaper
+- [ ] Multi-select & Bulk Delete
+- [ ] Metadata Info Overlay
+
 ### Backlog
 
-- [ ] Swipe function in gallery (navigation between detail views)
 - [ ] Option to select specific folder for saving generated images
