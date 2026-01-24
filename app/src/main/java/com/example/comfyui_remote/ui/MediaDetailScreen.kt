@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Delete
 import kotlinx.coroutines.launch
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -80,6 +81,9 @@ fun MediaDetailScreen(
     val saveFolderUri by viewModel.saveFolderUri.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     
+    // Delete state
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    
     // Helper to handle back/dismiss logic
     val handleBack = {
         onBack()
@@ -109,6 +113,11 @@ fun MediaDetailScreen(
                             }
                         }) {
                             Icon(Icons.Default.Share, contentDescription = "Share")
+                        }
+
+                        // Delete Action
+                        IconButton(onClick = { showDeleteConfirm = true }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete")
                         }
 
                         // Info Action
@@ -249,6 +258,32 @@ fun MediaDetailScreen(
                         }
                     }
                 }
+            }
+
+            if (showDeleteConfirm) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteConfirm = false },
+                    title = { Text("Delete Media?") },
+                    text = { Text("Are you sure you want to delete this file? This action cannot be undone.") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                showDeleteConfirm = false
+                                currentMedia?.let { item ->
+                                    viewModel.deleteMedia(listOf(item))
+                                    handleBack()
+                                }
+                            }
+                        ) {
+                            Text("Delete", color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteConfirm = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
             }
         }
     }

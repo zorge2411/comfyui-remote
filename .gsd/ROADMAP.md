@@ -103,8 +103,13 @@
 
 ### Phase 34: Media Detail Individual Delete
 
-**Status**: ⬜ Not Started
-**Objective**: Add individual media deletion to the full-screen detail view with confirmation.
+**Status**: ✅ Done
+**Tasks**:
+
+- [x] Add Delete icon to `MediaDetailScreen` top bar
+- [x] Implement confirmation dialog
+- [x] Hook up `viewModel.deleteMedia`
+- [x] Navigate back after delete
 
 ### Phase 35: Storage & UX Polish
 
