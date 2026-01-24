@@ -28,6 +28,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -40,9 +41,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
 import com.example.comfyui_remote.MainViewModel
 import com.example.comfyui_remote.data.WorkflowEntity
 import com.example.comfyui_remote.domain.InputField
@@ -174,11 +178,76 @@ fun DynamicFormScreen(
                             }
                         }
                     }
+                    is InputField.ImageInput -> {
+                        val context = LocalContext.current
+                        val scope = androidx.compose.runtime.rememberCoroutineScope()
+
+                        com.example.comfyui_remote.ui.components.ImageSelector(
+                            label = "${inputField.nodeTitle} (${inputField.fieldName})",
+                            currentUri = inputField.localUri,
+                            onImageSelected = { uri ->
+                                // 1. Optimistic Update
+                                inputs = inputs.toMutableList().also {
+                                    it[index] = inputField.copy(localUri = uri.toString(), value = null)
+                                }
+                                
+                                // 2. Trigger Upload
+                                scope.launch {
+                                    val filename = viewModel.uploadImage(uri, context.contentResolver)
+                                    if (filename != null) {
+                                        // 3. Update with Server Filename
+                                        inputs = inputs.toMutableList().also { list ->
+                                            // Re-fetch item to be safe, though index should be stable
+                                            val current = list[index] as? InputField.ImageInput
+                                            if (current != null) {
+                                                list[index] = current.copy(value = filename)
+                                            }
+                                        }
+                                    } else {
+                                        // Upload failed
+                                    }
+                                }
+                            }
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+
+            val executionProgress by viewModel.executionProgress.collectAsState()
+            
+            if (executionStatus == ExecutionStatus.EXECUTING || executionStatus == ExecutionStatus.QUEUED) {
+                Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = if (executionStatus == ExecutionStatus.QUEUED) "Queued..." 
+                                   else "Executing: ${executionProgress.currentNodeTitle ?: "Node #${executionProgress.currentNodeId ?: "?"}"}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (executionProgress.maxSteps > 0) {
+                            Text(
+                                text = "${(executionProgress.progress * 100).toInt()}%",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (executionProgress.maxSteps > 0) {
+                        LinearProgressIndicator(
+                            progress = { executionProgress.progress },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    } else {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            }
 
             Button(
                 onClick = {
