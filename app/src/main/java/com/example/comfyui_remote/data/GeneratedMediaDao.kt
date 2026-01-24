@@ -8,7 +8,7 @@ interface GeneratedMediaDao {
     @Query("SELECT * FROM generated_media ORDER BY timestamp DESC")
     fun getAll(): Flow<List<GeneratedMediaEntity>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(media: GeneratedMediaEntity)
 
     @Delete

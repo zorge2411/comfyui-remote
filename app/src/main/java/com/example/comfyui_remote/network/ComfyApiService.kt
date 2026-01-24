@@ -5,6 +5,10 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Multipart
+import retrofit2.http.Part
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
 
 interface ComfyApiService {
     @GET("system_stats")
@@ -23,7 +27,15 @@ interface ComfyApiService {
 
     @GET("object_info")
     suspend fun getObjectInfo(): JsonObject
+
+    @Multipart
+    @POST("upload/image")
+    suspend fun uploadImage(
+        @Part image: MultipartBody.Part, 
+        @Part("overwrite") overwrite: RequestBody? = null
+    ): ImageUploadResponse
 }
 
 data class PromptRequest(val prompt: JsonObject, val client_id: String? = null)
 data class PromptResponse(val prompt_id: String)
+data class ImageUploadResponse(val name: String, val subfolder: String, val type: String)

@@ -41,12 +41,18 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.ui.unit.IntSize
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun MediaDetailScreen(
     viewModel: MainViewModel,
     mediaId: Long,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
     val mediaList by viewModel.allMedia.collectAsState(initial = emptyList())
     
@@ -222,6 +228,16 @@ fun MediaDetailScreen(
                                 } else {
                                     offsetY = 0f // Reset
                                 }
+                            },
+                            imageModifier = Modifier.let { modifier ->
+                                if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                                    with(sharedTransitionScope) {
+                                        modifier.sharedElement(
+                                            state = rememberSharedContentState(key = "image-${item.id}"),
+                                            animatedVisibilityScope = animatedVisibilityScope
+                                        )
+                                    }
+                                } else modifier
                             }
                         )
                     }
@@ -337,7 +353,8 @@ fun ZoomableImage(
     url: String,
     onZoomChanged: (Boolean) -> Unit,
     onDismissDrag: (Float) -> Unit,
-    onDismissEnd: () -> Unit
+    onDismissEnd: () -> Unit,
+    imageModifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
     val scale = remember { Animatable(1f) }
@@ -442,12 +459,12 @@ fun ZoomableImage(
             },
         contentAlignment = Alignment.Center
     ) {
-        AsyncImage(
-            model = url,
-            contentDescription = "Full Screen Content",
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer(
+            AsyncImage(
+                model = url,
+                contentDescription = "Full Screen Content",
+                modifier = imageModifier
+                    .fillMaxSize()
+                    .graphicsLayer(
                     scaleX = scale.value,
                     scaleY = scale.value,
                     translationX = offsetX.value,
