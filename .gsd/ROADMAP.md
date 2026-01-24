@@ -91,15 +91,15 @@
 
 ### Phase 33: Theme Mode Selection
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Done
 **Tasks**:
 
-- [ ] Implement `THEME_MODE_KEY` in `UserPreferencesRepository`
-- [ ] Add `themeMode` state and setter to `MainViewModel`
-- [ ] Refactor `Theme.kt` to accept explicit `themeMode`
-- [ ] Update `MainActivity.kt` to pass `themeMode` to theme wrapper
-- [ ] Add Theme selection UI in `SettingsScreen.kt`
-- [ ] Verify functionality
+- [x] Implement `THEME_MODE_KEY` in `UserPreferencesRepository`
+- [x] Add `themeMode` state and setter to `MainViewModel`
+- [x] Refactor `Theme.kt` to accept explicit `themeMode`
+- [x] Update `MainActivity.kt` to pass `themeMode` to theme wrapper
+- [x] Add Theme selection UI in `SettingsScreen.kt`
+- [x] Verify functionality
 
 ### Phase 34: Media Detail Individual Delete
 

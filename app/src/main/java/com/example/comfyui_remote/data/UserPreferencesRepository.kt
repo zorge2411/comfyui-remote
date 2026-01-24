@@ -17,6 +17,7 @@ class UserPreferencesRepository(private val context: Context) {
     private val HOST_KEY = stringPreferencesKey("host_ip")
     private val PORT_KEY = intPreferencesKey("host_port")
     private val SAVE_FOLDER_URI_KEY = stringPreferencesKey("save_folder_uri")
+    private val THEME_MODE_KEY = intPreferencesKey("theme_mode")
 
     val savedHost: Flow<String> = context.dataStore.data
         .map { preferences ->
@@ -32,6 +33,17 @@ class UserPreferencesRepository(private val context: Context) {
         .map { preferences ->
             preferences[SAVE_FOLDER_URI_KEY]
         }
+
+    val themeMode: Flow<Int> = context.dataStore.data
+        .map { preferences ->
+            preferences[THEME_MODE_KEY] ?: 0
+        }
+
+    suspend fun saveThemeMode(mode: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[THEME_MODE_KEY] = mode
+        }
+    }
 
     suspend fun saveSaveFolderUri(uri: String) {
         context.dataStore.edit { preferences ->

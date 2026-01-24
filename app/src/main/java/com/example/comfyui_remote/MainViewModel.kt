@@ -12,10 +12,11 @@ import com.example.comfyui_remote.data.WorkflowRepository
 import com.example.comfyui_remote.network.ExecutionStatus
 import com.example.comfyui_remote.network.WebSocketState
 import com.example.comfyui_remote.service.ExecutionService
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 
@@ -46,6 +47,15 @@ class MainViewModel(
     
     private val _saveFolderUri = MutableStateFlow<String?>(null)
     val saveFolderUri: StateFlow<String?> = _saveFolderUri.asStateFlow()
+
+    val themeMode: StateFlow<Int> = userPreferencesRepository.themeMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    fun updateThemeMode(mode: Int) {
+        viewModelScope.launch {
+            userPreferencesRepository.saveThemeMode(mode)
+        }
+    }
     
     fun onNavigatedToWorkflows() {
         _shouldNavigateToWorkflows.value = false

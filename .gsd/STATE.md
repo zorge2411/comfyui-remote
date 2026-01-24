@@ -3,11 +3,14 @@
 > **Updated**: 2026-01-24
 > **Milestone**: Milestone 2 Completed (Plus Phase 29 & 32)
 >
-> - **Current Phase**: Phase 32 (Completed)
+> - **Current Phase**: Phase 33 (Completed)
 > - **Task**: All tasks complete
 > - **Status**: Verified
 >
-> ## Achieved in Phase 32
+> ## Achieved in Phase 33
+>
+> - Implemented manual theme mode selection (System, Light, Dark)
+> - Persisted theme settings in DataStore
 >
 > - Implemented Pull-to-Refresh in Gallery and History screens
 > - Added `isSyncing` state for robust sync tracking
