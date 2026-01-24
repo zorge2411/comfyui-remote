@@ -1,121 +1,84 @@
 # ROADMAP.md
 
-> **Current Milestone**: Milestone 2: Gallery
-> **Goal**: Show all generated images/videos with a premium experience.
+> **Current Milestone**: None (Milestone 2 Completed)
+> **Goal**: TBD (Run /new-milestone)
 
 ## Must-Haves
 
-- [x] Image view with zoom
-- [x] Persistent storage for generated media metadata
-- [x] Gallery Grid UI
-- [x] Premium Gestures (Swipe/Zoom)
-- [x] Sharing & Wallpaper Actions
-- [x] Multi-select Delete
+- [ ] TBD
 
 ## Nice-to-Haves
 
-- [x] Video playback support
-- [x] Multi-select delete
+- [ ] TBD
 
 ## Phases
 
-### Phase 1: Foundation & Connectivity
-
-**Status**: ✅ Done
-
-### Phase 2: Workflow Parsing & Management
-
-**Status**: ✅ Done
-
-### Phase 3: Execution & Preview
-
-**Status**: ✅ Done
-
-### Phase 4: Polish & Persistence
-
-**Status**: ✅ Done
-
-### Phase 5: Import & Connection Refinements
-
-**Status**: ✅ Done
-
-### Phase 6: Navigation & UX Flow
-
-**Status**: ✅ Done
-
-### Phase 7: Advanced Workflow Sync
-
-**Status**: ✅ Done
-
-### Phase 8: Gallery Foundation
-
-**Status**: ✅ Done
-
-### Phase 9: Gallery UI
-
-**Status**: ✅ Done
-
-### Phase 10: Media Detail & Zoom
-
-**Status**: ✅ Done
-
-### Phase 11: Video Playback Support
-
-**Status**: ✅ Done
-
-### Phase 12: Visual Branding (App Icon)
-
-**Status**: ✅ Done
-
-### Phase 13: Model Selection
-
-**Status**: ✅ Done
-
-### Phase 14: Expanded API Support
-
-**Status**: ✅ Done
-
-### Phase 15: Background Persistence
-
-**Status**: 🚧 Planned
+### Backlog
 
 ### Phase 16: Icon Refinement
 
-**Status**: 🔄 In Progress (Blocked by API)
+**Status**: ⏸️ Deferred (Moved from Milestone 2)
+**Objective**: Generate 5 premium icon concepts, allow user selection, and implement the chosen icon. Blocked by API capacity.
 
-### Phase 17: Premium Gallery Experience
+### Phase 29: Model Listing in Workflow List
 
 **Status**: ✅ Done
-**Objective**: Implement Hero transitions, Gestures, Sharing, Wallpaper, Multi-select, and Info overlay.
+**Objective**: Display the safeTensor/checkpoint name on the workflow list item for quick identification.
 
 **Tasks**:
 
-- [x] Hero Transitions (Simple Zoom/Fade)
-- [x] Swipe to Dismiss & Double-tap Zoom
-- [x] Share Sheet & Set Wallpaper
-- [x] Multi-select & Bulk Delete
-- [x] Metadata Info Overlay
+- [x] Create Plan
+- [x] Implement Schema Changes (v5)
+- [x] Implement Parsing Logic
+- [x] Implement UI (Badges)
+- [x] Verify
 
-### Phase 18: Horizontal Gallery Paging
+### Phase 30: Support for Importing Graph Format JSON
 
-**Status**: ✅ Done
-**Objective**: Enable horizontal swiping between images/videos in detail view.
-
-**Tasks**:
-
-- [x] Navigation Update (Pass context)
-- [x] HorizontalPager Implementation
-- [x] Gesture Conflict Resolution
-
-### Phase 19: Advanced Storage Settings
-
-**Status**: ✅ Done
-**Objective**: Allow users to select a specific device folder for saving generated images and videos.
+**Status**: ⬜ Not Started
+**Objective**: Enable functionality to import workflows defined in the graph JSON format.
+**Depends on**: Phase 29
 
 **Tasks**:
 
-- [x] Settings Screen Implementation
-- [x] Folder Selection Logic (SAF)
-- [x] Conditional Save Policy
+- [ ] Create GraphToApiConverter
+- [ ] Integrate Converter in MainViewModel
+- [ ] Update Import Dialog
+- [ ] Verify
 
-### Backlog
+**Verification**:
+
+- Import `workflow.json` (Graph Format)
+- Confirm it appears in list
+- Run it and verify execution starts
+
+### Phase 31: Sync Gallery & History
+
+**Status**: ✅ Done
+**Objective**: Synchronize the local app gallery with the ComfyUI server history on startup to ensure consistency across devices/sessions.
+**Depends on**: Mileage 2 Completion
+
+**Tasks**:
+
+- [x] Create Phase Plan
+- [x] Implement Sync Logic in MainViewModel
+- [x] Optimize DAO with getAllPromptIds
+- [x] Verify Sync on Startup
+
+---
+
+### Phase 32: Pull to Sync Gallery & History
+
+**Status**: ⬜ Not Started
+**Objective**: Implement pull-to-refresh functionality on the Gallery and History pages to manually trigger synchronization with the ComfyUI server.
+**Depends on**: Phase 31
+
+**Tasks**:
+
+- [ ] TBD (run /plan 32 to create)
+
+**Verification**:
+
+- [ ] Pull down on Gallery screen triggers sync
+- [ ] Pull down on History screen triggers sync
+- [ ] UI reflects loading state during sync
