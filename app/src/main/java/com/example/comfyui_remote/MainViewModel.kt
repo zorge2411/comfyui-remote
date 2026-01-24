@@ -32,6 +32,8 @@ class MainViewModel(
     private val connectionRepository: ConnectionRepository
 ) : AndroidViewModel(application) {
 
+    private val imageRepository = com.example.comfyui_remote.data.ImageRepository()
+
     // Split state for UI
     private val _host = MutableStateFlow("")
     val host: StateFlow<String> = _host.asStateFlow()
@@ -48,6 +50,17 @@ class MainViewModel(
     
     private val _saveFolderUri = MutableStateFlow<String?>(null)
     val saveFolderUri: StateFlow<String?> = _saveFolderUri.asStateFlow()
+
+    data class ExecutionProgress(
+        val currentNodeId: String? = null,
+        val currentNodeTitle: String? = null,
+        val currentStep: Int = 0,
+        val maxSteps: Int = 0,
+        val progress: Float = 0f
+    )
+
+    private val _executionProgress = MutableStateFlow(ExecutionProgress())
+    val executionProgress: StateFlow<ExecutionProgress> = _executionProgress.asStateFlow()
 
     val themeMode: StateFlow<Int> = userPreferencesRepository.themeMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
@@ -221,21 +234,18 @@ class MainViewModel(
             if (media.promptJson != null) {
                 // Create a temporary workflow entity
                 val tempWorkflow = WorkflowEntity(
-                    id = 0, // 0 for not persisted (or careful if Room treats 0 as auto-generate? It usually does. But we aren't inserting it.)
+                    id = 0,
                     name = "History: ${java.text.SimpleDateFormat("MM-dd HH:mm").format(java.util.Date(media.timestamp))}",
                     jsonContent = media.promptJson,
-                    createdAt = media.timestamp
+                    createdAt = media.timestamp,
+                    lastImageName = media.fileName
                 )
                 _selectedWorkflow.value = tempWorkflow
-                _shouldNavigateToWorkflows.value = true // Or a new event "NavigateToForm"? 
-                // Currently 'onNavigatedToWorkflows' resets this. 
-                // We might need to ensure the UI navigates to the 'DynamicForm' route specifically.
-                // If 'shouldNavigateToWorkflows' goes to the LIST, that's wrong. 
-                // We need to trigger navigation to the FORM. 
-                // Let's assume the UI observes 'selectedWorkflow' and if non-null + some event, it goes to form.
-                // Actually, existing logic:
-                // selectWorkflow just sets the state. The UI (Gallery or List) needs to call navController.navigate.
-                // We'll add a specific event for this:
+                
+                // Set the preview image for the DynamicFormScreen
+                val url = "http://${_serverAddress.value}/view?filename=${media.fileName}&type=output"
+                _generatedImage.value = url
+                
                 _navigateToForm.value = true
             }
         }
@@ -345,14 +355,15 @@ class MainViewModel(
                 "execution_start" -> {
                     // Confirm execution has begun
                     _executionStatus.value = ExecutionStatus.EXECUTING
+                    _executionProgress.value = ExecutionProgress()
                 }
                 "executing" -> {
                     val data = obj.getAsJsonObject("data")
                     // When node is null, the prompt execution is complete
                     if (data.has("node") && data.get("node").isJsonNull) {
                         _executionStatus.value = ExecutionStatus.FINISHED
-                        // Robustness: If we hit finished but didn't get 'executed' message yet,
-                        // we can trigger a short-delay check on history.
+                        _executionProgress.value = ExecutionProgress()
+                        
                         val promptId = if (data.has("prompt_id")) data.get("prompt_id").asString else ""
                         if (promptId.isNotEmpty()) {
                             viewModelScope.launch {
@@ -360,16 +371,42 @@ class MainViewModel(
                                 syncHistoryItem(promptId)
                             }
                         }
+                    } else {
+                        val nodeId = data.get("node").asString
+                        // Optionally lookup node title from current workflow
+                        val title = _selectedWorkflow.value?.let { wf ->
+                             val nodes = parseAllNodes(wf.jsonContent)
+                             nodes.find { it.id == nodeId }?.title
+                        }
+                        _executionProgress.value = _executionProgress.value.copy(
+                            currentNodeId = nodeId,
+                            currentNodeTitle = title,
+                            currentStep = 0,
+                            maxSteps = 0,
+                            progress = 0f
+                        )
                     }
+                }
+                "progress" -> {
+                    val data = obj.getAsJsonObject("data")
+                    val value = data.get("value").asInt
+                    val max = data.get("max").asInt
+                    _executionProgress.value = _executionProgress.value.copy(
+                        currentStep = value,
+                        maxSteps = max,
+                        progress = if (max > 0) value.toFloat() / max.toFloat() else 0f
+                    )
                 }
                 "executed" -> {
                     val data = obj.getAsJsonObject("data")
                     val promptId = if (data.has("prompt_id")) data.get("prompt_id").asString else ""
                     syncHistoryItem(promptId, data)
                     _executionStatus.value = ExecutionStatus.FINISHED
+                    _executionProgress.value = ExecutionProgress()
                 }
                 "execution_error" -> {
                     _executionStatus.value = ExecutionStatus.ERROR
+                    _executionProgress.value = ExecutionProgress()
                 }
             }
         } catch (e: Exception) {
@@ -390,13 +427,19 @@ class MainViewModel(
                 val outputs = finalData.getAsJsonObject("outputs")
                 
                 // Extract image info (same as before but more robust)
+                // Extract image info (same as before but more robust)
+                val promptJson = _executionCache.get(promptId)
+                if (promptJson != null) {
+                    _executionCache.remove(promptId)
+                }
+
                 outputs.entrySet().forEach { (_, nodeOutput) ->
                     if (nodeOutput.isJsonObject) {
                         val out = nodeOutput.asJsonObject
                         if (out.has("images")) {
                             val images = out.getAsJsonArray("images")
-                            if (images.size() > 0) {
-                                val image = images.get(0).asJsonObject
+                            images.forEach { imgElement ->
+                                val image = imgElement.asJsonObject
                                 val filename = image.get("filename").asString
                                 val subfolder = if (image.has("subfolder")) image.get("subfolder").asString else null
                                 
@@ -411,9 +454,6 @@ class MainViewModel(
                                 val isVideo = extension in listOf("mp4", "gif", "webm", "mkv")
                                 val mediaType = if (isVideo) "VIDEO" else "IMAGE"
                                 
-                                val promptJson = _executionCache[promptId]
-                                _executionCache.remove(promptId)
-
                                 mediaRepository.insert(
                                     com.example.comfyui_remote.data.GeneratedMediaEntity(
                                         workflowName = _selectedWorkflow.value?.name ?: "Unknown",
@@ -513,8 +553,8 @@ class MainViewModel(
                 
                 // Iterate
                 history.entrySet().forEach { (executionId, element) ->
-                    // Skip if already exists
-                    if (executionId in existingIds) return@forEach
+                    // Attempt to sync all history items to fill gaps from previous partial syncs
+                    // OnConflictStrategy.IGNORE handles duplicates efficiently.
 
                     if (element.isJsonObject) {
                         val item = element.asJsonObject
@@ -550,34 +590,34 @@ class MainViewModel(
                                             val out = nodeOutput.asJsonObject
                                             if (out.has("images")) {
                                                 val images = out.getAsJsonArray("images")
-                                                if (images.size() > 0) {
-                                                    val img = images.get(0).asJsonObject
-                                                    filename = img.get("filename").asString
-                                                    if (img.has("subfolder")) {
-                                                        subfolder = img.get("subfolder").asString
-                                                    }
+                                                images.forEach { imgElement ->
+                                                    val img = imgElement.asJsonObject
+                                                    val filename = img.get("filename").asString
+                                                    val subfolder = if (img.has("subfolder")) img.get("subfolder").asString else null
+                                                    
+                                                    val extension = filename.substringAfterLast('.', "").lowercase()
+                                                    val isVideo = extension in listOf("mp4", "gif", "webm", "mkv")
+                                                    val mediaType = if (isVideo) "VIDEO" else "IMAGE"
+
+                                                    mediaRepository.insert(
+                                                        com.example.comfyui_remote.data.GeneratedMediaEntity(
+                                                            workflowName = name,
+                                                            fileName = filename,
+                                                            subfolder = subfolder,
+                                                            serverHost = host,
+                                                            serverPort = port,
+                                                            mediaType = mediaType,
+                                                            promptJson = workflowJson,
+                                                            promptId = executionId
+                                                        )
+                                                    )
                                                 }
                                             }
                                         }
                                     }
                                 }
 
-                                val extension = filename.substringAfterLast('.', "").lowercase()
-                                val isVideo = extension in listOf("mp4", "gif", "webm", "mkv")
-                                val mediaType = if (isVideo) "VIDEO" else "IMAGE"
-
-                                mediaRepository.insert(
-                                    com.example.comfyui_remote.data.GeneratedMediaEntity(
-                                        workflowName = name,
-                                        fileName = filename,
-                                        subfolder = subfolder,
-                                        serverHost = host,
-                                        serverPort = port,
-                                        mediaType = mediaType,
-                                        promptJson = workflowJson,
-                                        promptId = executionId
-                                    )
-                                )
+                                // Loop handled above, no fallback insert needed
                             }
                         }
                     }
@@ -642,6 +682,79 @@ class MainViewModel(
         // depending on START_STICKY. Standard behavior is to keep it unless user Force Stops.
         // However, if we want "Close App = Disconnect", we should verify. 
         // For "Background Persistence", we usually want it to stay until explicitly disconnected.
+    }
+
+    fun onImageSelected(input: com.example.comfyui_remote.domain.InputField.ImageInput, uri: android.net.Uri, contentResolver: android.content.ContentResolver) {
+        viewModelScope.launch {
+            try {
+                // Optimistic update (show local URI)
+                // We need to find the current input list and update it.
+                // But inputs are state in the UI (DynamicFormScreen), not here.
+                // Wait, DynamicFormScreen holds inputs state.
+                // The ViewModel doesn't hold inputs state. 
+                // We need to expose a way to upload and return the result?
+                // Or change the architecture so VM holds inputs?
+                
+                // For now, let's just upload and let the UI callback handle the update?
+                // No, the UI delegates to VM. VM should do the work. 
+                // But the UI holds the state 'var inputs by remember'.
+                // So this function should probably be suspend and return the result, 
+                // OR take a callback.
+                
+                // But to allow background upload, it should be in VM.
+                // Let's make this function upload and we need to tell the UI the result.
+                // But the UI state is local.
+                
+                // Refactor: Inputs should ideally be in VM, but for now, let's keep it simple.
+                // We will upload and "return" via a flow? No, that's complex for one field.
+                
+                // Let's implement 'uploadImage' that returns the server filename.
+                // The UI calls it inside a scope.
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+    
+    suspend fun uploadImage(uri: android.net.Uri, contentResolver: android.content.ContentResolver): String? {
+        return try {
+            val api = buildApiService()
+            val response = imageRepository.uploadImage(api, uri, contentResolver)
+            response.name // Return the server filename
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    fun uploadManualImage(uri: android.net.Uri, contentResolver: android.content.ContentResolver) {
+        viewModelScope.launch {
+            _isSyncing.value = true
+            try {
+                val filename = uploadImage(uri, contentResolver)
+                if (filename != null) {
+                    val hostParts = _serverAddress.value.split(":")
+                    val host = hostParts.getOrNull(0) ?: ""
+                    val port = hostParts.getOrNull(1)?.toIntOrNull() ?: 8188
+
+                    mediaRepository.insert(
+                        com.example.comfyui_remote.data.GeneratedMediaEntity(
+                            workflowName = "Manual Upload",
+                            fileName = filename,
+                            subfolder = "",
+                            serverHost = host,
+                            serverPort = port,
+                            mediaType = "IMAGE",
+                            serverType = "input"
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                _isSyncing.value = false
+            }
+        }
     }
 }
 

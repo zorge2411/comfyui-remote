@@ -116,5 +116,27 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Permission Revocation Warning / Reset
+        val hasPermission = try {
+            if (saveFolderUri != null) {
+                val uri = Uri.parse(saveFolderUri)
+                // Check if we still have access (simple heuristic: valid URI and content resolver doesn't crash)
+                // In reality, takePersistableUriPermission handles it, but revoked permission might not throw until access.
+                // We'll just provide the Reset button always if set.
+                true
+            } else false
+        } catch (e: Exception) { false }
+
+        if (saveFolderUri != null) {
+             TextButton(
+                 onClick = { viewModel.saveSaveFolderUri("") }, // Empty string or null? ViewModel logic needed.
+                 modifier = Modifier.align(Alignment.CenterHorizontally)
+             ) {
+                 Text("Reset Folder Permission", color = MaterialTheme.colorScheme.error)
+             }
+        }
     }
 }

@@ -53,6 +53,8 @@ import com.example.comfyui_remote.ui.theme.ComfyUI_front_endTheme
 
 import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 
 class MainActivity : ComponentActivity() {
 
@@ -170,11 +172,13 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    NavHost(
-                        navController = navController, 
-                        startDestination = "connection",
-                        modifier = Modifier.padding(innerPadding)
-                    ) {
+                    @OptIn(ExperimentalSharedTransitionApi::class)
+                    SharedTransitionLayout {
+                        NavHost(
+                            navController = navController, 
+                            startDestination = "connection",
+                            modifier = Modifier.padding(innerPadding)
+                        ) {
                         composable("connection") {
                             ConnectionScreen(viewModel) {
                                 navController.navigate("workflows")
@@ -191,18 +195,27 @@ class MainActivity : ComponentActivity() {
                             com.example.comfyui_remote.ui.HistoryScreen(viewModel)
                         }
                         composable("gallery") {
-                            com.example.comfyui_remote.ui.GalleryScreen(viewModel) { media ->
-                                navController.navigate("media_detail/${media.id}")
-                            }
+                            com.example.comfyui_remote.ui.GalleryScreen(
+                                viewModel = viewModel,
+                                onMediaClick = { media ->
+                                    navController.navigate("media_detail/${media.id}")
+                                },
+                                sharedTransitionScope = this@SharedTransitionLayout,
+                                animatedVisibilityScope = this@composable
+                            )
                         }
                         composable(
                             route = "media_detail/{mediaId}",
                             arguments = listOf(navArgument("mediaId") { type = NavType.LongType })
                         ) { backStackEntry ->
                             val mediaId = backStackEntry.arguments?.getLong("mediaId") ?: 0L
-                            com.example.comfyui_remote.ui.MediaDetailScreen(viewModel, mediaId) {
-                                navController.popBackStack()
-                            }
+                            com.example.comfyui_remote.ui.MediaDetailScreen(
+                                viewModel = viewModel, 
+                                mediaId = mediaId,
+                                onBack = { navController.popBackStack() },
+                                sharedTransitionScope = this@SharedTransitionLayout,
+                                animatedVisibilityScope = this@composable
+                            )
                         }
                         composable("settings") {
                             com.example.comfyui_remote.ui.SettingsScreen(viewModel)
@@ -218,6 +231,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

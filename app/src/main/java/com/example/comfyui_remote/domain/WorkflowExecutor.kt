@@ -36,6 +36,11 @@ class WorkflowExecutor {
                                     inputsObj.addProperty(input.fieldName, input.value)
                                 }
                             }
+                            is InputField.ImageInput -> {
+                                if (inputsObj.has(input.fieldName) && input.value != null) {
+                                    inputsObj.addProperty(input.fieldName, input.value)
+                                }
+                            }
                         }
                     }
                 }

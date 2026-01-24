@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -18,21 +19,35 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import coil.compose.AsyncImage
 import com.example.comfyui_remote.MainViewModel
 import com.example.comfyui_remote.data.GeneratedMediaEntity
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
+import android.net.Uri
+import java.io.File
 
-@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun GalleryScreen(
     viewModel: MainViewModel,
-    onMediaClick: (GeneratedMediaEntity) -> Unit
+    onMediaClick: (GeneratedMediaEntity) -> Unit,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
     val mediaList by viewModel.allMedia.collectAsState(initial = emptyList())
     val isSyncing by viewModel.isSyncing.collectAsState()
     val selectedIds = remember { mutableStateListOf<Long>() }
     val isSelectionMode by remember { derivedStateOf { selectedIds.isNotEmpty() } }
+    val context = LocalContext.current
+    var showSelectionDialog by remember { mutableStateOf(false) }
+    var cameraTmpUri by remember { mutableStateOf<Uri?>(null) }
 
     Scaffold(
         topBar = {
@@ -62,6 +77,79 @@ fun GalleryScreen(
                 TopAppBar(
                     title = { Text("Gallery") }
                 )
+            }
+        },
+        floatingActionButton = {
+            if (!isSelectionMode) {
+                val launcher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.PickVisualMedia(),
+                    onResult = { uri ->
+                        if (uri != null) {
+                            viewModel.uploadManualImage(uri, context.contentResolver)
+                        }
+                    }
+                )
+
+                val cameraLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.TakePicture(),
+                    onResult = { success ->
+                        if (success && cameraTmpUri != null) {
+                            viewModel.uploadManualImage(cameraTmpUri!!, context.contentResolver)
+                        }
+                    }
+                )
+
+                fun launchCamera() {
+                    val file = File(context.cacheDir, "shared/camera_${System.currentTimeMillis()}.jpg")
+                    file.parentFile?.mkdirs()
+                    val uri = androidx.core.content.FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.fileprovider",
+                        file
+                    )
+                    cameraTmpUri = uri
+                    cameraLauncher.launch(uri)
+                }
+
+                if (showSelectionDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showSelectionDialog = false },
+                        title = { Text("Add Image") },
+                        text = {
+                            Column {
+                                TextButton(
+                                    onClick = {
+                                        showSelectionDialog = false
+                                        launcher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Pick from Gallery", modifier = Modifier.fillMaxWidth())
+                                }
+                                TextButton(
+                                    onClick = {
+                                        showSelectionDialog = false
+                                        launchCamera()
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Take Photo", modifier = Modifier.fillMaxWidth())
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { showSelectionDialog = false }) {
+                                Text("Cancel")
+                            }
+                        }
+                    )
+                }
+                
+                FloatingActionButton(onClick = {
+                    showSelectionDialog = true
+                }) {
+                    Icon(androidx.compose.material.icons.Icons.Default.Add, contentDescription = "Add Image")
+                }
             }
         }
     ) { paddingValues ->
@@ -98,7 +186,9 @@ fun GalleryScreen(
                                 } else {
                                     onMediaClick(item)
                                 }
-                            }
+                            },
+                            sharedTransitionScope = sharedTransitionScope,
+                            animatedVisibilityScope = animatedVisibilityScope
                         )
                     }
                 }
@@ -107,16 +197,18 @@ fun GalleryScreen(
     }
 }
 
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun GalleryItem(
     item: GeneratedMediaEntity,
     isSelected: Boolean,
     onClick: () -> Unit,
-    onLongClick: () -> Unit
+    onLongClick: () -> Unit,
+    sharedTransitionScope: SharedTransitionScope?,
+    animatedVisibilityScope: AnimatedVisibilityScope?
 ) {
-    // Construct URL: http://{host}:{port}/view?filename={fileName}&subfolder={subfolder}&type=output
-    val url = "http://${item.serverHost}:${item.serverPort}/view?filename=${item.fileName}${if (item.subfolder != null) "&subfolder=${item.subfolder}" else ""}&type=output"
+    // Construct URL: http://{host}:{port}/view?filename={fileName}&subfolder={subfolder}&type={serverType}
+    val url = "http://${item.serverHost}:${item.serverPort}/view?filename=${item.fileName}${if (item.subfolder != null) "&subfolder=${item.subfolder}" else ""}&type=${item.serverType}"
 
     Card(
         modifier = Modifier
@@ -137,7 +229,18 @@ fun GalleryItem(
             AsyncImage(
                 model = url,
                 contentDescription = "Generated Media",
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .let { modifier ->
+                        if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                            with(sharedTransitionScope) {
+                                modifier.sharedElement(
+                                    state = rememberSharedContentState(key = "image-${item.id}"),
+                                    animatedVisibilityScope = animatedVisibilityScope
+                                )
+                            }
+                        } else modifier
+                    },
                 contentScale = ContentScale.Crop
             )
             

@@ -33,4 +33,12 @@ sealed class InputField(
         val value: String,
         override val nodeTitle: String
     ) : InputField("Model", nodeTitle, nodeId, fieldName)
+
+    data class ImageInput(
+        override val nodeId: String,
+        override val fieldName: String,
+        val value: String? = null, // The server filename
+        val localUri: String? = null, // For preview before upload completes or just preview
+        override val nodeTitle: String
+    ) : InputField("Image", nodeTitle, nodeId, fieldName)
 }

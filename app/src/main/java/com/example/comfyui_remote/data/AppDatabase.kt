@@ -26,7 +26,7 @@ interface WorkflowDao {
     suspend fun delete(workflow: WorkflowEntity)
 }
 
-@Database(entities = [WorkflowEntity::class, GeneratedMediaEntity::class], version = 5, exportSchema = false)
+@Database(entities = [WorkflowEntity::class, GeneratedMediaEntity::class], version = 7, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun workflowDao(): WorkflowDao
     abstract fun generatedMediaDao(): GeneratedMediaDao
@@ -53,6 +53,28 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_5_6 = object : androidx.room.migration.Migration(5, 6) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                // Drop old index if it exists (Room names indexes automatically usually, but we specified no name so it defaults to index_tableName_colName?)
+                // Actually, the previous entity defined: indices = [Index(value = ["promptId"], unique = true)]
+                // Room naming convention: index_${tableName}_${columnName}
+                try {
+                    database.execSQL("DROP INDEX IF EXISTS index_generated_media_promptId")
+                } catch (e: Exception) {
+                    // Ignore if not found
+                }
+                
+                // Create new index
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_generated_media_promptId_fileName ON generated_media(promptId, fileName)")
+            }
+        }
+
+        val MIGRATION_6_7 = object : androidx.room.migration.Migration(6, 7) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE generated_media ADD COLUMN serverType TEXT NOT NULL DEFAULT 'output'")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -60,7 +82,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "comfy_database"
                 )
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

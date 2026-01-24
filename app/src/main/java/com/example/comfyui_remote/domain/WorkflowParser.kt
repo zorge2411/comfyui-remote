@@ -37,6 +37,15 @@ class WorkflowParser {
                                         nodeTitle = title
                                     )
                                 }
+                                (classType == "LoadImage" && fieldName == "image") -> {
+                                    InputField.ImageInput(
+                                        nodeId = nodeId,
+                                        fieldName = fieldName,
+                                        value = primitive.asString, // Likely the default filename
+                                        localUri = null,
+                                        nodeTitle = title
+                                    )
+                                }
                                 fieldName == "ckpt_name" || fieldName == "model" -> {
                                     InputField.ModelInput(
                                         nodeId = nodeId,
