@@ -175,3 +175,52 @@
 
 **Status**: ✅ Done
 **Objective**: Allow users to take a photo directly from the Gallery screen to upload as an input image.
+
+### Phase 45: Camera Fix (Reliable Upload)
+
+**Status**: ✅ Done
+**Objective**: Refactor Activity launchers to ensure camera photos are reliably added to the gallery after capture.
+
+### Phase 46: Gallery Visibility & State Fix
+
+**Status**: ✅ Done
+**Objective**: Fix state loss when opening camera and improve upload metadata to ensure images appear correctly in the gallery.
+
+### Phase 47: Fix Compilation Error
+
+**Status**: ✅ Done
+**Objective**: Resolve type mismatch in `DynamicFormScreen.kt` following the `uploadImage` API change.
+
+### Phase 48: Debug Network & Manifest
+
+**Status**: ✅ Done
+**Objective**: Resolve `UnknownHostException` by standardizing default server address and fix Android 13+ back navigation warnings.
+
+### Phase 49: Fetch Workflows from Server Userdata
+
+**Status**: ✅ Done
+**Objective**: Allow the app to fetch and display workflows stored on the ComfyUI server under the `userdata/workflows` directory.
+
+**Tasks**:
+
+- [x] Add `getUserData` to `ComfyApiService`
+- [x] Implement `fetchServerWorkflows` in `MainViewModel`
+- [x] Parse `userdata` response into `ServerWorkflow` models
+- [x] Update UI to display and trigger server-side workflow fetch
+- [x] Verify functionality with real or mocked server
+
+---
+
+### Phase 50: Normalization Service
+
+**Status**: ⬜ Not Started
+**Objective**: Standardize, validate, and optimize ComfyUI workflows during import to ensure consistency and robustness across different sources.
+**Depends on**: Phase 49
+
+**Tasks**:
+
+- [ ] TBD (run /plan 50 to create)
+
+**Verification**:
+
+- TBD

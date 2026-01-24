@@ -3,9 +3,15 @@
 > **Updated**: 2026-01-24
 > **Milestone**: Milestone 3: Image Input Support
 >
-> - **Current Phase**: Phase 40: Multi-Image Sync
-> - **Task**: Recovery and robustness logic complete
+> - **Current Phase**: Phase 50: Normalization Service
+> - **Task**: Implementation of fetching and importing server-side workflows complete
 > - **Status**: ✅ Verified
+>
+> ## Achieved in Phase 49
+>
+> - Added `getUserData` and `getFileContent` API endpoints
+> - Implemented server workflow discovery and flat-mapping in `MainViewModel`
+> - Integrated Server Workflow list in `WorkflowListScreen` with "Import & Run" support
 >
 > ## Achieved in Phase 40
 >
