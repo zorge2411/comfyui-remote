@@ -31,6 +31,9 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import android.net.Uri
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
@@ -99,16 +102,24 @@ fun GalleryScreen(
                     }
                 )
 
-                fun launchCamera() {
-                    val file = File(context.cacheDir, "shared/camera_${System.currentTimeMillis()}.jpg")
-                    file.parentFile?.mkdirs()
-                    val uri = androidx.core.content.FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.fileprovider",
-                        file
-                    )
-                    cameraTmpUri = uri
-                    cameraLauncher.launch(uri)
+                val permissionLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission(),
+                    onResult = { isGranted ->
+                        if (isGranted) {
+                            launchCamera(context, { cameraTmpUri = it }, cameraLauncher)
+                        }
+                    }
+                )
+
+                fun handleCameraAction() {
+                    when (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)) {
+                        PackageManager.PERMISSION_GRANTED -> {
+                            launchCamera(context, { cameraTmpUri = it }, cameraLauncher)
+                        }
+                        else -> {
+                            permissionLauncher.launch(Manifest.permission.CAMERA)
+                        }
+                    }
                 }
 
                 if (showSelectionDialog) {
@@ -129,7 +140,7 @@ fun GalleryScreen(
                                 TextButton(
                                     onClick = {
                                         showSelectionDialog = false
-                                        launchCamera()
+                                        handleCameraAction()
                                     },
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
@@ -195,6 +206,22 @@ fun GalleryScreen(
             }
         }
     }
+}
+
+private fun launchCamera(
+    context: android.content.Context,
+    onUriUpdate: (Uri) -> Unit,
+    cameraLauncher: androidx.activity.result.ActivityResultLauncher<Uri>
+) {
+    val file = File(context.cacheDir, "shared/camera_${System.currentTimeMillis()}.jpg")
+    file.parentFile?.mkdirs()
+    val uri = androidx.core.content.FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.fileprovider",
+        file
+    )
+    onUriUpdate(uri)
+    cameraLauncher.launch(uri)
 }
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
