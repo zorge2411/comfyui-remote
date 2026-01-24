@@ -1,15 +1,76 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# Built application files
+*.apk
+*.aar
+*.ap_
+*.aab
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+#  Uncomment the following line in case you need and
+#  the project directory is not the same as project root.
+#target/
+
+# Gradle files
+.gradle/
+build/
+app/build/
+# Ignore Gradle GUI config
+gradle-app.setting
+!gradle-wrapper.jar
+.gradletasknamecache
+
+# Local Configuration
 local.properties
+# Private keystore files
+*.jks
+*.keystore
+*.p12
+*.key
+
+# IntelliJ / Android Studio
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+# Kotlin specific
+.kotlin/
+.kotlin-native/
+
+# Android Studio Navigation Editor
+.navigation/
+
+# Android Studio Captures and Layout Inspector
+captures/
+*.hprof
+
+# External Native Build (C++)
+.cxx/
+.externalNativeBuild/
+
+# Google Services (Secrets)
+google-services.json
+
+# OS Specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+build_log*.txt
+
+# Misc
+.cpx

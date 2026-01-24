@@ -12,6 +12,7 @@ import com.example.comfyui_remote.data.WorkflowRepository
 import com.example.comfyui_remote.network.ExecutionStatus
 import com.example.comfyui_remote.network.WebSocketState
 import com.example.comfyui_remote.service.ExecutionService
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -461,10 +462,11 @@ class MainViewModel(
                         }
                     }
                     
-                    if (meta != null) {
+                    val m = meta
+                    if (m != null) {
                         finalJson = com.example.comfyui_remote.domain.GraphToApiConverter.convert(
                             json, 
-                            com.example.comfyui_remote.data.ComfyObjectInfo(meta)
+                            com.example.comfyui_remote.data.ComfyObjectInfo(m)
                         )
                     }
                 }
