@@ -86,3 +86,27 @@
 - [ ] Pull down on Gallery screen triggers sync
 - [ ] Pull down on History screen triggers sync
 - [ ] UI reflects loading state during sync
+
+---
+
+### Phase 33: Theme Mode Selection
+
+**Status**: ⬜ Not Started
+**Tasks**:
+
+- [ ] Implement `THEME_MODE_KEY` in `UserPreferencesRepository`
+- [ ] Add `themeMode` state and setter to `MainViewModel`
+- [ ] Refactor `Theme.kt` to accept explicit `themeMode`
+- [ ] Update `MainActivity.kt` to pass `themeMode` to theme wrapper
+- [ ] Add Theme selection UI in `SettingsScreen.kt`
+- [ ] Verify functionality
+
+### Phase 34: Media Detail Individual Delete
+
+**Status**: ⬜ Not Started
+**Objective**: Add individual media deletion to the full-screen detail view with confirmation.
+
+### Phase 35: Storage & UX Polish
+
+**Status**: ⬜ Not Started
+**Objective**: Refine "Save to Device" flow, persistent folder permissions, and close technical debt TODOs.

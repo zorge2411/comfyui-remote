@@ -10,5 +10,6 @@ data class WorkflowEntity(
     val name: String,
     val jsonContent: String,
     val createdAt: Long = System.currentTimeMillis(),
-    val lastImageName: String? = null
+    val lastImageName: String? = null,
+    val baseModelName: String? = null // e.g. "v1-5-pruned-emaonly.ckpt"
 )

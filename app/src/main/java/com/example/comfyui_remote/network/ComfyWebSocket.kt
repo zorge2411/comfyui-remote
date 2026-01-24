@@ -71,5 +71,6 @@ enum class WebSocketState {
     DISCONNECTED,
     CONNECTING,
     CONNECTED,
-    ERROR
+    ERROR,
+    RECONNECTING
 }

@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -34,6 +36,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material3.Surface
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.comfyui_remote.MainViewModel
 import com.example.comfyui_remote.data.WorkflowEntity
@@ -90,8 +94,10 @@ fun WorkflowListScreen(
         ImportWorkflowDialog(
             onDismissRequest = { showImportDialog = false },
             onImport = { name, json ->
-                viewModel.importWorkflow(name, json)
-                showImportDialog = false
+                viewModel.importWorkflow(name, json) { newWorkflow ->
+                    showImportDialog = false
+                    onWorkflowValidation(newWorkflow)
+                }
             }
         )
     }
@@ -147,11 +153,30 @@ fun WorkflowItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = workflow.lastImageName ?: workflow.name, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    text = "Created: ${java.text.SimpleDateFormat("yyyy-MM-dd").format(java.util.Date(workflow.createdAt))}",
-                    style = MaterialTheme.typography.bodySmall
-                )
+                Text(text = workflow.name, style = MaterialTheme.typography.titleMedium)
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Created: ${java.text.SimpleDateFormat("yyyy-MM-dd").format(java.util.Date(workflow.createdAt))}",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    
+                    if (workflow.baseModelName != null) {
+                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(8.dp))
+                         Surface(
+                             shape = RoundedCornerShape(4.dp),
+                             color = MaterialTheme.colorScheme.secondaryContainer
+                         ) {
+                             Text(
+                                 text = "📦 ${workflow.baseModelName}",
+                                 style = MaterialTheme.typography.labelSmall,
+                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                 maxLines = 1,
+                                 overflow = TextOverflow.Ellipsis
+                             )
+                         }
+                    }
+                }
             }
             IconButton(onClick = onRename) {
                 Icon(Icons.Default.Edit, contentDescription = "Rename")

@@ -18,6 +18,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
@@ -124,6 +125,21 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 )
+
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Filled.Info, contentDescription = "History") },
+                                    label = { Text("History") },
+                                    selected = currentRoute == "history",
+                                    onClick = {
+                                        navController.navigate("history") {
+                                            popUpTo("connection") {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
+                                )
                                 NavigationBarItem(
                                     icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings") },
                                     label = { Text("Settings") },
@@ -142,10 +158,21 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 ) { innerPadding ->
+                    // Listen for auto-navigation to form (e.g. from history load)
+                    val navigateToForm by viewModel.navigateToForm.collectAsState()
+                    LaunchedEffect(navigateToForm) {
+                        if (navigateToForm) {
+                            navController.navigate("remote_control") {
+                                // popUpTo("history") // Optional: Back goes back to history
+                            }
+                            viewModel.onNavigatedToForm()
+                        }
+                    }
+
                     NavHost(
                         navController = navController, 
                         startDestination = "connection",
-                         modifier = Modifier.padding(innerPadding)
+                        modifier = Modifier.padding(innerPadding)
                     ) {
                         composable("connection") {
                             ConnectionScreen(viewModel) {
@@ -158,6 +185,9 @@ class MainActivity : ComponentActivity() {
                                 viewModel.selectWorkflow(workflow)
                                 navController.navigate("remote_control")
                             }
+                        }
+                        composable("history") {
+                            com.example.comfyui_remote.ui.HistoryScreen(viewModel)
                         }
                         composable("gallery") {
                             com.example.comfyui_remote.ui.GalleryScreen(viewModel) { media ->
@@ -272,6 +302,7 @@ fun StatusIndicator(state: WebSocketState) {
         WebSocketState.CONNECTING -> Color.Yellow
         WebSocketState.ERROR -> Color.Red
         WebSocketState.DISCONNECTED -> Color.Gray
+        WebSocketState.RECONNECTING -> Color.Yellow
     }
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {

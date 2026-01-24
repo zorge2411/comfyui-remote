@@ -16,6 +16,7 @@ import java.lang.Override;
 import java.lang.String;
 import java.lang.SuppressWarnings;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -33,13 +34,14 @@ public final class AppDatabase_Impl extends AppDatabase {
   @Override
   @NonNull
   protected SupportSQLiteOpenHelper createOpenHelper(@NonNull final DatabaseConfiguration config) {
-    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(2) {
+    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(5) {
       @Override
       public void createAllTables(@NonNull final SupportSQLiteDatabase db) {
-        db.execSQL("CREATE TABLE IF NOT EXISTS `workflows` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `jsonContent` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `lastImageName` TEXT)");
-        db.execSQL("CREATE TABLE IF NOT EXISTS `generated_media` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `workflowName` TEXT NOT NULL, `fileName` TEXT NOT NULL, `subfolder` TEXT, `serverHost` TEXT NOT NULL, `serverPort` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `mediaType` TEXT NOT NULL)");
+        db.execSQL("CREATE TABLE IF NOT EXISTS `workflows` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `jsonContent` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `lastImageName` TEXT, `baseModelName` TEXT)");
+        db.execSQL("CREATE TABLE IF NOT EXISTS `generated_media` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `workflowName` TEXT NOT NULL, `fileName` TEXT NOT NULL, `subfolder` TEXT, `serverHost` TEXT NOT NULL, `serverPort` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `mediaType` TEXT NOT NULL, `promptJson` TEXT, `promptId` TEXT)");
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_generated_media_promptId` ON `generated_media` (`promptId`)");
         db.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)");
-        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f76391b2da9a903c179c50cf2402416b')");
+        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'aa558d5ccfa3d36a93787ef0c39897a8')");
       }
 
       @Override
@@ -89,12 +91,13 @@ public final class AppDatabase_Impl extends AppDatabase {
       @NonNull
       public RoomOpenHelper.ValidationResult onValidateSchema(
           @NonNull final SupportSQLiteDatabase db) {
-        final HashMap<String, TableInfo.Column> _columnsWorkflows = new HashMap<String, TableInfo.Column>(5);
+        final HashMap<String, TableInfo.Column> _columnsWorkflows = new HashMap<String, TableInfo.Column>(6);
         _columnsWorkflows.put("id", new TableInfo.Column("id", "INTEGER", true, 1, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsWorkflows.put("name", new TableInfo.Column("name", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsWorkflows.put("jsonContent", new TableInfo.Column("jsonContent", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsWorkflows.put("createdAt", new TableInfo.Column("createdAt", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsWorkflows.put("lastImageName", new TableInfo.Column("lastImageName", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsWorkflows.put("baseModelName", new TableInfo.Column("baseModelName", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
         final HashSet<TableInfo.ForeignKey> _foreignKeysWorkflows = new HashSet<TableInfo.ForeignKey>(0);
         final HashSet<TableInfo.Index> _indicesWorkflows = new HashSet<TableInfo.Index>(0);
         final TableInfo _infoWorkflows = new TableInfo("workflows", _columnsWorkflows, _foreignKeysWorkflows, _indicesWorkflows);
@@ -104,7 +107,7 @@ public final class AppDatabase_Impl extends AppDatabase {
                   + " Expected:\n" + _infoWorkflows + "\n"
                   + " Found:\n" + _existingWorkflows);
         }
-        final HashMap<String, TableInfo.Column> _columnsGeneratedMedia = new HashMap<String, TableInfo.Column>(8);
+        final HashMap<String, TableInfo.Column> _columnsGeneratedMedia = new HashMap<String, TableInfo.Column>(10);
         _columnsGeneratedMedia.put("id", new TableInfo.Column("id", "INTEGER", true, 1, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsGeneratedMedia.put("workflowName", new TableInfo.Column("workflowName", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsGeneratedMedia.put("fileName", new TableInfo.Column("fileName", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
@@ -113,8 +116,11 @@ public final class AppDatabase_Impl extends AppDatabase {
         _columnsGeneratedMedia.put("serverPort", new TableInfo.Column("serverPort", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsGeneratedMedia.put("timestamp", new TableInfo.Column("timestamp", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsGeneratedMedia.put("mediaType", new TableInfo.Column("mediaType", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsGeneratedMedia.put("promptJson", new TableInfo.Column("promptJson", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsGeneratedMedia.put("promptId", new TableInfo.Column("promptId", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
         final HashSet<TableInfo.ForeignKey> _foreignKeysGeneratedMedia = new HashSet<TableInfo.ForeignKey>(0);
-        final HashSet<TableInfo.Index> _indicesGeneratedMedia = new HashSet<TableInfo.Index>(0);
+        final HashSet<TableInfo.Index> _indicesGeneratedMedia = new HashSet<TableInfo.Index>(1);
+        _indicesGeneratedMedia.add(new TableInfo.Index("index_generated_media_promptId", true, Arrays.asList("promptId"), Arrays.asList("ASC")));
         final TableInfo _infoGeneratedMedia = new TableInfo("generated_media", _columnsGeneratedMedia, _foreignKeysGeneratedMedia, _indicesGeneratedMedia);
         final TableInfo _existingGeneratedMedia = TableInfo.read(db, "generated_media");
         if (!_infoGeneratedMedia.equals(_existingGeneratedMedia)) {
@@ -124,7 +130,7 @@ public final class AppDatabase_Impl extends AppDatabase {
         }
         return new RoomOpenHelper.ValidationResult(true, null);
       }
-    }, "f76391b2da9a903c179c50cf2402416b", "a2f798e862101ea6a3e8516d8d62a358");
+    }, "aa558d5ccfa3d36a93787ef0c39897a8", "3c71f7739f4673c7dc5ae88805981dbb");
     final SupportSQLiteOpenHelper.Configuration _sqliteConfig = SupportSQLiteOpenHelper.Configuration.builder(config.context).name(config.name).callback(_openCallback).build();
     final SupportSQLiteOpenHelper _helper = config.sqliteOpenHelperFactory.create(_sqliteConfig);
     return _helper;

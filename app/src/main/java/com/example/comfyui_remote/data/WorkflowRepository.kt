@@ -6,13 +6,13 @@ class WorkflowRepository(private val workflowDao: WorkflowDao) {
 
     val allWorkflows: Flow<List<WorkflowEntity>> = workflowDao.getAll()
 
-    suspend fun addWorkflow(name: String, jsonContent: String) {
+    suspend fun addWorkflow(name: String, jsonContent: String): Long {
         val workflow = WorkflowEntity(name = name, jsonContent = jsonContent)
-        workflowDao.insert(workflow)
+        return workflowDao.insert(workflow)
     }
 
-    suspend fun insert(workflow: WorkflowEntity) {
-        workflowDao.insert(workflow)
+    suspend fun insert(workflow: WorkflowEntity): Long {
+        return workflowDao.insert(workflow)
     }
 
     suspend fun updateWorkflow(workflow: WorkflowEntity) {

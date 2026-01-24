@@ -9,18 +9,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -53,6 +62,8 @@ fun DynamicFormScreen(
         inputs = viewModel.parseWorkflowInputs(workflow.jsonContent)
     }
 
+    var showNodeSheet by remember { mutableStateOf(false) }
+
     val executionStatus by viewModel.executionStatus.collectAsState()
 
     Scaffold { paddingValues ->
@@ -63,10 +74,16 @@ fun DynamicFormScreen(
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            Text(
-                text = workflow.name,
-                style = MaterialTheme.typography.headlineMedium
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = workflow.name,
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = { showNodeSheet = true }) {
+                    Icon(Icons.Default.Info, contentDescription = "Workflow Architecture")
+                }
+            }
             Spacer(modifier = Modifier.height(16.dp))
 
             inputs.forEachIndexed { index, inputField ->
@@ -180,6 +197,25 @@ fun DynamicFormScreen(
                     Text("Generate")
                 }
             }
+
+            // Save as Template Button (only show if it's a temporary/history workflow)
+            if (workflow.id == 0L) {
+                Spacer(modifier = Modifier.height(8.dp))
+                androidx.compose.material3.OutlinedButton(
+                    onClick = {
+                        // We need the injected JSON or just the current state?
+                        // Actually, saving the template means saving the jsonContent.
+                        // But maybe we want to save with the current values?
+                        // For now, save the base jsonContent. 
+                        viewModel.importWorkflow(workflow.name, workflow.jsonContent) {
+                            // No navigation needed when saving as template from here
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Save as Template")
+                }
+            }
             
             Spacer(modifier = Modifier.height(24.dp))
             
@@ -192,6 +228,41 @@ fun DynamicFormScreen(
                     contentDescription = "Generated Image",
                     modifier = Modifier.fillMaxWidth().height(300.dp)
                 )
+            }
+        }
+    }
+
+    if (showNodeSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showNodeSheet = false }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .padding(bottom = 32.dp)
+            ) {
+                Text("Workflow Architecture", style = MaterialTheme.typography.headlineSmall)
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                val allNodes = viewModel.parseAllNodes(workflow.jsonContent)
+                LazyColumn {
+                    items(allNodes) { node ->
+                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                            Row {
+                                Text("#${node.id}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(node.title, fontWeight = FontWeight.SemiBold)
+                            }
+                            Text(
+                                text = "Class: ${node.classType}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                            HorizontalDivider(modifier = Modifier.padding(top = 8.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                        }
+                    }
+                }
             }
         }
     }

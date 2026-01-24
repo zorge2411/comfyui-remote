@@ -12,6 +12,7 @@ import androidx.room.util.DBUtil;
 import androidx.sqlite.db.SupportSQLiteStatement;
 import java.lang.Class;
 import java.lang.Exception;
+import java.lang.Long;
 import java.lang.Object;
 import java.lang.Override;
 import java.lang.String;
@@ -42,7 +43,7 @@ public final class WorkflowDao_Impl implements WorkflowDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR REPLACE INTO `workflows` (`id`,`name`,`jsonContent`,`createdAt`,`lastImageName`) VALUES (nullif(?, 0),?,?,?,?)";
+        return "INSERT OR REPLACE INTO `workflows` (`id`,`name`,`jsonContent`,`createdAt`,`lastImageName`,`baseModelName`) VALUES (nullif(?, 0),?,?,?,?,?)";
       }
 
       @Override
@@ -56,6 +57,11 @@ public final class WorkflowDao_Impl implements WorkflowDao {
           statement.bindNull(5);
         } else {
           statement.bindString(5, entity.getLastImageName());
+        }
+        if (entity.getBaseModelName() == null) {
+          statement.bindNull(6);
+        } else {
+          statement.bindString(6, entity.getBaseModelName());
         }
       }
     };
@@ -76,7 +82,7 @@ public final class WorkflowDao_Impl implements WorkflowDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "UPDATE OR ABORT `workflows` SET `id` = ?,`name` = ?,`jsonContent` = ?,`createdAt` = ?,`lastImageName` = ? WHERE `id` = ?";
+        return "UPDATE OR ABORT `workflows` SET `id` = ?,`name` = ?,`jsonContent` = ?,`createdAt` = ?,`lastImageName` = ?,`baseModelName` = ? WHERE `id` = ?";
       }
 
       @Override
@@ -91,23 +97,28 @@ public final class WorkflowDao_Impl implements WorkflowDao {
         } else {
           statement.bindString(5, entity.getLastImageName());
         }
-        statement.bindLong(6, entity.getId());
+        if (entity.getBaseModelName() == null) {
+          statement.bindNull(6);
+        } else {
+          statement.bindString(6, entity.getBaseModelName());
+        }
+        statement.bindLong(7, entity.getId());
       }
     };
   }
 
   @Override
   public Object insert(final WorkflowEntity workflow,
-      final Continuation<? super Unit> $completion) {
-    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      final Continuation<? super Long> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Long>() {
       @Override
       @NonNull
-      public Unit call() throws Exception {
+      public Long call() throws Exception {
         __db.beginTransaction();
         try {
-          __insertionAdapterOfWorkflowEntity.insert(workflow);
+          final Long _result = __insertionAdapterOfWorkflowEntity.insertAndReturnId(workflow);
           __db.setTransactionSuccessful();
-          return Unit.INSTANCE;
+          return _result;
         } finally {
           __db.endTransaction();
         }
@@ -168,6 +179,7 @@ public final class WorkflowDao_Impl implements WorkflowDao {
           final int _cursorIndexOfJsonContent = CursorUtil.getColumnIndexOrThrow(_cursor, "jsonContent");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
           final int _cursorIndexOfLastImageName = CursorUtil.getColumnIndexOrThrow(_cursor, "lastImageName");
+          final int _cursorIndexOfBaseModelName = CursorUtil.getColumnIndexOrThrow(_cursor, "baseModelName");
           final List<WorkflowEntity> _result = new ArrayList<WorkflowEntity>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final WorkflowEntity _item;
@@ -185,7 +197,13 @@ public final class WorkflowDao_Impl implements WorkflowDao {
             } else {
               _tmpLastImageName = _cursor.getString(_cursorIndexOfLastImageName);
             }
-            _item = new WorkflowEntity(_tmpId,_tmpName,_tmpJsonContent,_tmpCreatedAt,_tmpLastImageName);
+            final String _tmpBaseModelName;
+            if (_cursor.isNull(_cursorIndexOfBaseModelName)) {
+              _tmpBaseModelName = null;
+            } else {
+              _tmpBaseModelName = _cursor.getString(_cursorIndexOfBaseModelName);
+            }
+            _item = new WorkflowEntity(_tmpId,_tmpName,_tmpJsonContent,_tmpCreatedAt,_tmpLastImageName,_tmpBaseModelName);
             _result.add(_item);
           }
           return _result;
