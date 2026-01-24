@@ -9,5 +9,10 @@
 - [x] analyse how to use workflows instead of the current load history implementation `medium` — 2026-01-23
 - [x] fix that the resulting image on generate page is always the latest generated image no matter which workflow item you select it must be the generated image of that specific generation that is shown `medium` — 2026-01-23
 - [x] zoom function in image gallery i slow laggy and some times unresponsive `medium` — 2026-01-23
-- [ ] delete image in gallery `medium` — 2026-01-23
+- [x] delete image in gallery `medium` — 2026-01-23
 - [x] sync image gallery and history when opening app `medium` — 2026-01-24
+- [x] when workflows generate more that one image sync these to gallery as well `medium` — 2026-01-24
+- [x] fix issue where image to history entry is the latest image no matter which history item theres selected `medium` — 2026-01-24
+- [x] add button to add image to gallery `low` — 2026-01-24
+- [x] progress indicator when running workflows (see API_REFERENCE.md) `medium` — 2026-01-24
+- [ ] add camera option to add image function on gallery page `low` — 2026-01-24
