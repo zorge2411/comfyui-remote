@@ -69,13 +69,17 @@
 
 ### Phase 32: Pull to Sync Gallery & History
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Done
 **Objective**: Implement pull-to-refresh functionality on the Gallery and History pages to manually trigger synchronization with the ComfyUI server.
 **Depends on**: Phase 31
 
 **Tasks**:
 
-- [ ] TBD (run /plan 32 to create)
+- [x] Implement `isSyncing` state in `MainViewModel`
+- [x] Update `syncHistory` with state management
+- [x] Add `PullToRefreshBox` to `GalleryScreen`
+- [x] Add `PullToRefreshBox` to `HistoryScreen`
+- [x] Verify functionality
 
 **Verification**:
 
