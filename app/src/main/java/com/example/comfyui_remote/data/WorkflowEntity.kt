@@ -11,5 +11,8 @@ data class WorkflowEntity(
     val jsonContent: String,
     val createdAt: Long = System.currentTimeMillis(),
     val lastImageName: String? = null,
-    val baseModelName: String? = null // e.g. "v1-5-pruned-emaonly.ckpt"
+    val baseModelName: String? = null, // legacy field
+    val baseModels: String? = null, // Comma-separated list for searching
+    val source: String? = null, // "LOCAL_IMPORT", "SERVER_USERDATA", etc.
+    val formatVersion: Int = 1
 )

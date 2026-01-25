@@ -5,6 +5,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 import retrofit2.http.Multipart
 import retrofit2.http.Part
 import okhttp3.MultipartBody
@@ -27,6 +28,17 @@ interface ComfyApiService {
 
     @GET("object_info")
     suspend fun getObjectInfo(): JsonObject
+
+    @GET("api/userdata")
+    suspend fun getUserData(
+        @Query("dir") dir: String = "workflows",
+        @Query("recurse") recurse: Boolean = true,
+        @Query("split") split: Boolean = false,
+        @Query("full_info") fullInfo: Boolean = true
+    ): List<ServerWorkflowFile>
+
+    @GET("{path}")
+    suspend fun getFileContent(@Path("path", encoded = true) path: String): com.google.gson.JsonElement
 
     @Multipart
     @POST("upload/image")

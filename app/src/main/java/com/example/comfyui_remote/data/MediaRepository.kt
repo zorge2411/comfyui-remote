@@ -9,6 +9,10 @@ class MediaRepository(private val mediaDao: GeneratedMediaDao) {
         mediaDao.insert(media)
     }
 
+    suspend fun insert(mediaList: List<GeneratedMediaEntity>) {
+        mediaDao.insert(mediaList)
+    }
+
     suspend fun delete(media: GeneratedMediaEntity) {
         mediaDao.delete(media)
     }
@@ -18,4 +22,8 @@ class MediaRepository(private val mediaDao: GeneratedMediaDao) {
     }
 
     suspend fun getAllPromptIds(): List<String> = mediaDao.getAllPromptIds()
+
+    val allMediaListings: Flow<List<GeneratedMediaListing>> = mediaDao.getAllListings()
+
+    suspend fun getById(id: Long): GeneratedMediaEntity? = mediaDao.getById(id)
 }

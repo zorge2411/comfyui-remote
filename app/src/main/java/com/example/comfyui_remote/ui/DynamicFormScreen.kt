@@ -53,6 +53,7 @@ import com.example.comfyui_remote.domain.InputField
 import com.example.comfyui_remote.network.ExecutionStatus
 import kotlin.random.Random
 
+@Suppress("DEPRECATION")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DynamicFormScreen(
@@ -142,6 +143,41 @@ fun DynamicFormScreen(
                             }
                         )
                     }
+                    is InputField.SelectionInput -> {
+                        var expanded by remember { mutableStateOf(false) }
+
+                        ExposedDropdownMenuBox(
+                            expanded = expanded,
+                            onExpandedChange = { expanded = !expanded },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = inputField.value,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("${inputField.nodeTitle} (${inputField.fieldName})") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                                modifier = Modifier.menuAnchor().fillMaxWidth()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                inputField.options.forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Text(text = option) },
+                                        onClick = {
+                                            inputs = inputs.toMutableList().also {
+                                                it[index] = inputField.copy(value = option)
+                                            }
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
                     is InputField.ModelInput -> {
                         val availableModels by viewModel.availableModels.collectAsState()
                         var expanded by remember { mutableStateOf(false) }
@@ -193,14 +229,14 @@ fun DynamicFormScreen(
                                 
                                 // 2. Trigger Upload
                                 scope.launch {
-                                    val filename = viewModel.uploadImage(uri, context.contentResolver)
-                                    if (filename != null) {
+                                    val uploadResponse = viewModel.uploadImage(uri, context.contentResolver)
+                                    if (uploadResponse != null) {
                                         // 3. Update with Server Filename
                                         inputs = inputs.toMutableList().also { list ->
                                             // Re-fetch item to be safe, though index should be stable
                                             val current = list[index] as? InputField.ImageInput
                                             if (current != null) {
-                                                list[index] = current.copy(value = filename)
+                                                list[index] = current.copy(value = uploadResponse.name)
                                             }
                                         }
                                     } else {
@@ -276,7 +312,7 @@ fun DynamicFormScreen(
                         // Actually, saving the template means saving the jsonContent.
                         // But maybe we want to save with the current values?
                         // For now, save the base jsonContent. 
-                        viewModel.importWorkflow(workflow.name, workflow.jsonContent) {
+                        viewModel.importWorkflow(workflow.name, workflow.jsonContent, com.example.comfyui_remote.domain.WorkflowSource.LOCAL_IMPORT) {
                             // No navigation needed when saving as template from here
                         }
                     },

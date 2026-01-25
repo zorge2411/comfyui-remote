@@ -260,14 +260,16 @@
 
 ### Phase 52: Resource Selection Dropdowns
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Done
 **Objective**: Enhance the workflow execution form by replacing text inputs with dropdown/selection lists for server-side resources (Checkpoints, LoRAs, VAEs, etc.), improving usability and reducing errors.
 **Depends on**: Phase 51
 
+**Tasks**:
+
 - [x] Create Phase Plan (52-PLAN.md)
-- [ ] Implement SelectionInput and WorkflowParser changes
-- [ ] Update DynamicFormScreen UI
-- [ ] Verify functionality
+- [x] Implement SelectionInput and WorkflowParser changes
+- [x] Update DynamicFormScreen UI
+- [x] Verify functionality
 
 **Verification**:
 

@@ -28,7 +28,18 @@ class WorkflowParser {
                             val primitive = fieldValue.asJsonPrimitive
                             
                             // Guess or determine Type
+                            val options = getOptionsFromMetadata(metadata, classType, fieldName)
+                            
                             val inputField = when {
+                                options != null -> {
+                                    InputField.SelectionInput(
+                                        nodeId = nodeId,
+                                        fieldName = fieldName,
+                                        value = primitive.asString,
+                                        options = options,
+                                        nodeTitle = title
+                                    )
+                                }
                                 fieldName.contains("seed", ignoreCase = true) -> {
                                     InputField.SeedInput(
                                         nodeId = nodeId,
@@ -84,6 +95,28 @@ class WorkflowParser {
             e.printStackTrace()
         }
         return inputs
+    }
+
+    private fun getOptionsFromMetadata(metadata: JsonObject?, classType: String, fieldName: String): List<String>? {
+        if (metadata == null) return null
+        try {
+            val nodeDef = metadata.getAsJsonObject(classType) ?: return null
+            val inputDef = nodeDef.getAsJsonObject("input") ?: return null
+            
+            // Check required and optional
+            val required = inputDef.getAsJsonObject("required")
+            val optional = inputDef.getAsJsonObject("optional")
+            
+            val fieldDef = (required?.get(fieldName) ?: optional?.get(fieldName))?.asJsonArray ?: return null
+            
+            if (fieldDef.size() > 0 && fieldDef.get(0).isJsonArray) {
+                val optionsArray = fieldDef.get(0).asJsonArray
+                return optionsArray.map { it.asString }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return null
     }
 
     fun parseAllNodes(jsonContent: String): List<NodeInfo> {

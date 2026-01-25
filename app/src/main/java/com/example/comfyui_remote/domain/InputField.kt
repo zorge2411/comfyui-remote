@@ -27,12 +27,21 @@ sealed class InputField(
         override val nodeTitle: String
     ) : InputField("Seed", nodeTitle, nodeId, fieldName)
 
+    @Deprecated("Use SelectionInput for generic dropdowns")
     data class ModelInput(
         override val nodeId: String,
         override val fieldName: String,
         val value: String,
         override val nodeTitle: String
     ) : InputField("Model", nodeTitle, nodeId, fieldName)
+
+    data class SelectionInput(
+        override val nodeId: String,
+        override val fieldName: String,
+        val value: String,
+        val options: List<String>,
+        override val nodeTitle: String
+    ) : InputField("Selection", nodeTitle, nodeId, fieldName)
 
     data class ImageInput(
         override val nodeId: String,

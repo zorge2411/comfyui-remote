@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -41,6 +42,7 @@ import androidx.compose.material3.Surface
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.comfyui_remote.MainViewModel
 import com.example.comfyui_remote.data.WorkflowEntity
+import com.example.comfyui_remote.network.ServerWorkflowFile
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +51,7 @@ fun WorkflowListScreen(
     onWorkflowValidation: (WorkflowEntity) -> Unit // Will navigate to detail/run screen
 ) {
     val workflows by viewModel.allWorkflows.collectAsState(initial = emptyList())
+    val serverWorkflows by viewModel.serverWorkflows.collectAsState()
     var showImportDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf<WorkflowEntity?>(null) }
 
@@ -57,7 +60,10 @@ fun WorkflowListScreen(
              androidx.compose.material3.TopAppBar(
                  title = { Text("Workflows") },
                  actions = {
-                     IconButton(onClick = { viewModel.syncHistory() }) {
+                     IconButton(onClick = { 
+                         viewModel.syncHistory() 
+                         viewModel.fetchServerWorkflows()
+                     }) {
                          Icon(Icons.Default.Refresh, contentDescription = "Sync from Server")
                      }
                  }
@@ -70,13 +76,23 @@ fun WorkflowListScreen(
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
-            if (workflows.isEmpty()) {
+            if (workflows.isEmpty() && serverWorkflows.isEmpty()) {
                 Text(
                     text = "No workflows. Click + to import.",
                     modifier = Modifier.align(Alignment.Center)
                 )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    if (workflows.isNotEmpty()) {
+                        item {
+                            Text(
+                                "Local Workflows", 
+                                style = MaterialTheme.typography.labelLarge,
+                                modifier = Modifier.padding(16.dp),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
                     items(workflows) { workflow ->
                         WorkflowItem(
                             workflow = workflow,
@@ -84,6 +100,27 @@ fun WorkflowListScreen(
                             onRename = { showRenameDialog = workflow },
                             onClick = { onWorkflowValidation(workflow) }
                         )
+                    }
+
+                    if (serverWorkflows.isNotEmpty()) {
+                        item {
+                             Text(
+                                 "Server Workflows (Userdata)", 
+                                 style = MaterialTheme.typography.labelLarge,
+                                 modifier = Modifier.padding(16.dp),
+                                 color = MaterialTheme.colorScheme.primary
+                             )
+                        }
+                        items(serverWorkflows) { serverFile ->
+                            ServerWorkflowItem(
+                                serverFile = serverFile,
+                                onClick = {
+                                    viewModel.importServerWorkflow(serverFile) { newWf ->
+                                        onWorkflowValidation(newWf)
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -184,6 +221,41 @@ fun WorkflowItem(
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "Delete")
             }
+        }
+    }
+}
+
+@Composable
+fun ServerWorkflowItem(
+    serverFile: ServerWorkflowFile,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        shape = RoundedCornerShape(8.dp),
+        onClick = onClick
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = serverFile.name ?: "Unnamed Workflow", style = MaterialTheme.typography.titleMedium)
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Path: ${serverFile.fullpath ?: "?"}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            Icon(
+                Icons.Default.Add, 
+                contentDescription = "Import from Server",
+                tint = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }

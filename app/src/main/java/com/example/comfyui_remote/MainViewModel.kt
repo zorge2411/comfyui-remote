@@ -23,6 +23,7 @@ import okhttp3.OkHttpClient
 
 import com.example.comfyui_remote.data.UserPreferencesRepository
 import kotlinx.coroutines.flow.first
+import com.example.comfyui_remote.network.ServerWorkflowFile
 
 class MainViewModel(
     application: Application,
@@ -75,59 +76,6 @@ class MainViewModel(
         _shouldNavigateToWorkflows.value = false
     }
     
-    init {
-        // Load saved values
-        viewModelScope.launch {
-            val savedHost = userPreferencesRepository.savedHost.first()
-            val savedPort = userPreferencesRepository.savedPort.first()
-            _host.value = savedHost
-            _port.value = savedPort.toString()
-            _saveFolderUri.value = userPreferencesRepository.saveFolderUri.first()
-            _saveFolderUri.value = userPreferencesRepository.saveFolderUri.first()
-            updateServerAddressFull()
-
-            // Backfill baseModelName
-            try {
-                // We use a small delay or check to ensure DB is ready, but flow collection is safer
-                // This is a one-time check on startup
-                val existing = repository.allWorkflows.first()
-                existing.forEach { wf ->
-                    if (wf.baseModelName == null) {
-                        try {
-                            val inputs = workflowParser.parse(wf.jsonContent, null)
-                            val modelInput = inputs.find { it is com.example.comfyui_remote.domain.InputField.ModelInput }
-                            val modelName = (modelInput as? com.example.comfyui_remote.domain.InputField.ModelInput)?.value
-                            
-                            if (modelName != null) {
-                                repository.insert(wf.copy(baseModelName = modelName))
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-        
-        // Observe global connection state from Repository
-        viewModelScope.launch {
-            connectionRepository.connectionState.collect { state ->
-                // Auto-sync history on connection
-                if (state == WebSocketState.CONNECTED) {
-                    syncHistory()
-                }
-            }
-        }
-        
-        // Observe messages from Repository
-        viewModelScope.launch {
-            connectionRepository.messages.collect { message ->
-                handleMessage(message)
-            }
-        }
-    }
 
     private fun updateServerAddressFull() {
         // Strip protocol if user added it
@@ -168,7 +116,7 @@ class MainViewModel(
     val allWorkflows = repository.allWorkflows
 
     // Phase 8/9: Gallery Data
-    val allMedia = mediaRepository.allMedia
+    val allMedia = mediaRepository.allMediaListings
 
     fun getMediaById(id: Long): kotlinx.coroutines.flow.Flow<com.example.comfyui_remote.data.GeneratedMediaEntity?> {
         return mediaRepository.allMedia.map { list ->
@@ -178,6 +126,7 @@ class MainViewModel(
 
     // Phase 3: Execution Logic
     private val workflowParser = com.example.comfyui_remote.domain.WorkflowParser()
+    private val normalizationService = com.example.comfyui_remote.domain.WorkflowNormalizationService(workflowParser)
     private val workflowExecutor = com.example.comfyui_remote.domain.WorkflowExecutor()
     
     private val _isSyncing = MutableStateFlow(false)
@@ -229,9 +178,10 @@ class MainViewModel(
     // History & Caching
     private val _executionCache = mutableMapOf<String, String>() // prompt_id -> json content
 
-    fun loadHistory(media: com.example.comfyui_remote.data.GeneratedMediaEntity) {
+    fun loadHistory(listing: com.example.comfyui_remote.data.GeneratedMediaListing) {
         viewModelScope.launch {
-            if (media.promptJson != null) {
+            val media = mediaRepository.getById(listing.id)
+            if (media?.promptJson != null) {
                 // Create a temporary workflow entity
                 val tempWorkflow = WorkflowEntity(
                     id = 0,
@@ -320,6 +270,45 @@ class MainViewModel(
         }
     }
 
+    private val _serverWorkflows = MutableStateFlow<List<ServerWorkflowFile>>(emptyList())
+    val serverWorkflows: StateFlow<List<ServerWorkflowFile>> = _serverWorkflows.asStateFlow()
+
+    fun fetchServerWorkflows() {
+        viewModelScope.launch {
+            _isSyncing.value = true
+            try {
+                val response = buildApiService().getUserData(dir = "workflows")
+                
+                _serverWorkflows.value = response
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                _isSyncing.value = false
+            }
+        }
+    }
+
+
+    fun importServerWorkflow(serverFile: ServerWorkflowFile, onSuccess: (WorkflowEntity) -> Unit) {
+        viewModelScope.launch {
+            _isSyncing.value = true
+            try {
+                val fullPath = serverFile.fullpath ?: return@launch
+                val api = buildApiService()
+                val json = api.getFileContent("userdata/$fullPath")
+                
+
+
+                val name = serverFile.name?.removeSuffix(".json") ?: "Unnamed Server Workflow"
+                importWorkflow(name, json.toString(), com.example.comfyui_remote.domain.WorkflowSource.SERVER_USERDATA, onSuccess)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                _isSyncing.value = false
+            }
+        }
+    }
+
     fun connect() {
         // Start Foreground Service
         val context = getApplication<Application>()
@@ -335,6 +324,7 @@ class MainViewModel(
         connectionRepository.connect(_host.value, p)
         fetchAvailableModels()
         fetchNodeMetadata()
+        fetchServerWorkflows()
     }
     
     fun disconnect() {
@@ -482,15 +472,22 @@ class MainViewModel(
         }
     }
     
-    fun importWorkflow(name: String, json: String, onSuccess: (WorkflowEntity) -> Unit) {
+
+
+    fun importWorkflow(
+        name: String, 
+        json: String, 
+        source: com.example.comfyui_remote.domain.WorkflowSource = com.example.comfyui_remote.domain.WorkflowSource.LOCAL_IMPORT,
+        onSuccess: (WorkflowEntity) -> Unit
+    ) {
         viewModelScope.launch {
-            val timestamp = System.currentTimeMillis()
+
+            
             var finalJson = json
 
             // Phase 30: Auto-convert Graph Format -> API Format
             try {
                 val jsonObj = com.google.gson.JsonParser.parseString(json).asJsonObject
-                // Heuristic: Graph format always has "nodes" and "links" arrays
                 if (jsonObj.has("nodes") && jsonObj.has("links")) {
                     var meta = _nodeMetadata.value
                     if (meta == null) {
@@ -508,34 +505,33 @@ class MainViewModel(
                             json, 
                             com.example.comfyui_remote.data.ComfyObjectInfo(m)
                         )
+
                     }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
             
-            // Extract model name
-            var baseModelName: String? = null
-            try {
-                val inputs = workflowParser.parse(finalJson, _nodeMetadata.value)
-                val modelInput = inputs.find { it is com.example.comfyui_remote.domain.InputField.ModelInput }
-                baseModelName = (modelInput as? com.example.comfyui_remote.domain.InputField.ModelInput)?.value
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            // Phase 50: Use Normalization Service
+            // Phase 50: Use Normalization Service
+            val normalized = normalizationService.normalize(name, finalJson, source)
+            
 
+            
+            val baseModelsShort = normalized.baseModels.joinToString(", ")
+            
             val tempWorkflow = WorkflowEntity(
-                name = name,
-                jsonContent = finalJson,
-                createdAt = timestamp,
-                baseModelName = baseModelName
+                name = normalized.name,
+                jsonContent = normalized.jsonContent,
+                createdAt = System.currentTimeMillis(),
+                baseModelName = normalized.baseModels.firstOrNull(), // Keep legacy field updated
+                baseModels = baseModelsShort,
+                source = normalized.source.name,
+                formatVersion = normalized.formatVersion
             )
             val id = repository.insert(tempWorkflow)
             
-            // Create the final entity with the correct ID
             val workflow = tempWorkflow.copy(id = id)
-            
-            // Logic: Auto-select and notify
             _selectedWorkflow.value = workflow
             onSuccess(workflow)
         }
@@ -544,13 +540,16 @@ class MainViewModel(
     fun syncHistory() {
         viewModelScope.launch {
             _isSyncing.value = true
-            try {
-                // Optimization: Fetch all IDs first to avoid duplicate inserts
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    // Optimization: Fetch all IDs first to avoid duplicate inserts
                 val existingIds = mediaRepository.getAllPromptIds().toSet()
                 
                 // Get history raw json
                 val history = buildApiService().getHistory()
                 
+                val newMediaItems = mutableListOf<com.example.comfyui_remote.data.GeneratedMediaEntity>()
+
                 // Iterate
                 history.entrySet().forEach { (executionId, element) ->
                     // Attempt to sync all history items to fill gaps from previous partial syncs
@@ -581,8 +580,6 @@ class MainViewModel(
                                 val port = hostParts.getOrNull(1)?.toIntOrNull() ?: 8188
 
                                 // Extract filename from outputs if possible
-                                var filename = "history_result.png"
-                                var subfolder: String? = null
                                 if (item.has("outputs")) {
                                     val outputs = item.getAsJsonObject("outputs")
                                     outputs.entrySet().forEach { (_, nodeOutput) ->
@@ -599,7 +596,7 @@ class MainViewModel(
                                                     val isVideo = extension in listOf("mp4", "gif", "webm", "mkv")
                                                     val mediaType = if (isVideo) "VIDEO" else "IMAGE"
 
-                                                    mediaRepository.insert(
+                                                    newMediaItems.add(
                                                         com.example.comfyui_remote.data.GeneratedMediaEntity(
                                                             workflowName = name,
                                                             fileName = filename,
@@ -622,6 +619,11 @@ class MainViewModel(
                         }
                     }
                 }
+                
+                if (newMediaItems.isNotEmpty()) {
+                    mediaRepository.insert(newMediaItems)
+                }
+                
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
@@ -629,6 +631,7 @@ class MainViewModel(
             }
         }
     }
+}
 
     private fun extractNameFromHistoryItem(item: com.google.gson.JsonObject, executionId: String): String {
         try {
@@ -668,9 +671,20 @@ class MainViewModel(
         }
     }
 
-    fun deleteMedia(mediaList: List<com.example.comfyui_remote.data.GeneratedMediaEntity>) {
+    fun deleteMedia(mediaList: List<com.example.comfyui_remote.data.GeneratedMediaListing>) {
         viewModelScope.launch {
-            mediaRepository.delete(mediaList)
+             // Room uses @Delete on Entity. We can construct dummy entities with just the ID for deletion if strict mode isn't on.
+             // But safer is to use a specific delete query in DAO or map back.
+             // Mapping back is impossible without full data.
+             // So we must use ID-based deletion.
+             // For now, let's map to entities with dummy data but correct ID.
+             val entities = mediaList.map { 
+                 com.example.comfyui_remote.data.GeneratedMediaEntity(
+                     id = it.id,
+                     workflowName = "", fileName = "", subfolder = "", serverHost = "", serverPort = 0
+                 )
+             }
+             mediaRepository.delete(entities)
         }
     }
 
@@ -716,11 +730,11 @@ class MainViewModel(
         }
     }
     
-    suspend fun uploadImage(uri: android.net.Uri, contentResolver: android.content.ContentResolver): String? {
+    suspend fun uploadImage(uri: android.net.Uri, contentResolver: android.content.ContentResolver): com.example.comfyui_remote.network.ImageUploadResponse? {
+        if (_host.value.isEmpty()) return null
         return try {
             val api = buildApiService()
-            val response = imageRepository.uploadImage(api, uri, contentResolver)
-            response.name // Return the server filename
+            imageRepository.uploadImage(api, uri, contentResolver)
         } catch (e: Exception) {
             e.printStackTrace()
             null
@@ -728,31 +742,90 @@ class MainViewModel(
     }
 
     fun uploadManualImage(uri: android.net.Uri, contentResolver: android.content.ContentResolver) {
+        if (_host.value.isEmpty()) return
+
         viewModelScope.launch {
             _isSyncing.value = true
             try {
-                val filename = uploadImage(uri, contentResolver)
-                if (filename != null) {
-                    val hostParts = _serverAddress.value.split(":")
-                    val host = hostParts.getOrNull(0) ?: ""
-                    val port = hostParts.getOrNull(1)?.toIntOrNull() ?: 8188
+                val uploadResponse = uploadImage(uri, contentResolver)
+                if (uploadResponse != null) {
+                    val host = _host.value
+                    val port = _port.value.toIntOrNull() ?: 8188
 
                     mediaRepository.insert(
                         com.example.comfyui_remote.data.GeneratedMediaEntity(
                             workflowName = "Manual Upload",
-                            fileName = filename,
-                            subfolder = "",
+                            fileName = uploadResponse.name,
+                            subfolder = uploadResponse.subfolder,
                             serverHost = host,
                             serverPort = port,
                             mediaType = "IMAGE",
-                            serverType = "input"
+                            serverType = uploadResponse.type.ifEmpty { "input" }
                         )
                     )
+                    // No toast needed here as the Gallery updates automatically via Flow
+                } else {
+                    // Consider exposing an error channel to show toasts from VM if desired,
+                    // but for now, we'll rely on the repo's internal error handling.
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
                 _isSyncing.value = false
+            }
+        }
+    }
+
+    init {
+        // Load saved values
+        viewModelScope.launch {
+            val savedHost = userPreferencesRepository.savedHost.first()
+            val savedPort = userPreferencesRepository.savedPort.first()
+            _host.value = savedHost
+            _port.value = savedPort.toString()
+            _saveFolderUri.value = userPreferencesRepository.saveFolderUri.first()
+            _saveFolderUri.value = userPreferencesRepository.saveFolderUri.first()
+            updateServerAddressFull()
+
+            // Backfill baseModelName
+            try {
+                // We use a small delay or check to ensure DB is ready, but flow collection is safer
+                // This is a one-time check on startup
+                val existing = repository.allWorkflows.first()
+                existing.forEach { wf ->
+                    if (wf.baseModelName == null) {
+                        try {
+                            val inputs = workflowParser.parse(wf.jsonContent, null)
+                            val modelInput = inputs.find { it is com.example.comfyui_remote.domain.InputField.ModelInput }
+                            val modelName = (modelInput as? com.example.comfyui_remote.domain.InputField.ModelInput)?.value
+                            
+                            if (modelName != null) {
+                                repository.insert(wf.copy(baseModelName = modelName))
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        
+        // Observe global connection state from Repository
+        viewModelScope.launch {
+            connectionRepository.connectionState.collect { state ->
+                // Auto-sync history on connection
+                if (state == WebSocketState.CONNECTED) {
+                    syncHistory()
+                }
+            }
+        }
+        
+        // Observe messages from Repository
+        viewModelScope.launch {
+            connectionRepository.messages.collect { message ->
+                handleMessage(message)
             }
         }
     }

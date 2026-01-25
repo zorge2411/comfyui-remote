@@ -15,7 +15,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.comfyui_remote.MainViewModel
-import com.example.comfyui_remote.data.GeneratedMediaEntity
+import com.example.comfyui_remote.data.GeneratedMediaListing
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -66,7 +66,7 @@ fun HistoryScreen(viewModel: MainViewModel) {
 
 @Composable
 fun HistoryItemCard(
-    item: GeneratedMediaEntity,
+    item: GeneratedMediaListing,
     onClick: () -> Unit
 ) {
     Card(
@@ -103,9 +103,9 @@ fun HistoryItemCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.secondary
                 )
-                if (item.promptJson != null) {
+                if (true) {
                     Text(
-                        text = "Running State Available",
+                        text = "Tap to Restore",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary
                     )

@@ -21,7 +21,7 @@ class UserPreferencesRepository(private val context: Context) {
 
     val savedHost: Flow<String> = context.dataStore.data
         .map { preferences ->
-            preferences[HOST_KEY] ?: "192.168.1.X"
+            preferences[HOST_KEY] ?: ""
         }
         
     val savedPort: Flow<Int> = context.dataStore.data

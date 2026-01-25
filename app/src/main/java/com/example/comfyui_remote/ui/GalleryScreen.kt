@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,7 +27,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import coil.compose.AsyncImage
 import com.example.comfyui_remote.MainViewModel
-import com.example.comfyui_remote.data.GeneratedMediaEntity
+import com.example.comfyui_remote.data.GeneratedMediaListing
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
@@ -40,7 +41,7 @@ import java.io.File
 @Composable
 fun GalleryScreen(
     viewModel: MainViewModel,
-    onMediaClick: (GeneratedMediaEntity) -> Unit,
+    onMediaClick: (GeneratedMediaListing) -> Unit,
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
@@ -50,7 +51,48 @@ fun GalleryScreen(
     val isSelectionMode by remember { derivedStateOf { selectedIds.isNotEmpty() } }
     val context = LocalContext.current
     var showSelectionDialog by remember { mutableStateOf(false) }
-    var cameraTmpUri by remember { mutableStateOf<Uri?>(null) }
+    var cameraTmpUriString by rememberSaveable { mutableStateOf<String?>(null) }
+    val cameraTmpUri = cameraTmpUriString?.let { Uri.parse(it) }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+        onResult = { uri ->
+            if (uri != null) {
+                viewModel.uploadManualImage(uri, context.contentResolver)
+            }
+        }
+    )
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture(),
+        onResult = { success ->
+            if (success && cameraTmpUri != null) {
+                viewModel.uploadManualImage(cameraTmpUri, context.contentResolver)
+            } else {
+                android.widget.Toast.makeText(context, "Camera capture failed or aborted", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    )
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (isGranted) {
+                launchCamera(context, { cameraTmpUriString = it.toString() }, cameraLauncher)
+            }
+        }
+    )
+
+    fun handleCameraAction() {
+        when (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA)) {
+            android.content.pm.PackageManager.PERMISSION_GRANTED -> {
+                launchCamera(context, { cameraTmpUriString = it.toString() }, cameraLauncher)
+            }
+            else -> {
+                permissionLauncher.launch(android.Manifest.permission.CAMERA)
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -84,44 +126,6 @@ fun GalleryScreen(
         },
         floatingActionButton = {
             if (!isSelectionMode) {
-                val launcher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.PickVisualMedia(),
-                    onResult = { uri ->
-                        if (uri != null) {
-                            viewModel.uploadManualImage(uri, context.contentResolver)
-                        }
-                    }
-                )
-
-                val cameraLauncher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.TakePicture(),
-                    onResult = { success ->
-                        if (success && cameraTmpUri != null) {
-                            viewModel.uploadManualImage(cameraTmpUri!!, context.contentResolver)
-                        }
-                    }
-                )
-
-                val permissionLauncher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.RequestPermission(),
-                    onResult = { isGranted ->
-                        if (isGranted) {
-                            launchCamera(context, { cameraTmpUri = it }, cameraLauncher)
-                        }
-                    }
-                )
-
-                fun handleCameraAction() {
-                    when (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)) {
-                        PackageManager.PERMISSION_GRANTED -> {
-                            launchCamera(context, { cameraTmpUri = it }, cameraLauncher)
-                        }
-                        else -> {
-                            permissionLauncher.launch(Manifest.permission.CAMERA)
-                        }
-                    }
-                }
-
                 if (showSelectionDialog) {
                     AlertDialog(
                         onDismissRequest = { showSelectionDialog = false },
@@ -183,7 +187,11 @@ fun GalleryScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(4.dp)
                 ) {
-                    items(mediaList, key = { it.id }) { item ->
+                    items(
+                        items = mediaList,
+                        key = { it.id },
+                        contentType = { "media" }
+                    ) { item ->
                         val isSelected = item.id in selectedIds
                         GalleryItem(
                             item = item,
@@ -227,7 +235,7 @@ private fun launchCamera(
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun GalleryItem(
-    item: GeneratedMediaEntity,
+    item: GeneratedMediaListing,
     isSelected: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
@@ -235,7 +243,21 @@ fun GalleryItem(
     animatedVisibilityScope: AnimatedVisibilityScope?
 ) {
     // Construct URL: http://{host}:{port}/view?filename={fileName}&subfolder={subfolder}&type={serverType}
-    val url = "http://${item.serverHost}:${item.serverPort}/view?filename=${item.fileName}${if (item.subfolder != null) "&subfolder=${item.subfolder}" else ""}&type=${item.serverType}"
+    // Memoize the request to avoid rebuilding on every recomposition
+    val context = LocalContext.current
+    val imageRequest = remember(item.serverHost, item.serverPort, item.fileName, item.subfolder, item.serverType) {
+        val url = "http://${item.serverHost}:${item.serverPort}/view?filename=${item.fileName}${if (item.subfolder != null) "&subfolder=${item.subfolder}" else ""}&type=${item.serverType}"
+        
+        // Calculate approximate size for grid (assuming 3 columns)
+        val screenWidth = context.resources.displayMetrics.widthPixels
+        val targetSize = screenWidth / 3
+
+        coil.request.ImageRequest.Builder(context)
+            .data(url)
+            .crossfade(true)
+            .size(targetSize)
+            .build()
+    }
 
     Card(
         modifier = Modifier
@@ -254,7 +276,7 @@ fun GalleryItem(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
-                model = url,
+                model = imageRequest,
                 contentDescription = "Generated Media",
                 modifier = Modifier
                     .fillMaxSize()
