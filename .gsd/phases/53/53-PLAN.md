@@ -4,126 +4,88 @@ plan: 1
 wave: 1
 depends_on: []
 files_modified:
-  - app/src/main/java/com/example/comfyui_remote/MainViewModel.kt
-  - app/src/main/java/com/example/comfyui_remote/ui/WorkflowListScreen.kt
+  - app/src/main/java/com/example/comfyui_remote/domain/GraphToApiConverter.kt
+  - app/src/test/java/com/example/comfyui_remote/domain/GraphToApiConverterTest.kt
 autonomous: true
 user_setup: []
 
 must_haves:
   truths:
-    - "Server workflows can be opened directly without importing to database"
-    - "Temporary WorkflowEntity (id=0) is created for server workflows"
-    - "DynamicFormScreen populates correctly from server workflow"
+    - "Imported workflows preserve node titles as _meta.title"
+    - "DynamicFormScreen displays user-friendly node names"
   artifacts:
-    - "loadServerWorkflow function exists in MainViewModel"
-    - "WorkflowListScreen calls loadServerWorkflow instead of importServerWorkflow"
+    - "GraphToApiConverter includes _meta generation logic"
+    - "Unit tests pass verifying _meta presence"
   key_links:
-    - "loadServerWorkflow creates temporary entity matching history workflow pattern"
+    - "WorkflowParser uses _meta.title for UI labels"
 ---
 
-# Plan 53.1: Enable Direct Server Workflow Execution
+# Plan 53.1: Enhance Workflow Import Metadata
 
 <objective>
-Enable server workflows (from userdata/workflows/) to be opened directly in DynamicFormScreen without requiring database import, matching the behavior of local template workflows.
+Improve the `GraphToApiConverter` to preserve node titles from the source graph by mapping them to `_meta.title` in the API output. This ensures that imported server workflows display correct, user-friendly labels in the Dynamic Form (e.g., "Positive Prompt" instead of "CLIPTextEncode").
 
-Purpose: Reduce friction for using server-hosted workflows and enable instant execution without creating local copies.
-Output: `loadServerWorkflow` function in MainViewModel, updated WorkflowListScreen click handler.
+Purpose: Allow server workflows to be imported and used locally with the same rich UI experience as template workflows.
+Output: Updated converter logic and passing unit tests.
 </objective>
 
 <context>
 Load for context:
-- .gsd/SPEC.md
-- app/src/main/java/com/example/comfyui_remote/MainViewModel.kt
-- app/src/main/java/com/example/comfyui_remote/ui/WorkflowListScreen.kt
-- app/src/main/java/com/example/comfyui_remote/ui/DynamicFormScreen.kt (lines 306-323 for reference)
-- app/src/main/java/com/example/comfyui_remote/domain/NormalizedWorkflow.kt
+- app/src/main/java/com/example/comfyui_remote/domain/GraphToApiConverter.kt
+- app/src/main/java/com/example/comfyui_remote/domain/WorkflowParser.kt (reference for _meta usage)
+- app/src/test/java/com/example/comfyui_remote/domain/GraphToApiConverterTest.kt
 </context>
 
 <tasks>
 
 <task type="auto">
-  <name>Add loadServerWorkflow function to MainViewModel</name>
-  <files>app/src/main/java/com/example/comfyui_remote/MainViewModel.kt</files>
+  <name>Update GraphToApiConverterTest</name>
+  <files>app/src/test/java/com/example/comfyui_remote/domain/GraphToApiConverterTest.kt</files>
   <action>
-Create a new suspend function `loadServerWorkflow` in MainViewModel that:
-1. Accepts `ServerWorkflowFile` and `onSuccess: (WorkflowEntity) -> Unit` callback
-2. Downloads JSON using `getFileContent("userdata/$fullPath")`
-3. Normalizes the workflow using `normalizationService.normalize()` with source `WorkflowSource.SERVER_USERDATA`
-4. Creates a TEMPORARY `WorkflowEntity` with `id = 0` (not persisted to database)
-5. Sets `_selectedWorkflow.value` and calls the success callback
-6. Manages `_isSyncing` state (true while loading, false on complete/error)
+    Add a test case or update existing tests to assert that the converted JSON contains `_meta` objects with `title` fields.
 
-AVOID: Do not modify `importServerWorkflow` - keep both functions separate. `importServerWorkflow` persists to DB (creates local copy), while `loadServerWorkflow` creates temporary entity (no persistence). This preserves both use cases.
-
-Place the function immediately after `importServerWorkflow` (around line 311) to keep related functions together.
+    Example assertion logic:
+    - Include a node in the input graph with `"title": "Custom Title"`.
+    - Assert that the output API node has `"_meta": { "title": "Custom Title" }`.
   </action>
-  <verify>.\gradlew assembleDebug completes without errors</verify>
-  <done>loadServerWorkflow function exists, creates temporary WorkflowEntity (id=0, source=SERVER_USERDATA), and does not persist to database</done>
+  <verify>.\gradlew testDebugUnitTest --tests "com.example.comfyui_remote.domain.GraphToApiConverterTest" (Should FAIL initially or pass if logic existed)</verify>
+  <done>Tests fail with missing _meta, or pass after implementation</done>
 </task>
 
 <task type="auto">
-  <name>Update ServerWorkflowItem click handler</name>
-  <files>app/src/main/java/com/example/comfyui_remote/ui/WorkflowListScreen.kt</files>
+  <name>Implement _meta preservation in GraphToApiConverter</name>
+  <files>app/src/main/java/com/example/comfyui_remote/domain/GraphToApiConverter.kt</files>
   <action>
-In `ServerWorkflowItem` composable (line 229), update the `onClick` parameter passed to the Card:
+    Modify `convert` function loop (lines 35-115):
+    1. Extract the `title` field from the source graph node (`nodeElement`).
+       - Fallback to `classifier` or `type` if title is missing, but preferably use the explicit "title" field if present.
+    2. Create a `_meta` JsonObject.
+    3. Add title to `_meta`.
+    4. Add `_meta` to `apiNode`.
 
-BEFORE (line 117-121):
-
-```kotlin
-onClick = {
-    viewModel.importServerWorkflow(serverFile) { newWf ->
-        onWorkflowValidation(newWf)
-    }
-}
-```
-
-AFTER:
-
-```kotlin
-onClick = {
-    viewModel.loadServerWorkflow(serverFile) { tempWf ->
-        onWorkflowValidation(tempWf)
-    }
-}
-```
-
-AVOID: Do not remove the `importServerWorkflow` function - it may be needed for explicit "save to local" functionality in the future. Only change the UI behavior.
+    ```kotlin
+    val title = if (node.has("title")) node.get("title").asString else type
+    val meta = JsonObject()
+    meta.addProperty("title", title)
+    apiNode.add("_meta", meta)
+    ```
+    
+    AVOID: Overwriting existing inputs. Just append the `_meta` key to the `apiNode` object.
   </action>
-  <verify>.\gradlew assembleDebug completes without errors</verify>
-  <done>ServerWorkflowItem calls loadServerWorkflow instead of importServerWorkflow</done>
-</task>
-
-<task type="checkpoint:human-verify">
-  <name>Verify server workflow direct execution</name>
-  <files>Manual testing on device/emulator</files>
-  <action>
-1. Connect app to ComfyUI server with workflows in `userdata/workflows/` directory
-2. Navigate to Workflow List screen
-3. Observe that server workflows appear under "Server Workflows (Userdata)" section
-4. Click on a server workflow
-5. Verify it opens DynamicFormScreen immediately with populated form fields
-6. Check that NO new entry appears in "Local Workflows" section (confirming no DB persistence)
-7. Execute the workflow and verify results appear in Gallery
-8. (Optional) Click "Save as Template" button and verify it NOW appears in "Local Workflows"
-  </action>
-  <verify>All manual verification steps pass</verify>
-  <done>Server workflows open directly in DynamicFormScreen without creating database entries</done>
+  <verify>.\gradlew testDebugUnitTest --tests "com.example.comfyui_remote.domain.GraphToApiConverterTest"</verify>
+  <done>Tests pass</done>
 </task>
 
 </tasks>
 
 <verification>
 After all tasks, verify:
-- [ ] Build completes successfully with no errors
-- [ ] Server workflows open directly without import
-- [ ] Temporary WorkflowEntity (id=0) is created
-- [ ] No database entries created on initial click
-- [ ] "Save as Template" still works to create local copy
+- [ ] Unit tests pass
+- [ ] Manual check: Import a workflow from server and check titles in DynamicFormScreen
 </verification>
 
 <success_criteria>
 
-- [ ] All tasks verified
-- [ ] Must-haves confirmed
-- [ ] Server workflow execution matches template workflow UX
+- [ ] Imported workflows have readable titles in the Form UI
+- [ ] "Model Selection" and "Prompt" fields are correctly labeled
 </success_criteria>
