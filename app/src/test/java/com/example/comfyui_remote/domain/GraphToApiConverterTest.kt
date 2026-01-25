@@ -146,4 +146,53 @@ class GraphToApiConverterTest {
         assertEquals(1234, inputs30.get("seed").asInt)
         assertEquals(20, inputs30.get("steps").asInt)
     }
+
+    @Test
+    fun convert_PreservesNodeTitleInMeta() {
+        val objectInfoJson = """
+            {
+                "SomeNode": { "input": { "required": {} } }
+            }
+        """.trimIndent()
+        val objectInfo = ComfyObjectInfo(JsonParser.parseString(objectInfoJson).asJsonObject)
+
+        val graphJson = """
+            {
+                "nodes": [
+                    {
+                        "id": 1,
+                        "type": "SomeNode",
+                        "title": "Custom Title",
+                        "inputs": [],
+                        "widgets_values": []
+                    },
+                    {
+                        "id": 2,
+                        "type": "SomeNode",
+                        // No title provided
+                        "inputs": [],
+                        "widgets_values": []
+                    }
+                ],
+                "links": []
+            }
+        """.trimIndent()
+
+        val apiJson = GraphToApiConverter.convert(graphJson, objectInfo)
+        val apiObj = JsonParser.parseString(apiJson).asJsonObject
+
+        // Check Node 1 (Has Title)
+        assertTrue(apiObj.has("1"))
+        val node1 = apiObj.getAsJsonObject("1")
+        assertTrue("Node 1 should have _meta", node1.has("_meta"))
+        assertEquals("Custom Title", node1.getAsJsonObject("_meta").get("title").asString)
+
+        // Check Node 2 (No Title -> Fallback to Type?)
+        // Implementation might fallback to Type if title missing, or just not set it?
+        // Plan said: "Fallback to classifier or type if title is missing"
+        assertTrue(apiObj.has("2"))
+        val node2 = apiObj.getAsJsonObject("2")
+        assertTrue("Node 2 should have _meta", node2.has("_meta"))
+        assertEquals("SomeNode", node2.getAsJsonObject("_meta").get("title").asString)
+    }
 }
