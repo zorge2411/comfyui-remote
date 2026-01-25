@@ -43,6 +43,12 @@ object GraphToApiConverter {
             apiNode.addProperty("class_type", type)
             apiNode.add("inputs", inputs)
             
+            // Add _meta with title for UI display
+            val title = if (node.has("title")) node.get("title").asString else type
+            val meta = JsonObject()
+            meta.addProperty("title", title)
+            apiNode.add("_meta", meta)
+            
             // --- Helper to get Node Definition ---
             // The object info has keys like "CheckpointLoaderSimple".
             val nodeDef = objectInfo.dynamicNodes.get(type)?.asJsonObject
