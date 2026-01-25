@@ -221,9 +221,9 @@ class MainActivity : ComponentActivity() {
                             com.example.comfyui_remote.ui.SettingsScreen(viewModel)
                         }
                         composable("remote_control") {
-                            val workflow = viewModel.selectedWorkflow.value
+                            val workflow by viewModel.selectedWorkflow.collectAsState()
                             if (workflow != null) {
-                                com.example.comfyui_remote.ui.DynamicFormScreen(viewModel, workflow)
+                                com.example.comfyui_remote.ui.DynamicFormScreen(viewModel, workflow!!)
                             }
                         }
                     }
