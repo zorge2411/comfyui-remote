@@ -17,8 +17,17 @@
 
 ### Phase 16: Icon Refinement
 
-**Status**: ⏸️ Deferred (Moved from Milestone 2)
-**Objective**: Generate 5 premium icon concepts, allow user selection, and implement the chosen icon. Blocked by API capacity.
+**Status**: ✅ Done
+**Objective**: Generate 5 premium icon concepts, allow user selection, and implement the chosen icon.
+
+**Tasks**:
+
+- [x] Create Plan
+- [x] Generate 5 Icon Concepts
+- [x] User Selection
+- [x] Implement Icon Generator Script
+- [x] Generate Mipmap Assets
+- [x] Verify Build
 
 ### Phase 29: Model Listing in Workflow List
 
@@ -213,13 +222,51 @@
 
 ### Phase 50: Normalization Service
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Done
 **Objective**: Standardize, validate, and optimize ComfyUI workflows during import to ensure consistency and robustness across different sources.
 **Depends on**: Phase 49
 
+- [x] Create `WorkflowNormalizationService` with model extraction <!-- id: 50.1 -->
+- [x] Implement UI metadata stripping in `WorkflowParser` <!-- id: 50.2 -->
+- [x] Add `baseModels` and `source` fields to `WorkflowEntity` <!-- id: 50.3 -->
+- [x] Integrate normalization into `MainViewModel.importWorkflow` <!-- id: 50.4 -->
+- [x] Verify with unit tests for API and Workspace formats <!-- id: 50.5 -->
+
+**Verification**:
+
+- [ ] Unit tests pass for both JSON formats
+- [ ] Imported workflows show "Detected Models" in the UI
+- [ ] `WorkflowEntity` in DB contains normalized JSON without unnecessary UI keys
+
+### Phase 51: Fix Scrolling Lag in Gallery
+
+**Status**: ✅ Done
+**Objective**: Fix the scrolling lag in the gallery screen.
+**Depends on**: Phase 50
+
 **Tasks**:
 
-- [ ] TBD (run /plan 50 to create)
+- [x] Create Plan
+- [x] Implement Batch Insert in DAO & Repository
+- [x] Refactor MainViewModel.syncHistory
+- [x] Configure Coil ImageLoader
+- [x] Verify functionality
+
+**Verification**:
+
+- [ ] Syncing multiple history items does not cause UI lag
+- [ ] Gallery scrolling is smooth (60fps)
+- [ ] Images load with crossfade transition
+
+### Phase 52: Resource Selection Dropdowns
+
+**Status**: ⬜ Not Started
+**Objective**: Enhance the workflow execution form by replacing text inputs with dropdown/selection lists for server-side resources (Checkpoints, LoRAs, VAEs, etc.), improving usability and reducing errors.
+**Depends on**: Phase 51
+
+**Tasks**:
+
+- [ ] TBD (run /plan 52 to create)
 
 **Verification**:
 

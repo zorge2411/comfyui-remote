@@ -1,17 +1,28 @@
 # STATE.md
 
-> **Updated**: 2026-01-24
+> **Updated**: 2026-01-25
 > **Milestone**: Milestone 3: Image Input Support
 >
-> - **Current Phase**: Phase 50: Normalization Service
-> - **Task**: Implementation of fetching and importing server-side workflows complete
-> - **Status**: ✅ Verified
+> - **Current Phase**: Phase 52 (Planning)
+> - **Task**: Maintenance
+> - **Status**: ✅ Import Fixed
 >
-> ## Achieved in Phase 49
+> ## Achieved in Debugging
+>
+>
+> - Fixed workflow import failure
+> - Suppressed `InterruptedIOException` logcat noise in Coil
+>
+> ## Achieved in Phase 51
+>
+> - Refactored Synchronize Logic to use Batch Insterts
+> - Configured Global Coil ImageLoader with Caching & Crossfade
+>
+> ## Achieved in Phase 49/50
 >
 > - Added `getUserData` and `getFileContent` API endpoints
-> - Implemented server workflow discovery and flat-mapping in `MainViewModel`
-> - Integrated Server Workflow list in `WorkflowListScreen` with "Import & Run" support
+> - Implemented `WorkflowNormalizationService` and integrated it
+> - Added debug logging to capture import failures
 >
 > ## Achieved in Phase 40
 >
@@ -68,5 +79,4 @@
 >
 > ## Next Steps
 >
-> 1. Plan Phase 39 (Camera Integration).
-> 2. Finalize Milestone 3 Audit.
+> 1. Plan Phase 52.
