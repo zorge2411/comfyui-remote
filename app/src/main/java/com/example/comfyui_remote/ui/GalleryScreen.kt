@@ -47,6 +47,9 @@ fun GalleryScreen(
 ) {
     val mediaList by viewModel.allMedia.collectAsState(initial = emptyList())
     val isSyncing by viewModel.isSyncing.collectAsState()
+    val isSecure by viewModel.isSecure.collectAsState()
+    val currentHost by viewModel.host.collectAsState()
+    val currentPort by viewModel.port.collectAsState()
     val selectedIds = remember { mutableStateListOf<Long>() }
     val isSelectionMode by remember { derivedStateOf { selectedIds.isNotEmpty() } }
     val context = LocalContext.current
@@ -196,6 +199,9 @@ fun GalleryScreen(
                         GalleryItem(
                             item = item,
                             isSelected = isSelected,
+                            isSecure = isSecure,
+                            currentHost = currentHost,
+                            currentPort = currentPort,
                             onLongClick = {
                                 if (isSelected) selectedIds.remove(item.id) else selectedIds.add(item.id)
                             },
@@ -237,6 +243,9 @@ private fun launchCamera(
 fun GalleryItem(
     item: GeneratedMediaListing,
     isSelected: Boolean,
+    isSecure: Boolean,
+    currentHost: String,
+    currentPort: String,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     sharedTransitionScope: SharedTransitionScope?,
@@ -245,8 +254,11 @@ fun GalleryItem(
     // Construct URL: http://{host}:{port}/view?filename={fileName}&subfolder={subfolder}&type={serverType}
     // Memoize the request to avoid rebuilding on every recomposition
     val context = LocalContext.current
-    val imageRequest = remember(item.serverHost, item.serverPort, item.fileName, item.subfolder, item.serverType) {
-        val url = "http://${item.serverHost}:${item.serverPort}/view?filename=${item.fileName}${if (item.subfolder != null) "&subfolder=${item.subfolder}" else ""}&type=${item.serverType}"
+    val imageRequest = remember(item.serverHost, item.serverPort, item.fileName, item.subfolder, item.serverType, isSecure, currentHost, currentPort) {
+        val portInt = currentPort.toIntOrNull() ?: 8188
+        val shouldUseSecure = isSecure && item.serverHost == currentHost && item.serverPort == portInt
+        val protocol = if (shouldUseSecure) "https" else "http"
+        val url = "$protocol://${item.serverHost}:${item.serverPort}/view?filename=${item.fileName}${if (item.subfolder != null) "&subfolder=${item.subfolder}" else ""}&type=${item.serverType}"
         
         // Calculate approximate size for grid (assuming 3 columns)
         val screenWidth = context.resources.displayMetrics.widthPixels

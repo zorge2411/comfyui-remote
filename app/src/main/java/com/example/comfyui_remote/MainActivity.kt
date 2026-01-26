@@ -7,12 +7,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -30,6 +32,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -239,6 +242,7 @@ class MainActivity : ComponentActivity() {
 fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
     val host by viewModel.host.collectAsState()
     val port by viewModel.port.collectAsState()
+    val isSecure by viewModel.isSecure.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
     val shouldNavigate by viewModel.shouldNavigateToWorkflows.collectAsState()
     
@@ -284,6 +288,26 @@ fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Switch(
+                checked = isSecure,
+                onCheckedChange = { viewModel.updateIsSecure(it) }
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Text(text = "Use Secure Connection (HTTPS/WSS)")
+                Text(
+                    text = "Required for remote servers with SSL",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 

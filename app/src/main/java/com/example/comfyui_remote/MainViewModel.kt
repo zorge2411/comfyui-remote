@@ -42,6 +42,9 @@ class MainViewModel(
     private val _port = MutableStateFlow("8188")
     val port: StateFlow<String> = _port.asStateFlow()
 
+    private val _isSecure = MutableStateFlow(false)
+    val isSecure: StateFlow<Boolean> = _isSecure.asStateFlow()
+
     private val _serverAddress = MutableStateFlow("")
     val serverAddress: StateFlow<String> = _serverAddress.asStateFlow()
     
@@ -95,10 +98,14 @@ class MainViewModel(
         updateServerAddressFull()
     }
     
+    fun updateIsSecure(secure: Boolean) {
+        _isSecure.value = secure
+    }
+
     fun saveConnection() {
         viewModelScope.launch {
             val p = _port.value.toIntOrNull() ?: 8188
-            userPreferencesRepository.saveConnectionDetails(_host.value, p)
+            userPreferencesRepository.saveConnectionDetails(_host.value, p, _isSecure.value)
         }
     }
 
@@ -143,7 +150,8 @@ class MainViewModel(
         
         // Fix: Update generated image view to show the last result if available
         if (workflow.lastImageName != null) {
-             val url = "http://${_serverAddress.value}/view?filename=${workflow.lastImageName}&type=output"
+             val protocol = if (_isSecure.value) "https" else "http"
+             val url = "$protocol://${_serverAddress.value}/view?filename=${workflow.lastImageName}&type=output"
             _generatedImage.value = url
         } else {
             _generatedImage.value = null
@@ -159,8 +167,9 @@ class MainViewModel(
 
     private fun buildApiService(): com.example.comfyui_remote.network.ComfyApiService {
          // Create a temporary retrofit instance for the call
+         val protocol = if (_isSecure.value) "https" else "http"
          return retrofit2.Retrofit.Builder()
-            .baseUrl("http://${_serverAddress.value}/")
+            .baseUrl("$protocol://${_serverAddress.value}/")
             .client(okHttpClient)
             .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create())
             .build()
@@ -193,7 +202,8 @@ class MainViewModel(
                 _selectedWorkflow.value = tempWorkflow
                 
                 // Set the preview image for the DynamicFormScreen
-                val url = "http://${_serverAddress.value}/view?filename=${media.fileName}&type=output"
+                val protocol = if (_isSecure.value) "https" else "http"
+                val url = "$protocol://${_serverAddress.value}/view?filename=${media.fileName}&type=output"
                 _generatedImage.value = url
                 
                 _navigateToForm.value = true
@@ -321,7 +331,7 @@ class MainViewModel(
         
         // Connect via Repository
         val p = _port.value.toIntOrNull() ?: 8188
-        connectionRepository.connect(_host.value, p)
+        connectionRepository.connect(_host.value, p, _isSecure.value)
         fetchAvailableModels()
         fetchNodeMetadata()
         fetchServerWorkflows()
@@ -433,7 +443,8 @@ class MainViewModel(
                                 val filename = image.get("filename").asString
                                 val subfolder = if (image.has("subfolder")) image.get("subfolder").asString else null
                                 
-                                val url = "http://${_serverAddress.value}/view?filename=$filename&type=output"
+                                val protocol = if (_isSecure.value) "https" else "http"
+                                val url = "$protocol://${_serverAddress.value}/view?filename=$filename&type=output"
                                 _generatedImage.value = url
 
                                 val hostParts = _serverAddress.value.split(":")
@@ -781,8 +792,10 @@ class MainViewModel(
         viewModelScope.launch {
             val savedHost = userPreferencesRepository.savedHost.first()
             val savedPort = userPreferencesRepository.savedPort.first()
+            val savedIsSecure = userPreferencesRepository.isSecure.first()
             _host.value = savedHost
             _port.value = savedPort.toString()
+            _isSecure.value = savedIsSecure
             _saveFolderUri.value = userPreferencesRepository.saveFolderUri.first()
             _saveFolderUri.value = userPreferencesRepository.saveFolderUri.first()
             updateServerAddressFull()

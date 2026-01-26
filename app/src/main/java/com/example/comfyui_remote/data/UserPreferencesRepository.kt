@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -16,6 +17,7 @@ class UserPreferencesRepository(private val context: Context) {
     
     private val HOST_KEY = stringPreferencesKey("host_ip")
     private val PORT_KEY = intPreferencesKey("host_port")
+    private val IS_SECURE_KEY = booleanPreferencesKey("is_secure")
     private val SAVE_FOLDER_URI_KEY = stringPreferencesKey("save_folder_uri")
     private val THEME_MODE_KEY = intPreferencesKey("theme_mode")
 
@@ -27,6 +29,11 @@ class UserPreferencesRepository(private val context: Context) {
     val savedPort: Flow<Int> = context.dataStore.data
         .map { preferences ->
             preferences[PORT_KEY] ?: 8188 
+        }
+
+    val isSecure: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[IS_SECURE_KEY] ?: false
         }
 
     val saveFolderUri: Flow<String?> = context.dataStore.data
@@ -51,10 +58,11 @@ class UserPreferencesRepository(private val context: Context) {
         }
     }
 
-    suspend fun saveConnectionDetails(host: String, port: Int) {
+    suspend fun saveConnectionDetails(host: String, port: Int, isSecure: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[HOST_KEY] = host
             preferences[PORT_KEY] = port
+            preferences[IS_SECURE_KEY] = isSecure
         }
     }
 }

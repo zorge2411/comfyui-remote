@@ -16,7 +16,8 @@ import java.util.UUID
 
 class ComfyWebSocket(
     private val client: OkHttpClient,
-    private val serverAddress: String // e.g., "192.168.1.100:8188"
+    private val serverAddress: String, // e.g., "192.168.1.100:8188"
+    private val isSecure: Boolean
 ) {
 
     private var webSocket: WebSocket? = null
@@ -30,8 +31,9 @@ class ComfyWebSocket(
     val messages: SharedFlow<String> = _messages.asSharedFlow()
 
     fun connect() {
+        val protocol = if (isSecure) "wss" else "ws"
         val request = Request.Builder()
-            .url("ws://$serverAddress/ws?clientId=$clientId")
+            .url("$protocol://$serverAddress/ws?clientId=$clientId")
             .build()
 
         _connectionState.value = WebSocketState.CONNECTING
