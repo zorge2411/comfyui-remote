@@ -32,6 +32,7 @@ class ConnectionRepository {
     // Track connection details for reconnection
     private var currentHost: String? = null
     private var currentPort: Int? = null
+    private var currentIsSecure: Boolean = false
     private var isUserDisconnected = false
     private var reconnectAttempt = 0
     
@@ -45,7 +46,7 @@ class ConnectionRepository {
                         val delayMs = (2000L * (1L shl kotlin.math.min(reconnectAttempt, 5))) // Exp backoff
                         kotlinx.coroutines.delay(delayMs)
                         reconnectAttempt++
-                        connect(currentHost!!, currentPort!!)
+                        connect(currentHost!!, currentPort!!, currentIsSecure)
                     }
                 } else if (state == WebSocketState.CONNECTED) {
                     reconnectAttempt = 0
@@ -57,9 +58,10 @@ class ConnectionRepository {
     val clientId: String?
         get() = comfyWebSocket?.clientId
 
-    fun connect(host: String, port: Int) {
+    fun connect(host: String, port: Int, isSecure: Boolean) {
         currentHost = host
         currentPort = port
+        currentIsSecure = isSecure
         isUserDisconnected = false
         
         val serverAddress = "$host:$port"
@@ -73,7 +75,7 @@ class ConnectionRepository {
             }
         }
 
-        comfyWebSocket = ComfyWebSocket(okHttpClient, serverAddress).also { ws ->
+        comfyWebSocket = ComfyWebSocket(okHttpClient, serverAddress, isSecure).also { ws ->
             scope.launch {
                 ws.connectionState.collect { state ->
                     _connectionState.value = state
