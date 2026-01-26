@@ -58,6 +58,7 @@ fun WorkflowListScreen(
     val serverWorkflows by viewModel.serverWorkflows.collectAsState()
     var showImportDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf<WorkflowEntity?>(null) }
+    var showDeleteDialog by remember { mutableStateOf<WorkflowEntity?>(null) }
 
     Scaffold(
         topBar = {
@@ -103,7 +104,7 @@ fun WorkflowListScreen(
                     ) { workflow ->
                         WorkflowItem(
                             workflow = workflow,
-                            onDelete = { viewModel.deleteWorkflow(workflow) },
+                            onDelete = { showDeleteDialog = workflow },
                             onRename = { showRenameDialog = workflow },
                             onClick = { onWorkflowValidation(workflow) }
                         )
@@ -172,6 +173,32 @@ fun WorkflowListScreen(
             },
             dismissButton = {
                 androidx.compose.material3.TextButton(onClick = { showRenameDialog = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    showDeleteDialog?.let { workflow ->
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = null },
+            title = { Text("Delete Workflow") },
+            text = { Text("Are you sure you want to delete '${workflow.name}'? This action cannot be undone.") },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        viewModel.deleteWorkflow(workflow)
+                        showDeleteDialog = null
+                    },
+                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showDeleteDialog = null }) {
                     Text("Cancel")
                 }
             }
