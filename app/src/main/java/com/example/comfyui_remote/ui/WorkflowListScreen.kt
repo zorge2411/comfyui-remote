@@ -44,6 +44,10 @@ import com.example.comfyui_remote.MainViewModel
 import com.example.comfyui_remote.data.WorkflowEntity
 import com.example.comfyui_remote.network.ServerWorkflowFile
 
+// Reusable date formatter to avoid instantiation on every recomposition
+private val DATE_FORMATTER = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd", java.util.Locale.getDefault())
+    .withZone(java.time.ZoneId.systemDefault())
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkflowListScreen(
@@ -93,7 +97,10 @@ fun WorkflowListScreen(
                             )
                         }
                     }
-                    items(workflows) { workflow ->
+                    items(
+                        items = workflows,
+                        key = { it.id }
+                    ) { workflow ->
                         WorkflowItem(
                             workflow = workflow,
                             onDelete = { viewModel.deleteWorkflow(workflow) },
@@ -111,7 +118,10 @@ fun WorkflowListScreen(
                                  color = MaterialTheme.colorScheme.primary
                              )
                         }
-                        items(serverWorkflows) { serverFile ->
+                        items(
+                            items = serverWorkflows,
+                            key = { it.path ?: it.hashCode() }
+                        ) { serverFile ->
                             ServerWorkflowItem(
                                 serverFile = serverFile,
                                 onClick = {
@@ -194,7 +204,7 @@ fun WorkflowItem(
                 androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "Created: ${java.text.SimpleDateFormat("yyyy-MM-dd").format(java.util.Date(workflow.createdAt))}",
+                        text = "Created: ${DATE_FORMATTER.format(java.time.Instant.ofEpochMilli(workflow.createdAt))}",
                         style = MaterialTheme.typography.bodySmall
                     )
                     
