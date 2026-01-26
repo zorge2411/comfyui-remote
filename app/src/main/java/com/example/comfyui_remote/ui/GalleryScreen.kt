@@ -36,6 +36,9 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import java.io.File
+import coil.imageLoader
+import kotlinx.coroutines.flow.collect
+import androidx.compose.runtime.snapshotFlow
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
@@ -185,7 +188,42 @@ fun GalleryScreen(
                     style = MaterialTheme.typography.bodyLarge
                 )
             } else {
+                val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+                val isScrolling by remember { derivedStateOf { gridState.isScrollInProgress } }
+                val context = LocalContext.current
+                val imageLoader = context.imageLoader
+                
+                LaunchedEffect(gridState.firstVisibleItemIndex) {
+                    snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+                        .collect { lastIndex ->
+                            if (lastIndex != null) {
+                                val preloadCount = 12 // Preload 4 rows
+                                val start = lastIndex + 1
+                                val end = (start + preloadCount).coerceAtMost(mediaList.size - 1)
+                                
+                                if (start <= end) {
+                                    val screenWidth = context.resources.displayMetrics.widthPixels
+                                    val targetSize = screenWidth / 3
+                                    
+                                    for (i in start..end) {
+                                        val item = mediaList[i]
+                                        val url = "http://${item.serverHost}:${item.serverPort}/view?filename=${item.fileName}${if (item.subfolder != null) "&subfolder=${item.subfolder}" else ""}&type=${item.serverType}"
+                                        
+                                        val request = coil.request.ImageRequest.Builder(context)
+                                            .data(url)
+                                            .size(targetSize)
+                                            .precision(coil.size.Precision.EXACT)
+                                            .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
+                                            .build()
+                                        imageLoader.enqueue(request)
+                                    }
+                                }
+                            }
+                        }
+                }
+
                 LazyVerticalGrid(
+                    state = gridState,
                     columns = GridCells.Fixed(3),
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(4.dp)
@@ -212,6 +250,7 @@ fun GalleryScreen(
                                     onMediaClick(item)
                                 }
                             },
+                            isScrolling = isScrolling,
                             sharedTransitionScope = sharedTransitionScope,
                             animatedVisibilityScope = animatedVisibilityScope
                         )
@@ -248,11 +287,11 @@ fun GalleryItem(
     currentPort: String,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    isScrolling: Boolean,
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: AnimatedVisibilityScope?
 ) {
-    // Construct URL: http://{host}:{port}/view?filename={fileName}&subfolder={subfolder}&type={serverType}
-    // Memoize the request to avoid rebuilding on every recomposition
+    // Construct URL
     val context = LocalContext.current
     val imageRequest = remember(item.serverHost, item.serverPort, item.fileName, item.subfolder, item.serverType, isSecure, currentHost, currentPort) {
         val portInt = currentPort.toIntOrNull() ?: 8188
@@ -268,6 +307,8 @@ fun GalleryItem(
             .data(url)
             .crossfade(true)
             .size(targetSize)
+            .precision(coil.size.Precision.EXACT)
+            .bitmapConfig(android.graphics.Bitmap.Config.RGB_565) // 50% memory saving for thumbs
             .build()
     }
 
@@ -293,7 +334,8 @@ fun GalleryItem(
                 modifier = Modifier
                     .fillMaxSize()
                     .let { modifier ->
-                        if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                         // ONLY apply shared element if NOT scrolling to ensure 60fps
+                         if (!isScrolling && sharedTransitionScope != null && animatedVisibilityScope != null) {
                             with(sharedTransitionScope) {
                                 modifier.sharedElement(
                                     state = rememberSharedContentState(key = "image-${item.id}"),

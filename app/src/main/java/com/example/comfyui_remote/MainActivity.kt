@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -40,7 +41,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.NavType
@@ -254,6 +257,18 @@ fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
         }
     }
 
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    val connectAction = {
+        keyboardController?.hide()
+        if (connectionState == WebSocketState.CONNECTED) {
+            viewModel.disconnect()
+        } else {
+            viewModel.saveConnection() // Persist
+            viewModel.connect()
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -276,7 +291,10 @@ fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
             value = host,
             onValueChange = { viewModel.updateHost(it) },
             label = { Text("Host IP (e.g. 192.168.1.10)") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { connectAction() })
         )
         
         Spacer(modifier = Modifier.height(8.dp))
@@ -285,8 +303,10 @@ fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
             value = port,
             onValueChange = { viewModel.updatePort(it) },
             label = { Text("Port (Default: 8188)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { connectAction() }),
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -312,14 +332,7 @@ fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = {
-                  if (connectionState == WebSocketState.CONNECTED) {
-                      viewModel.disconnect()
-                  } else {
-                      viewModel.saveConnection() // Persist
-                      viewModel.connect()
-                  }
-            },
+            onClick = connectAction,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(if (connectionState == WebSocketState.CONNECTED) "Disconnect" else "Connect")

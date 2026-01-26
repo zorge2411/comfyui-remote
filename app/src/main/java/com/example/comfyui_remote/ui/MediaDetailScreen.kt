@@ -229,16 +229,17 @@ fun MediaDetailScreen(
                                     offsetY = 0f // Reset
                                 }
                             },
-                            imageModifier = Modifier.let { modifier ->
-                                if (sharedTransitionScope != null && animatedVisibilityScope != null) {
-                                    with(sharedTransitionScope) {
-                                        modifier.sharedElement(
-                                            state = rememberSharedContentState(key = "image-${item.id}"),
-                                            animatedVisibilityScope = animatedVisibilityScope
-                                        )
+                            imageModifier = Modifier
+                                    .let { modifier ->
+                                        if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                                            with(sharedTransitionScope) {
+                                                modifier.sharedElement(
+                                                    state = rememberSharedContentState(key = "image-${item.id}"),
+                                                    animatedVisibilityScope = animatedVisibilityScope
+                                                )
+                                            }
+                                        } else modifier
                                     }
-                                } else modifier
-                            }
                         )
                     }
                 }

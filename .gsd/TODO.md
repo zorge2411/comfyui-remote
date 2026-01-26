@@ -16,3 +16,5 @@
 - [x] add button to add image to gallery `low` — 2026-01-24
 - [x] progress indicator when running workflows (see API_REFERENCE.md) `medium` — 2026-01-24
 - [ ] add camera option to add image function on gallery page `low` — 2026-01-24
+- [x] when pressing the 'enter' key on the keyboard on connection screen - connect to server instead of making a new line in ip address field `medium` — 2026-01-25
+- [x] minimize keyboard when hitting enter on connection screen `low` — 2026-01-25

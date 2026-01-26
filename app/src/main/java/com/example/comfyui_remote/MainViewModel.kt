@@ -283,20 +283,7 @@ class MainViewModel(
     private val _serverWorkflows = MutableStateFlow<List<ServerWorkflowFile>>(emptyList())
     val serverWorkflows: StateFlow<List<ServerWorkflowFile>> = _serverWorkflows.asStateFlow()
 
-    fun fetchServerWorkflows() {
-        viewModelScope.launch {
-            _isSyncing.value = true
-            try {
-                val response = buildApiService().getUserData(dir = "workflows")
-                
-                _serverWorkflows.value = response
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                _isSyncing.value = false
-            }
-        }
-    }
+
 
 
     fun importServerWorkflow(serverFile: ServerWorkflowFile, onSuccess: (WorkflowEntity) -> Unit) {
@@ -305,7 +292,7 @@ class MainViewModel(
             try {
                 val fullPath = serverFile.fullpath ?: return@launch
                 val api = buildApiService()
-                val json = api.getFileContent("userdata/$fullPath")
+                val json = api.getFileContent("api/userdata/$fullPath")
                 
 
 
@@ -548,101 +535,132 @@ class MainViewModel(
         }
     }
     
-    fun syncHistory() {
+    fun fetchServerWorkflows() {
         viewModelScope.launch {
             _isSyncing.value = true
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 try {
-                    // Optimization: Fetch all IDs first to avoid duplicate inserts
-                val existingIds = mediaRepository.getAllPromptIds().toSet()
-                
-                // Get history raw json
-                val history = buildApiService().getHistory()
-                
-                val newMediaItems = mutableListOf<com.example.comfyui_remote.data.GeneratedMediaEntity>()
+                    val response = buildApiService().getUserData(dir = "workflows")
+                    _serverWorkflows.value = response
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                } finally {
+                    _isSyncing.value = false
+                }
+            }
+        }
+    }
 
-                // Iterate
-                history.entrySet().forEach { (executionId, element) ->
-                    // Attempt to sync all history items to fill gaps from previous partial syncs
-                    // OnConflictStrategy.IGNORE handles duplicates efficiently.
-
-                    if (element.isJsonObject) {
-                        val item = element.asJsonObject
+    fun syncHistory() {
+        viewModelScope.launch {
+            _isSyncing.value = true
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                val startTime = System.currentTimeMillis()
+                var parsedCount = 0
+                var skippedCount = 0
+                try {
+                    val existingIds = mediaRepository.getAllPromptIds().toSet()
+                    val responseBody = buildApiService().getHistory()
+                    
+                    val newMediaItems = mutableListOf<com.example.comfyui_remote.data.GeneratedMediaEntity>()
+                    val gson = com.google.gson.Gson()
+                    val reader = com.google.gson.stream.JsonReader(responseBody.charStream())
+                    
+                    reader.beginObject()
+                    while (reader.hasNext()) {
+                        val executionId = reader.nextName()
                         
-                        if (item.has("prompt")) {
-                            val promptElement = item.get("prompt")
+                        if (existingIds.contains(executionId)) {
+                            reader.skipValue()
+                            skippedCount++
+                            continue
+                        }
+                        
+                        val element = gson.fromJson<com.google.gson.JsonObject>(reader, com.google.gson.JsonObject::class.java)
+                        parsedCount++
+                        
+                        // Periodic yield to prevent thread starvation if processing is heavy
+                        if (parsedCount % 10 == 0) kotlinx.coroutines.yield()
+                        
+                        if (element != null && element.isJsonObject) {
+                            val item = element.asJsonObject
                             
-                            var workflowJson: String? = null
-                            
-                            if (promptElement.isJsonArray) {
-                                val arr = promptElement.asJsonArray
-                                if (arr.size() >= 3) {
-                                    workflowJson = arr.get(2).toString() // The node graph
-                                }
-                            } else if (promptElement.isJsonObject) {
-                                workflowJson = promptElement.toString()
-                            }
-                            
-                            if (workflowJson != null) {
-                                val name = extractNameFromHistoryItem(item, executionId)
+                            if (item.has("prompt")) {
+                                val promptElement = item.get("prompt")
+                                var workflowJson: String? = null
                                 
-                                val hostParts = _serverAddress.value.split(":")
-                                val host = hostParts.getOrNull(0) ?: ""
-                                val port = hostParts.getOrNull(1)?.toIntOrNull() ?: 8188
+                                if (promptElement.isJsonArray) {
+                                    val arr = promptElement.asJsonArray
+                                    if (arr.size() >= 3) {
+                                        workflowJson = arr.get(2).toString()
+                                    }
+                                } else if (promptElement.isJsonObject) {
+                                    workflowJson = promptElement.toString()
+                                }
+                                
+                                if (workflowJson != null) {
+                                    val name = extractNameFromHistoryItem(item, executionId)
+                                    val hostParts = _serverAddress.value.split(":")
+                                    val host = hostParts.getOrNull(0) ?: ""
+                                    val port = hostParts.getOrNull(1)?.toIntOrNull() ?: 8188
 
-                                // Extract filename from outputs if possible
-                                if (item.has("outputs")) {
-                                    val outputs = item.getAsJsonObject("outputs")
-                                    outputs.entrySet().forEach { (_, nodeOutput) ->
-                                        if (nodeOutput.isJsonObject) {
-                                            val out = nodeOutput.asJsonObject
-                                            if (out.has("images")) {
-                                                val images = out.getAsJsonArray("images")
-                                                images.forEach { imgElement ->
-                                                    val img = imgElement.asJsonObject
-                                                    val filename = img.get("filename").asString
-                                                    val subfolder = if (img.has("subfolder")) img.get("subfolder").asString else null
-                                                    
-                                                    val extension = filename.substringAfterLast('.', "").lowercase()
-                                                    val isVideo = extension in listOf("mp4", "gif", "webm", "mkv")
-                                                    val mediaType = if (isVideo) "VIDEO" else "IMAGE"
+                                    if (item.has("outputs")) {
+                                        val outputs = item.getAsJsonObject("outputs")
+                                        outputs.entrySet().forEach { (_, nodeOutput) ->
+                                            if (nodeOutput.isJsonObject) {
+                                                val out = nodeOutput.asJsonObject
+                                                if (out.has("images")) {
+                                                    val images = out.getAsJsonArray("images")
+                                                    images.forEach { imgElement ->
+                                                        val img = imgElement.asJsonObject
+                                                        val filename = img.get("filename").asString
+                                                        val subfolder = if (img.has("subfolder")) img.get("subfolder").asString else null
+                                                        
+                                                        val extension = filename.substringAfterLast('.', "").lowercase()
+                                                        val isVideo = extension in listOf("mp4", "gif", "webm", "mkv")
+                                                        val mediaType = if (isVideo) "VIDEO" else "IMAGE"
 
-                                                    newMediaItems.add(
-                                                        com.example.comfyui_remote.data.GeneratedMediaEntity(
-                                                            workflowName = name,
-                                                            fileName = filename,
-                                                            subfolder = subfolder,
-                                                            serverHost = host,
-                                                            serverPort = port,
-                                                            mediaType = mediaType,
-                                                            promptJson = workflowJson,
-                                                            promptId = executionId
+                                                        newMediaItems.add(
+                                                            com.example.comfyui_remote.data.GeneratedMediaEntity(
+                                                                workflowName = name,
+                                                                fileName = filename,
+                                                                subfolder = subfolder,
+                                                                serverHost = host,
+                                                                serverPort = port,
+                                                                mediaType = mediaType,
+                                                                promptJson = workflowJson,
+                                                                promptId = executionId
+                                                            )
                                                         )
-                                                    )
+                                                    }
                                                 }
                                             }
                                         }
                                     }
                                 }
-
-                                // Loop handled above, no fallback insert needed
                             }
                         }
                     }
+                    reader.endObject()
+                    reader.close()
+                    responseBody.close()
+                    
+                    if (newMediaItems.isNotEmpty()) {
+                        mediaRepository.insert(newMediaItems)
+                    }
+                    
+                    val duration = System.currentTimeMillis() - startTime
+                    android.util.Log.d("SyncHistory", "Sync complete in ${duration}ms. Skipped: $skippedCount, Parsed: $parsedCount, Inserted: ${newMediaItems.size}")
+                    
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                } finally {
+                    _isSyncing.value = false
                 }
-                
-                if (newMediaItems.isNotEmpty()) {
-                    mediaRepository.insert(newMediaItems)
-                }
-                
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                _isSyncing.value = false
             }
         }
     }
-}
+
 
     private fun extractNameFromHistoryItem(item: com.google.gson.JsonObject, executionId: String): String {
         try {
@@ -797,7 +815,7 @@ class MainViewModel(
             _port.value = savedPort.toString()
             _isSecure.value = savedIsSecure
             _saveFolderUri.value = userPreferencesRepository.saveFolderUri.first()
-            _saveFolderUri.value = userPreferencesRepository.saveFolderUri.first()
+
             updateServerAddressFull()
 
             // Backfill baseModelName

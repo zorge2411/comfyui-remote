@@ -1,6 +1,6 @@
 
 import os
-from PIL import Image
+from PIL import Image, ImageEnhance
 
 def generate_icons(source_path, res_dir):
     """
@@ -20,6 +20,39 @@ def generate_icons(source_path, res_dir):
         # Load source image
         img = Image.open(source_path)
         print(f"Loaded source image: {source_path} ({img.size})")
+
+        # LIGHTEN THE ICON (User Request II)
+        # Boost Brightness further
+        enhancer = ImageEnhance.Brightness(img)
+        img = enhancer.enhance(1.6) # +60% Brightness
+        
+        # ADD MORE COLORS (User Request)
+        # Boost Saturation heavily to bring out the "neon" vibe
+        enhancer_col = ImageEnhance.Color(img)
+        img = enhancer_col.enhance(1.8) # +80% Saturation
+        
+        # Increase Contrast to defining edges
+        enhancer_con = ImageEnhance.Contrast(img)
+        img = enhancer_con.enhance(1.2)
+        
+        # REMOVE SQUARE BACKGROUND (User Request)
+        # Convert to RGBA if not already
+        img = img.convert("RGBA")
+        
+        # Get pixel data
+        pixels = img.load()
+        width, height = img.size
+        
+        # Replace dark background with transparency
+        # Threshold: pixels darker than this are considered background
+        threshold = 40  # Adjust if needed
+        
+        for y in range(height):
+            for x in range(width):
+                r, g, b, a = pixels[x, y]
+                # If pixel is very dark (background), make it transparent
+                if r < threshold and g < threshold and b < threshold:
+                    pixels[x, y] = (r, g, b, 0)  # Set alpha to 0
 
         # Process standard launcher icon
         for folder, size in densities.items():

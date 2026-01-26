@@ -312,3 +312,36 @@
 
 - [x] Build Successful
 - [ ] Visual Verification (Manual)
+
+### Phase 55: Connect on Enter Key
+
+**Status**: ✅ Done
+**Objective**: Improve the connection screen UX by ensuring the 'Enter' key triggers the connection action (or moves focus) instead of creating a new line in the IP address field.
+
+**Tasks**:
+
+- [x] Create Plan
+- [x] Update ConnectionScreen Input Fields
+- [x] Verify Behavior
+
+**Verification**:
+
+- [x] pressing Enter on IP field triggers Connect
+- [x] pressing Enter on Port field triggers Connect
+- [x] No newlines in IP field
+
+### Phase 56: Keyboard Management UX
+
+**Status**: ✅ Done
+**Objective**: Ensure the software keyboard is dismissed when the 'Connect' action is triggered from the keyboard or the button, preventing UI overlap and improving visibility during the connection state.
+
+**Tasks**:
+
+- [x] Create Plan
+- [x] Implement Keyboard Dismissal Logic
+- [x] Verify Behavior
+
+**Verification**:
+
+- [x] Pressing Enter on IP/Port field dismisses the keyboard.
+- [x] Clicking the 'Connect' button dismisses the keyboard.

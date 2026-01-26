@@ -19,7 +19,7 @@ interface ComfyApiService {
     suspend fun queuePrompt(@Body prompt: PromptRequest): PromptResponse
     
     @GET("history")
-    suspend fun getHistory(): JsonObject
+    suspend fun getHistory(): okhttp3.ResponseBody
 
     @GET("history/{prompt_id}")
     suspend fun getHistory(@Path("prompt_id") promptId: String): JsonObject
