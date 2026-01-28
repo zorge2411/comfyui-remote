@@ -4,7 +4,10 @@ import androidx.room.*
 
 @Entity(
     tableName = "generated_media",
-    indices = [Index(value = ["promptId", "fileName"], unique = true)]
+    indices = [
+        Index(value = ["promptId", "fileName"], unique = true),
+        Index(value = ["timestamp"], name = "index_generated_media_timestamp")
+    ]
 )
 data class GeneratedMediaEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
