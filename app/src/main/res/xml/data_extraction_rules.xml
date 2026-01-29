@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
-        <include domain="root" path="."/>
         <include domain="database" path="."/>
         <include domain="sharedpref" path="."/>
         <include domain="external" path="."/>
+        <!-- Sentinel: Exclude sensitive configuration and history from cloud backups -->
+        <exclude domain="database" path="comfy_database"/>
+        <exclude domain="database" path="comfy_database-wal"/>
+        <exclude domain="database" path="comfy_database-shm"/>
+        <exclude domain="file" path="datastore/settings.preferences_pb"/>
     </cloud-backup>
     <device-transfer>
         <include domain="root" path="."/>

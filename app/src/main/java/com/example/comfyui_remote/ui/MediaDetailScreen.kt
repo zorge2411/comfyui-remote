@@ -45,6 +45,10 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 
+// Reusable date formatter to avoid instantiation on every recomposition
+private val DATE_TIME_FORMATTER = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
+    .withZone(java.time.ZoneId.systemDefault())
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun MediaDetailScreen(
@@ -267,7 +271,7 @@ fun MediaDetailScreen(
                             DetailRow("Workflow", item.workflowName)
                             DetailRow("Type", item.mediaType)
                             DetailRow("Server", "${item.serverHost}:${item.serverPort}")
-                            DetailRow("Date", java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(java.util.Date(item.timestamp)))
+                            DetailRow("Date", DATE_TIME_FORMATTER.format(java.time.Instant.ofEpochMilli(item.timestamp)))
                             
                             if (item.subfolder != null) {
                                 DetailRow("Subfolder", item.subfolder)

@@ -16,16 +16,20 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.comfyui_remote.MainViewModel
 import com.example.comfyui_remote.data.GeneratedMediaListing
-import java.text.SimpleDateFormat
+import java.time.format.DateTimeFormatter
+import java.time.Instant
+import java.time.ZoneId
 import java.util.*
+
+// Reusable date formatter to avoid instantiation on every recomposition
+private val DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.getDefault())
+    .withZone(ZoneId.systemDefault())
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(viewModel: MainViewModel) {
     val historyList by viewModel.allMedia.collectAsState(initial = emptyList())
     val isSyncing by viewModel.isSyncing.collectAsState()
-    // Sort descending by timestamp
-    val sortedHistory = historyList.sortedByDescending { it.timestamp }
 
     Scaffold(
         topBar = {
@@ -41,7 +45,7 @@ fun HistoryScreen(viewModel: MainViewModel) {
                 .padding(paddingValues)
                 .fillMaxSize()
         ) {
-            if (sortedHistory.isEmpty()) {
+            if (historyList.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -52,7 +56,10 @@ fun HistoryScreen(viewModel: MainViewModel) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(sortedHistory) { item ->
+                    items(
+                        items = historyList,
+                        key = { it.id }
+                    ) { item ->
                         HistoryItemCard(
                             item = item,
                             onClick = { viewModel.loadHistory(item) }
@@ -99,7 +106,7 @@ fun HistoryItemCard(
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
-                    text = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(item.timestamp)),
+                    text = DATE_FORMATTER.format(Instant.ofEpochMilli(item.timestamp)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.secondary
                 )

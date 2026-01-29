@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -43,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
@@ -102,6 +104,18 @@ fun DynamicFormScreen(
                                 }
                             },
                             label = { Text("${inputField.nodeTitle} (${inputField.fieldName})") },
+                            minLines = 3,
+                            trailingIcon = if (inputField.value.isNotEmpty()) {
+                                {
+                                    IconButton(onClick = {
+                                        inputs = inputs.toMutableList().also {
+                                            it[index] = inputField.copy(value = "")
+                                        }
+                                    }) {
+                                        Icon(Icons.Default.Clear, contentDescription = "Clear text")
+                                    }
+                                }
+                            } else null,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -115,7 +129,7 @@ fun DynamicFormScreen(
                                 }
                             },
                             label = { Text("${inputField.nodeTitle} (${inputField.fieldName})") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -129,7 +143,7 @@ fun DynamicFormScreen(
                                 }
                             },
                             label = { Text("${inputField.nodeTitle} (Seed)") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                             modifier = Modifier.fillMaxWidth(),
                             trailingIcon = {
                                 IconButton(onClick = {

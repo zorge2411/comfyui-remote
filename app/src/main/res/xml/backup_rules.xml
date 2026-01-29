@@ -3,4 +3,12 @@
     <!-- Rules for full backup. For more details,
          see the Auto Backup documentation:
          https://developer.android.com/guide/topics/data/autobackup.html -->
+    <exclude domain="database" path="comfy_database"/>
+    <exclude domain="database" path="comfy_database-wal"/>
+    <exclude domain="database" path="comfy_database-shm"/>
+    <exclude domain="file" path="datastore/settings.preferences_pb"/>
+    <!-- Exclude sensitive configuration and temp files from auto-backup -->
+    <exclude domain="sharedpref" path="."/>
+    <exclude domain="root" path="."/>
+    <exclude domain="external" path="."/>
 </full-backup-content>
