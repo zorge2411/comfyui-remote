@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -138,17 +139,19 @@ fun ImageSelector(
                     contentScale = ContentScale.Crop
                 )
                 
-                // Edit overlay
+                // Edit badge
                 Box(
                     modifier = Modifier
-                        .matchParentSize()
-                        .background(Color.Black.copy(alpha = 0.3f)),
-                    contentAlignment = Alignment.Center
+                        .align(Alignment.BottomEnd)
+                        .padding(8.dp)
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f), CircleShape)
+                        .padding(8.dp)
                 ) {
                    Icon(
                        imageVector = Icons.Default.Edit,
                        contentDescription = "Change Image",
-                       tint = Color.White
+                       modifier = Modifier.size(20.dp),
+                       tint = MaterialTheme.colorScheme.onSurface
                    )
                 }
             } else {
