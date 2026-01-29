@@ -39,6 +39,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.Surface
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.comfyui_remote.MainViewModel
 import com.example.comfyui_remote.data.WorkflowEntity
@@ -56,6 +60,8 @@ fun WorkflowListScreen(
 ) {
     val workflows by viewModel.allWorkflows.collectAsState(initial = emptyList())
     val serverWorkflows by viewModel.serverWorkflows.collectAsState()
+    val isSyncing by viewModel.isSyncing.collectAsState()
+    val importStatus by viewModel.importStatus.collectAsState()
     var showImportDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf<WorkflowEntity?>(null) }
     var showDeleteDialog by remember { mutableStateOf<WorkflowEntity?>(null) }
@@ -132,6 +138,30 @@ fun WorkflowListScreen(
                                 }
                             )
                         }
+                    }
+                }
+            }
+            
+            // Loading overlay when importing/syncing
+            if (isSyncing) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Color.Black.copy(alpha = 0.5f)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            importStatus.ifEmpty { "Importing workflow..." },
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
                     }
                 }
             }

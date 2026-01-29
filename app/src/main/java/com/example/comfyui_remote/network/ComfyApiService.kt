@@ -19,7 +19,7 @@ interface ComfyApiService {
     suspend fun queuePrompt(@Body prompt: PromptRequest): PromptResponse
     
     @GET("history")
-    suspend fun getHistory(): okhttp3.ResponseBody
+    suspend fun getHistory(@Query("max_items") maxItems: Int? = null): okhttp3.ResponseBody
 
     @GET("history/{prompt_id}")
     suspend fun getHistory(@Path("prompt_id") promptId: String): JsonObject
@@ -29,6 +29,10 @@ interface ComfyApiService {
     @GET("object_info")
     suspend fun getObjectInfo(): JsonObject
 
+    // Raw version - returns unparsed response body for manual parsing on IO thread
+    @GET("object_info")
+    suspend fun getObjectInfoRaw(): okhttp3.ResponseBody
+
     @GET("api/userdata")
     suspend fun getUserData(
         @Query("dir") dir: String = "workflows",
@@ -37,6 +41,14 @@ interface ComfyApiService {
         @Query("full_info") fullInfo: Boolean = true
     ): List<ServerWorkflowFile>
 
+    // Fetches userdata content. 
+    // IMPORTANT: The 'path' parameter must be fully URL-encoded (including slashes) 
+    // to match the server's route definition for "/userdata/{file}".
+    // Example: "workflows/my_workflow.json" -> "workflows%2Fmy_workflow.json"
+    @GET("api/userdata/{path}")
+    suspend fun getUserDataContentPath(@Path("path", encoded = true) path: String): com.google.gson.JsonElement
+
+    // Legacy catch-all
     @GET("{path}")
     suspend fun getFileContent(@Path("path", encoded = true) path: String): com.google.gson.JsonElement
 

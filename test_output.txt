@@ -14,37 +14,33 @@
 > Task :app:processDebugManifest UP-TO-DATE
 > Task :app:processDebugManifestForPackage UP-TO-DATE
 > Task :app:processDebugResources UP-TO-DATE
+> Task :app:kspDebugKotlin UP-TO-DATE
+> Task :app:compileDebugKotlin UP-TO-DATE
 > Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:bundleDebugClassesToRuntimeJar UP-TO-DATE
+> Task :app:bundleDebugClassesToCompileJar UP-TO-DATE
+> Task :app:kspDebugUnitTestKotlin UP-TO-DATE
 > Task :app:preDebugUnitTestBuild UP-TO-DATE
 > Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
-> Task :app:kspDebugKotlin
-
-> Task :app:compileDebugKotlin
-w: file:///D:/Antigravity/ComfyUI%20frontend/app/src/main/java/com/example/comfyui_remote/MainActivity.kt:104:64 'val Icons.Filled.List: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.List.
-w: file:///D:/Antigravity/ComfyUI%20frontend/app/src/main/java/com/example/comfyui_remote/MainViewModel.kt:799:66 'data class ModelInput : InputField' is deprecated. Use SelectionInput for generic dropdowns.
-w: file:///D:/Antigravity/ComfyUI%20frontend/app/src/main/java/com/example/comfyui_remote/MainViewModel.kt:800:61 'data class ModelInput : InputField' is deprecated. Use SelectionInput for generic dropdowns.
-w: file:///D:/Antigravity/ComfyUI%20frontend/app/src/main/java/com/example/comfyui_remote/domain/WorkflowExecutor.kt:34:32 'data class ModelInput : InputField' is deprecated. Use SelectionInput for generic dropdowns.
-w: file:///D:/Antigravity/ComfyUI%20frontend/app/src/main/java/com/example/comfyui_remote/domain/WorkflowParser.kt:61:48 'constructor(nodeId: String, fieldName: String, value: String, nodeTitle: String): InputField.ModelInput' is deprecated. Use SelectionInput for generic dropdowns.
-w: file:///D:/Antigravity/ComfyUI%20frontend/app/src/main/java/com/example/comfyui_remote/ui/MediaDetailScreen.kt:108:48 'val Icons.Filled.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.ArrowBack.
-w: file:///D:/Antigravity/ComfyUI%20frontend/app/src/main/java/com/example/comfyui_remote/ui/theme/Theme.kt:54:20 'var statusBarColor: Int' is deprecated. Deprecated in Java.
-
-> Task :app:compileDebugJavaWithJavac UP-TO-DATE
-Java compiler version 21 has deprecated support for compiling with source/target version 8.
-Try one of the following options:
-    1. [Recommended] Use Java toolchain with a lower language version
-    2. Set a higher source/target version
-    3. Use a lower version of the JDK running the build (if you're not using Java toolchain)
-For more details on how to configure these settings, see https://developer.android.com/build/jdks.
-To suppress this warning, set android.javaCompile.suppressSourceTargetDeprecationWarning=true in gradle.properties.
-
 > Task :app:processDebugJavaRes UP-TO-DATE
-> Task :app:bundleDebugClassesToRuntimeJar
-> Task :app:bundleDebugClassesToCompileJar
-> Task :app:kspDebugUnitTestKotlin
-> Task :app:compileDebugUnitTestKotlin
-> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
-> Task :app:processDebugUnitTestJavaRes UP-TO-DATE
-> Task :app:testDebugUnitTest
 
-BUILD SUCCESSFUL in 11s
-25 actionable tasks: 7 executed, 18 up-to-date
+> Task :app:compileDebugUnitTestKotlin FAILED
+e: file:///D:/Antigravity/ComfyUI%20frontend/app/src/test/java/com/example/comfyui_remote/domain/GraphToApiConverterTest.kt:88:45 Argument type mismatch: actual type is 'com.example.comfyui_remote.domain.GraphToApiConverter.ConversionResult', but 'kotlin.String!' was expected.
+e: file:///D:/Antigravity/ComfyUI%20frontend/app/src/test/java/com/example/comfyui_remote/domain/GraphToApiConverterTest.kt:239:45 Argument type mismatch: actual type is 'com.example.comfyui_remote.domain.GraphToApiConverter.ConversionResult', but 'kotlin.String!' was expected.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugUnitTestKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 1s
+23 actionable tasks: 1 executed, 22 up-to-date

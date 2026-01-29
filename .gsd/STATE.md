@@ -3,15 +3,17 @@
 > **Updated**: 2026-01-29
 > **Milestone**: Milestone 3: Image Input Support
 >
-> - **Current Phase**: Phase 59 (Planned)
-> - **Task**: Ready for execution
-> - **Status**: 📋 Planning Complete
+> - **Current Phase**: Phase 59 (Complete)
+> - **Task**: Done
+> - **Status**: ✅ Phase 59 Completed (Multi-Server Selection)
 >
-> ## Phase 59 Plan Ready
+> ## Achieved in Phase 59
 >
-> - **Objective**: Add server IP address selection combo box (up to 5 saved servers)
-> - **Plan**: `59-PLAN.md` created with 3 tasks
-> - **Next Step**: `/execute 59`
+> - **Multi-Server Persistence**: Implemented `ServerProfile` list storage in `UserPreferencesRepository` using Gson for JSON serialization in DataStore.
+> - **Dropdown UI**: Replaced the plain text IP field with an `ExposedDropdownMenuBox` showing recently used servers.
+> - **Profile Management**: Added auto-save on successful connection and manual delete (garbage icon) in the dropdown list.
+> - **Intelligent Sorting**: New connections are automatically added to the top, maintaining a FIFO limit of 5 server profiles.
+
 >
 > ## Achieved in Phase 57
 >

@@ -386,18 +386,18 @@
 
 ### Phase 59: Server IP Address Selection
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Done
 **Objective**: Add a combo box to the connection screen allowing users to select from up to 5 saved server IP addresses, improving UX for users who connect to multiple ComfyUI servers.
 **Depends on**: Phase 58
 
 **Tasks**:
 
-- [ ] Create ServerProfile data class and update UserPreferencesRepository
-- [ ] Update MainViewModel with server profile state
-- [ ] Update ConnectionScreen UI with dropdown
+- [x] Create ServerProfile data class and update UserPreferencesRepository
+- [x] Update MainViewModel with server profile state
+- [x] Update ConnectionScreen UI with dropdown
 
 **Verification**:
 
-- [ ] Build succeeds
-- [ ] Dropdown shows saved servers, selection auto-fills fields
-- [ ] Max 5 servers maintained (FIFO)
+- [x] Build succeeds
+- [x] Dropdown shows saved servers, selection auto-fills fields
+- [x] Max 5 servers maintained (FIFO)

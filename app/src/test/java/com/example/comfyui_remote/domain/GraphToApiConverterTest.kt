@@ -84,8 +84,8 @@ class GraphToApiConverterTest {
             }
         """.trimIndent()
 
-        val apiJson = GraphToApiConverter.convert(graphJson, objectInfo)
-        val apiObj = JsonParser.parseString(apiJson).asJsonObject
+        val result = GraphToApiConverter.convert(graphJson, objectInfo)
+        val apiObj = JsonParser.parseString(result.json).asJsonObject
 
         assertTrue(apiObj.has("10"))
         assertTrue(apiObj.has("20"))
@@ -148,6 +148,63 @@ class GraphToApiConverterTest {
     }
 
     @Test
+    fun convert_SkipsNonExecutableNodes() {
+        val objectInfoJson = """
+            {
+                "CheckpointLoaderSimple": { "input": { "required": { "ckpt_name": [["v1.5.ckpt"], {}] } } }
+            }
+        """.trimIndent()
+        val objectInfo = ComfyObjectInfo(JsonParser.parseString(objectInfoJson).asJsonObject)
+
+        val graphJson = """
+            {
+                "nodes": [
+                    { "id": 1, "type": "CheckpointLoaderSimple", "widgets_values": ["v1.5.ckpt"] },
+                    { "id": 2, "type": "MarkdownNote", "widgets_values": ["This is a note"] },
+                    { "id": 3, "type": "Note", "widgets_values": ["Another note"] }
+                ],
+                "links": []
+            }
+        """.trimIndent()
+
+        val result = GraphToApiConverter.convert(graphJson, objectInfo)
+        val apiObj = JsonParser.parseString(result.json).asJsonObject
+
+        assertTrue("Should include CheckpointLoaderSimple", apiObj.has("1"))
+        assertFalse("Should skip MarkdownNote", apiObj.has("2"))
+        assertFalse("Should skip Note", apiObj.has("3"))
+    }
+
+    @Test
+    fun convert_IdentifiesMissingNodes() {
+        val objectInfoJson = """
+            {
+                "SafeNode": { "input": { "required": {} } }
+            }
+        """.trimIndent()
+        val objectInfo = ComfyObjectInfo(JsonParser.parseString(objectInfoJson).asJsonObject)
+
+        val graphJson = """
+            {
+                "nodes": [
+                    { "id": 1, "type": "SafeNode", "inputs": [], "widgets_values": [] },
+                    { "id": 2, "type": "MissingNodeClass", "inputs": [], "widgets_values": [] }
+                ],
+                "links": []
+            }
+        """.trimIndent()
+
+        val result = GraphToApiConverter.convert(graphJson, objectInfo)
+        val apiObj = JsonParser.parseString(result.json).asJsonObject
+
+        assertTrue(apiObj.has("1"))
+        // Current behavior: includes node even if missing. 
+        // Desired behavior: skip node if missing.
+        assertFalse("Should skip nodes with missing definitions", apiObj.has("2"))
+        assertTrue("Should report missing node type", result.missingNodes.contains("MissingNodeClass"))
+    }
+
+    @Test
     fun convert_PreservesNodeTitleInMeta() {
         val objectInfoJson = """
             {
@@ -178,8 +235,8 @@ class GraphToApiConverterTest {
             }
         """.trimIndent()
 
-        val apiJson = GraphToApiConverter.convert(graphJson, objectInfo)
-        val apiObj = JsonParser.parseString(apiJson).asJsonObject
+        val result = GraphToApiConverter.convert(graphJson, objectInfo)
+        val apiObj = JsonParser.parseString(result.json).asJsonObject
 
         // Check Node 1 (Has Title)
         assertTrue(apiObj.has("1"))
@@ -194,5 +251,38 @@ class GraphToApiConverterTest {
         val node2 = apiObj.getAsJsonObject("2")
         assertTrue("Node 2 should have _meta", node2.has("_meta"))
         assertEquals("SomeNode", node2.getAsJsonObject("_meta").get("title").asString)
+    }
+
+    @Test
+    fun convert_AllowKeyedInputsWithoutMetadata() {
+        val objectInfoJson = "{}" // Empty metadata
+        val objectInfo = ComfyObjectInfo(JsonParser.parseString(objectInfoJson).asJsonObject)
+
+        val graphJson = """
+            {
+                "nodes": [
+                    {
+                        "id": 1,
+                        "type": "KeyedNode",
+                        "inputs": {
+                            "text": "hello",
+                            "value": 123
+                        }
+                    }
+                ],
+                "links": []
+            }
+        """.trimIndent()
+
+        val result = GraphToApiConverter.convert(graphJson, objectInfo)
+        val apiObj = JsonParser.parseString(result.json).asJsonObject
+
+        assertTrue("Should include node even if metadata missing because it has keyed inputs", apiObj.has("1"))
+        val node1 = apiObj.getAsJsonObject("1")
+        assertEquals("KeyedNode", node1.get("class_type").asString)
+        val inputs = node1.getAsJsonObject("inputs")
+        assertEquals("hello", inputs.get("text").asString)
+        assertEquals(123, inputs.get("value").asInt)
+        assertTrue("Should still report as missing node for info purposes", result.missingNodes.contains("KeyedNode"))
     }
 }

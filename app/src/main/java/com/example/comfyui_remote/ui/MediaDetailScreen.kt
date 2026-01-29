@@ -88,6 +88,18 @@ fun MediaDetailScreen(
     
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val isSecure by viewModel.isSecure.collectAsState()
+    val currentHost by viewModel.host.collectAsState()
+    val currentPort by viewModel.port.collectAsState()
+
+    // Helper to build URL
+    fun buildMediaUrl(item: com.example.comfyui_remote.data.GeneratedMediaListing): String {
+        val portInt = currentPort.toIntOrNull() ?: 8188
+        val shouldUseSecure = isSecure && item.serverHost == currentHost && item.serverPort == portInt
+        val protocol = if (shouldUseSecure) "https" else "http"
+        return "$protocol://${item.serverHost}:${item.serverPort}/view?filename=${item.fileName}${if (item.subfolder != null) "&subfolder=${item.subfolder}" else ""}&type=${item.serverType}"
+    }
+
     val saveFolderUri by viewModel.saveFolderUri.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     
@@ -98,7 +110,6 @@ fun MediaDetailScreen(
     val handleBack = {
         onBack()
     }
-
     Scaffold(
         topBar = {
             // Fade top bar out when dragging
@@ -116,7 +127,7 @@ fun MediaDetailScreen(
                         // Share Action
                         IconButton(onClick = {
                             currentMedia?.let { item ->
-                                val url = "http://${item.serverHost}:${item.serverPort}/view?filename=${item.fileName}${if (item.subfolder != null) "&subfolder=${item.subfolder}" else ""}&type=output"
+                                val url = buildMediaUrl(item)
                                 scope.launch {
                                     com.example.comfyui_remote.utils.ShareUtils.downloadAndShare(context, url)
                                 }
@@ -149,7 +160,7 @@ fun MediaDetailScreen(
                                 onClick = {
                                     showMenu = false
                                     currentMedia?.let { item ->
-                                        val url = "http://${item.serverHost}:${item.serverPort}/view?filename=${item.fileName}${if (item.subfolder != null) "&subfolder=${item.subfolder}" else ""}&type=output"
+                                        val url = buildMediaUrl(item)
                                         scope.launch {
                                             com.example.comfyui_remote.utils.WallpaperUtils.setWallpaper(context, url)
                                         }
@@ -166,9 +177,9 @@ fun MediaDetailScreen(
                                         }
                                     } else {
                                         currentMedia?.let { item ->
-                                            val url = "http://${item.serverHost}:${item.serverPort}/view?filename=${item.fileName}${if (item.subfolder != null) "&subfolder=${item.subfolder}" else ""}&type=output"
+                                            val url = buildMediaUrl(item)
                                             scope.launch {
-                                                val success = com.example.comfyui_remote.utils.StorageUtils.saveMediaToFolder(
+                                                val success = com.example.comfyui_remote.utils. StorageUtils.saveMediaToFolder(
                                                     context = context,
                                                     url = url,
                                                     folderUri = saveFolderUri!!,
@@ -214,7 +225,7 @@ fun MediaDetailScreen(
                 userScrollEnabled = !isZoomed // Disable paging when zoomed
             ) { page ->
                 val item = mediaList[page]
-                val url = "http://${item.serverHost}:${item.serverPort}/view?filename=${item.fileName}${if (item.subfolder != null) "&subfolder=${item.subfolder}" else ""}&type=output"
+                val url = buildMediaUrl(item)
                 
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     if (item.mediaType == "VIDEO") {

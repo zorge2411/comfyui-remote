@@ -38,6 +38,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -246,6 +255,7 @@ fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
     val host by viewModel.host.collectAsState()
     val port by viewModel.port.collectAsState()
     val isSecure by viewModel.isSecure.collectAsState()
+    val serverProfiles by viewModel.serverProfiles.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
     val shouldNavigate by viewModel.shouldNavigateToWorkflows.collectAsState()
     
@@ -259,13 +269,38 @@ fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
 
     val keyboardController = LocalSoftwareKeyboardController.current
 
+    var hostError by remember { mutableStateOf<String?>(null) }
+    var portError by remember { mutableStateOf<String?>(null) }
+
     val connectAction = {
         keyboardController?.hide()
+        
+        // Reset errors
+        hostError = null
+        portError = null
+
         if (connectionState == WebSocketState.CONNECTED) {
             viewModel.disconnect()
         } else {
-            viewModel.saveConnection() // Persist
-            viewModel.connect()
+            // Validate
+            var hasError = false
+            if (host.isBlank()) {
+                hostError = "IP address is required"
+                hasError = true
+            }
+            
+            if (port.isBlank()) {
+                portError = "Port is required"
+                hasError = true
+            } else if (port.toIntOrNull() == null) {
+                portError = "Invalid port number"
+                hasError = true
+            }
+
+            if (!hasError) {
+                viewModel.saveConnection() // Persist
+                viewModel.connect()
+            }
         }
     }
 
@@ -287,22 +322,90 @@ fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        OutlinedTextField(
-            value = host,
-            onValueChange = { viewModel.updateHost(it) },
-            label = { Text("Host IP (e.g. 192.168.1.10)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { connectAction() })
-        )
+        var expanded by remember { mutableStateOf(false) }
+
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                value = host,
+                onValueChange = { 
+                    viewModel.updateHost(it)
+                    hostError = null 
+                },
+                label = { Text("Host IP (e.g. 192.168.1.10)") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(),
+                singleLine = true,
+                isError = hostError != null,
+                supportingText = if (hostError != null) { { Text(hostError!!) } } else null,
+                trailingIcon = {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                },
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { connectAction() })
+            )
+
+            if (serverProfiles.isNotEmpty()) {
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    serverProfiles.forEach { profile ->
+                        val label = if (profile.port != 8188 || profile.isSecure) {
+                             "${profile.host}:${profile.port}${if (profile.isSecure) " (secure)" else ""}"
+                        } else {
+                            profile.host
+                        }
+                        
+                        DropdownMenuItem(
+                            text = { 
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(text = label, modifier = Modifier.weight(1f))
+                                    IconButton(
+                                        onClick = { 
+                                            viewModel.deleteServerProfile(profile)
+                                        }
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Delete, 
+                                            contentDescription = "Delete Profile",
+                                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            },
+                            onClick = {
+                                viewModel.selectServerProfile(profile)
+                                expanded = false
+                            },
+                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                        )
+                    }
+                }
+            }
+        }
         
         Spacer(modifier = Modifier.height(8.dp))
         
         OutlinedTextField(
             value = port,
-            onValueChange = { viewModel.updatePort(it) },
+            onValueChange = { 
+                viewModel.updatePort(it)
+                portError = null
+            },
             label = { Text("Port (Default: 8188)") },
+            isError = portError != null,
+            supportingText = portError?.let { { Text(it) } },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { connectAction() }),
             modifier = Modifier.fillMaxWidth(),

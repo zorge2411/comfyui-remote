@@ -1,42 +1,96 @@
 package com.example.comfyui_remote.domain
 
+import com.example.comfyui_remote.data.ComfyObjectInfo
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.google.gson.Gson
 import java.util.Locale
 
 class WorkflowNormalizationService(private val workflowParser: WorkflowParser) {
 
-    fun normalize(name: String, rawJson: String, source: WorkflowSource): NormalizedWorkflow {
-        val jsonObject = try {
+    private val gson = Gson()
+
+    fun normalize(
+        name: String, 
+        rawJson: String, 
+        source: WorkflowSource,
+        objectInfo: JsonObject? = null,
+        existingMissingNodes: List<String> = emptyList()
+    ): NormalizedWorkflow {
+        var processedJson = try {
             JsonParser.parseString(rawJson).asJsonObject
         } catch (e: Exception) {
             JsonObject()
         }
 
-        // 1. Strip UI-specific weight/metadata from Workspace format if present
-        // ComfyUI Web workspaces often have keys like "extra_data", "nodes", "links", "groups", "config"
-        // But the API format (which we use for execution) is a flat map of nodes.
-        // We want to preserve the "API" part but maybe strip other bulk.
-        
-        val normalizedJson = if (jsonObject.has("nodes") && jsonObject.has("links")) {
-            // This is "Workspace" format. We might want to keep it as is if we eventually support a graph UI,
-            // but for Dynamic Form, we usually prefer the API format.
-            // However, the current app expects API format.
-            // For now, we store whatever we get, but we'll extract models from it.
-            rawJson
-        } else {
-            rawJson
+        var missingNodes = existingMissingNodes.toMutableList()
+
+        // 1. Convert Workspace Format to API Format if needed
+        if (processedJson.has("nodes") && processedJson.has("links") && objectInfo != null) {
+            try {
+                val conversionResult = GraphToApiConverter.convert(
+                    rawJson, 
+                    ComfyObjectInfo(objectInfo)
+                )
+                processedJson = JsonParser.parseString(conversionResult.json).asJsonObject
+                missingNodes.addAll(conversionResult.missingNodes)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // Fallback to original if conversion fails
+            }
         }
 
-        // 2. Extract Base Models
-        val baseModels = extractModels(rawJson)
+        // 2. Strip UI-specific metadata and clean node structure
+        val cleanedJson = stripUiMetadata(processedJson)
+        val cleanedJsonString = gson.toJson(cleanedJson)
+
+        // 3. Extract Base Models
+        val baseModels = extractModels(cleanedJsonString)
 
         return NormalizedWorkflow(
             name = name,
-            jsonContent = normalizedJson,
+            jsonContent = cleanedJsonString,
             source = source,
-            baseModels = baseModels
+            baseModels = baseModels,
+            missingNodes = missingNodes
         )
+    }
+
+    private fun stripUiMetadata(original: JsonObject): JsonObject {
+        val cleaned = JsonObject()
+        original.entrySet().forEach { (nodeId, element) ->
+            if (element.isJsonObject) {
+                val node = element.asJsonObject
+                val cleanedNode = JsonObject()
+
+                // Preserve only essential keys for API execution
+                if (node.has("class_type")) {
+                    cleanedNode.add("class_type", node.get("class_type"))
+                }
+                
+                if (node.has("inputs")) {
+                    cleanedNode.add("inputs", node.get("inputs"))
+                }
+
+                // Preserve and clean _meta (titles are useful for our UI)
+                if (node.has("_meta")) {
+                    val meta = node.getAsJsonObject("_meta")
+                    val cleanedMeta = JsonObject()
+                    if (meta.has("title")) {
+                        cleanedMeta.add("title", meta.get("title"))
+                    }
+                    if (cleanedMeta.size() > 0) {
+                        cleanedNode.add("_meta", cleanedMeta)
+                    }
+                }
+
+                cleaned.add(nodeId, cleanedNode)
+            } else {
+                // If it's some top-level non-node key in an API format (unusual but possible)
+                // we drop it unless it's clearly relevant.
+            }
+        }
+        return cleaned
     }
 
     private fun extractModels(json: String): List<String> {

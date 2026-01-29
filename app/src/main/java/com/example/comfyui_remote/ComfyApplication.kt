@@ -19,8 +19,30 @@ class ComfyApplication : Application(), coil.ImageLoaderFactory {
     // Global connection state
     val connectionRepository by lazy { ConnectionRepository() }
 
+    // Shared OkHttpClient for API and Image Loading
+    val okHttpClient by lazy {
+        okhttp3.OkHttpClient.Builder()
+            .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+            .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+            .addInterceptor { chain ->
+                val request = chain.request()
+                // Only log non-view requests to avoid log spam from images
+                if (!request.url.toString().contains("/view?")) {
+                    android.util.Log.d("API_DEBUG", "Sending request: ${request.method} ${request.url}")
+                }
+                val response = chain.proceed(request)
+                if (!request.url.toString().contains("/view?")) {
+                    android.util.Log.d("API_DEBUG", "Received response: ${response.code} for ${request.url}")
+                }
+                response
+            }
+            .build()
+    }
+
     override fun newImageLoader(): coil.ImageLoader {
         return coil.ImageLoader.Builder(this)
+            .okHttpClient(okHttpClient) // Use shared client
             .crossfade(true)
             .memoryCache {
                 coil.memory.MemoryCache.Builder(this)

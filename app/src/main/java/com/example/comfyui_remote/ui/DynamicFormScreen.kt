@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Alignment
@@ -72,6 +73,7 @@ fun DynamicFormScreen(
     var showNodeSheet by remember { mutableStateOf(false) }
 
     val executionStatus by viewModel.executionStatus.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
 
     Scaffold { paddingValues ->
         Column(
@@ -91,6 +93,56 @@ fun DynamicFormScreen(
                     Icon(Icons.Default.Info, contentDescription = "Workflow Architecture")
                 }
             }
+            
+            // Missing Nodes Warning
+            if (!workflow.missingNodes.isNullOrBlank()) {
+                androidx.compose.material3.Card(
+                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            "⚠️ Missing Nodes on Server",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Text(
+                            workflow.missingNodes,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+            }
+
+            // Detailed Error Message
+            if (executionStatus == ExecutionStatus.ERROR && errorMessage != null) {
+                androidx.compose.material3.Card(
+                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                        .clickable { viewModel.clearErrorMessage() }
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            "❌ Execution Error",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Text(
+                            errorMessage!!,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
 
             inputs.forEachIndexed { index, inputField ->

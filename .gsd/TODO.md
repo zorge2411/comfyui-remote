@@ -18,3 +18,5 @@
 - [ ] add camera option to add image function on gallery page `low` — 2026-01-24
 - [x] when pressing the 'enter' key on the keyboard on connection screen - connect to server instead of making a new line in ip address field `medium` — 2026-01-25
 - [x] minimize keyboard when hitting enter on connection screen `low` — 2026-01-25
+- [x] when connecting with empty ip/port the app crashes - fix `high` — 2026-01-26
+- [ ] add back button on workflow generation page `medium` — 2026-01-26

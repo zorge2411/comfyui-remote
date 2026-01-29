@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
+import retrofit2.HttpException
 
 import com.example.comfyui_remote.data.UserPreferencesRepository
 import kotlinx.coroutines.flow.first
@@ -69,6 +70,9 @@ class MainViewModel(
     val themeMode: StateFlow<Int> = userPreferencesRepository.themeMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
+    val serverProfiles: StateFlow<List<com.example.comfyui_remote.data.ServerProfile>> = userPreferencesRepository.serverProfiles
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     fun updateThemeMode(mode: Int) {
         viewModelScope.launch {
             userPreferencesRepository.saveThemeMode(mode)
@@ -106,6 +110,33 @@ class MainViewModel(
         viewModelScope.launch {
             val p = _port.value.toIntOrNull() ?: 8188
             userPreferencesRepository.saveConnectionDetails(_host.value, p, _isSecure.value)
+            
+            // Phase 59: Save to profiles list
+            userPreferencesRepository.saveServerProfile(
+                com.example.comfyui_remote.data.ServerProfile(
+                    host = _host.value,
+                    port = p,
+                    isSecure = _isSecure.value
+                )
+            )
+        }
+    }
+
+    fun selectServerProfile(profile: com.example.comfyui_remote.data.ServerProfile) {
+        _host.value = profile.host
+        _port.value = profile.port.toString()
+        _isSecure.value = profile.isSecure
+        updateServerAddressFull()
+        
+        // Auto-connect? In plan it says selection auto-fills. 
+        // User probably expects to hit connect, but for better UX we could auto-connect.
+        // The plan says "Selecting a profile auto-fills host, port, and isSecure toggle".
+        // I'll stick to auto-fill for now.
+    }
+
+    fun deleteServerProfile(profile: com.example.comfyui_remote.data.ServerProfile) {
+        viewModelScope.launch {
+            userPreferencesRepository.deleteServerProfile(profile)
         }
     }
 
@@ -139,6 +170,12 @@ class MainViewModel(
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
 
+    private val _importStatus = MutableStateFlow("")
+    val importStatus: StateFlow<String> = _importStatus.asStateFlow()
+
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
     private val _executionStatus = MutableStateFlow(ExecutionStatus.IDLE)
     val executionStatus: StateFlow<ExecutionStatus> = _executionStatus.asStateFlow()
 
@@ -156,6 +193,9 @@ class MainViewModel(
         } else {
             _generatedImage.value = null
         }
+        
+        // Reset execution state when switching workflows
+        clearErrorMessage()
     }
 
     fun updateServerAddress(address: String) {
@@ -163,7 +203,9 @@ class MainViewModel(
     }
     
     // Create API Service dynamically
-    private val okHttpClient = OkHttpClient.Builder().build()
+    // Use Application's shared OkHttpClient
+    private val okHttpClient: OkHttpClient
+        get() = (getApplication<Application>() as ComfyApplication).okHttpClient
 
     private fun buildApiService(): com.example.comfyui_remote.network.ComfyApiService {
          // Create a temporary retrofit instance for the call
@@ -218,9 +260,25 @@ class MainViewModel(
         _navigateToForm.value = false
     }
 
+    fun clearErrorMessage() {
+        _errorMessage.value = null
+        if (_executionStatus.value == ExecutionStatus.ERROR) {
+            _executionStatus.value = ExecutionStatus.IDLE
+            _executionProgress.value = ExecutionProgress()
+        }
+    }
+
     fun executeWorkflow(workflow: WorkflowEntity, inputs: List<com.example.comfyui_remote.domain.InputField>) {
         viewModelScope.launch {
             _executionStatus.value = ExecutionStatus.QUEUED
+            _errorMessage.value = null
+
+            // Warning for missing nodes
+            if (!workflow.missingNodes.isNullOrBlank()) {
+                android.util.Log.w("EXECUTE_DEBUG", "Workflow has missing nodes but attempting execution anyway: ${workflow.missingNodes}")
+                // Optionally show a non-fatal message? For now, just log and proceed.
+            }
+
             try {
                 // 1. Inject values
                 val updatedJson = workflowExecutor.injectValues(workflow.jsonContent, inputs)
@@ -241,8 +299,41 @@ class MainViewModel(
                 // 3. Monitor
                  _executionStatus.value = ExecutionStatus.EXECUTING
 
+            } catch (e: retrofit2.HttpException) {
+                val errorBody = e.response()?.errorBody()?.string()
+                android.util.Log.e("API_ERROR", "HTTP ${e.code()}: $errorBody")
+                
+                val message = try {
+                    val obj = com.google.gson.JsonParser.parseString(errorBody).asJsonObject
+                    if (obj.has("node_errors")) {
+                        val nodeErrors = obj.getAsJsonObject("node_errors")
+                        val firstEntry = nodeErrors.entrySet().firstOrNull()
+                        if (firstEntry != null) {
+                            val nodeId = firstEntry.key
+                            val nodeError = firstEntry.value.asJsonObject
+                            val classType = nodeError.get("class_type").asString
+                            val errors = nodeError.getAsJsonArray("errors")
+                            val firstError = errors.get(0).asJsonObject
+                            val errMsg = firstError.get("message").asString
+                            val details = firstError.get("details").asString
+                            "Node $nodeId ($classType):\n$errMsg - $details"
+                        } else {
+                            "Validation failed: ${obj.get("error").asJsonObject.get("message").asString}"
+                        }
+                    } else if (obj.has("error")) {
+                         obj.getAsJsonObject("error").get("message").asString
+                    } else {
+                        "HTTP ${e.code()}: ${e.message()}"
+                    }
+                } catch (ex: Exception) {
+                    "HTTP ${e.code()}: ${e.message()}"
+                }
+                
+                _errorMessage.value = message
+                _executionStatus.value = ExecutionStatus.ERROR
             } catch (e: Exception) {
                 e.printStackTrace()
+                _errorMessage.value = e.message ?: "Unknown error"
                 _executionStatus.value = ExecutionStatus.ERROR
             }
         }
@@ -289,19 +380,24 @@ class MainViewModel(
     fun importServerWorkflow(serverFile: ServerWorkflowFile, onSuccess: (WorkflowEntity) -> Unit) {
         viewModelScope.launch {
             _isSyncing.value = true
+            _importStatus.value = "Fetching workflow..."
             try {
                 val fullPath = serverFile.fullpath ?: return@launch
                 val api = buildApiService()
-                val json = api.getFileContent("api/userdata/$fullPath")
                 
-
-
+                // URL-encode the path (slashes become %2F) as required by ComfyUI API
+                val encodedPath = java.net.URLEncoder.encode(fullPath, "UTF-8").replace("+", "%20")
+                android.util.Log.d("MainViewModel", "Importing server workflow: $fullPath -> encoded: $encodedPath")
+                
+                val json = api.getFileContent("api/userdata/$encodedPath")
+                
                 val name = serverFile.name?.removeSuffix(".json") ?: "Unnamed Server Workflow"
-                importWorkflow(name, json.toString(), com.example.comfyui_remote.domain.WorkflowSource.SERVER_USERDATA, onSuccess)
+                importWorkflowInternal(name, json.toString(), com.example.comfyui_remote.domain.WorkflowSource.SERVER_USERDATA, onSuccess)
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
                 _isSyncing.value = false
+                _importStatus.value = ""
             }
         }
     }
@@ -479,41 +575,90 @@ class MainViewModel(
         onSuccess: (WorkflowEntity) -> Unit
     ) {
         viewModelScope.launch {
+            importWorkflowInternal(name, json, source, onSuccess)
+        }
+    }
 
-            
+    private suspend fun importWorkflowInternal(
+        name: String, 
+        json: String, 
+        source: com.example.comfyui_remote.domain.WorkflowSource,
+        onSuccess: (WorkflowEntity) -> Unit
+    ) {
+        _isSyncing.value = true
+        _importStatus.value = "Importing workflow..."
+        try {
             var finalJson = json
+            android.util.Log.d("IMPORT_DEBUG", "Starting import for: $name, source: $source")
 
             // Phase 30: Auto-convert Graph Format -> API Format
-            try {
-                val jsonObj = com.google.gson.JsonParser.parseString(json).asJsonObject
-                if (jsonObj.has("nodes") && jsonObj.has("links")) {
-                    var meta = _nodeMetadata.value
-                    if (meta == null) {
-                        try {
-                            meta = buildApiService().getObjectInfo()
-                            _nodeMetadata.value = meta
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
+            // Run heavy JSON parsing on IO thread
+            // Phase 30: Auto-convert Graph Format -> API Format
+            // Run heavy JSON parsing on IO thread
+            val conversionResult = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    val jsonObj = com.google.gson.JsonParser.parseString(json).asJsonObject
+                    val isFrontendFormat = jsonObj.has("nodes") && jsonObj.has("links")
+                    android.util.Log.d("IMPORT_DEBUG", "Is frontend format: $isFrontendFormat")
                     
-                    val m = meta
-                    if (m != null) {
-                        finalJson = com.example.comfyui_remote.domain.GraphToApiConverter.convert(
-                            json, 
-                            com.example.comfyui_remote.data.ComfyObjectInfo(m)
-                        )
-
+                    if (isFrontendFormat) {
+                        var meta = _nodeMetadata.value
+                        android.util.Log.d("IMPORT_DEBUG", "NodeMetadata available: ${meta != null}, size: ${meta?.size() ?: 0}")
+                        
+                        if (meta == null) {
+                            try {
+                                _importStatus.value = "Fetching metadata..."
+                                android.util.Log.d("IMPORT_DEBUG", "Fetching metadata (raw)...")
+                                // Use raw endpoint and parse manually to avoid blocking OkHttp thread
+                                val responseBody = buildApiService().getObjectInfoRaw()
+                                
+                                _importStatus.value = "Parsing metadata..."
+                                android.util.Log.d("IMPORT_DEBUG", "Parsing metadata JSON...")
+                                val jsonString = responseBody.string()
+                                meta = com.google.gson.JsonParser.parseString(jsonString).asJsonObject
+                                _nodeMetadata.value = meta
+                                android.util.Log.d("IMPORT_DEBUG", "Metadata parsed, size: ${meta.size()}")
+                            } catch (e: Exception) {
+                                android.util.Log.e("IMPORT_DEBUG", "Metadata fetch failed: ${e.message}")
+                                e.printStackTrace()
+                            }
+                        }
+                        
+                        val m = meta
+                        if (m != null) {
+                            _importStatus.value = "Converting format..."
+                            android.util.Log.d("IMPORT_DEBUG", "Converting frontend to API format...")
+                            val result = com.example.comfyui_remote.domain.GraphToApiConverter.convert(
+                                json, 
+                                com.example.comfyui_remote.data.ComfyObjectInfo(m)
+                            )
+                            android.util.Log.d("IMPORT_DEBUG", "Conversion complete. Preview: ${result.json.take(500)}...")
+                            result
+                        } else {
+                            android.util.Log.e("IMPORT_DEBUG", "No metadata available - conversion skipped!")
+                            com.example.comfyui_remote.domain.GraphToApiConverter.ConversionResult(json, emptyList())
+                        }
+                    } else {
+                        com.example.comfyui_remote.domain.GraphToApiConverter.ConversionResult(json, emptyList())
                     }
+                } catch (e: Exception) {
+                    android.util.Log.e("IMPORT_DEBUG", "Conversion error: ${e.message}")
+                    e.printStackTrace()
+                    com.example.comfyui_remote.domain.GraphToApiConverter.ConversionResult(json, emptyList())
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
             }
             
-            // Phase 50: Use Normalization Service
-            // Phase 50: Use Normalization Service
-            val normalized = normalizationService.normalize(name, finalJson, source)
-            
+            // Phase 50: Use Normalization Service (also on IO thread)
+            _importStatus.value = "Normalizing..."
+            val normalized = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                normalizationService.normalize(
+                    name = name, 
+                    rawJson = conversionResult.json, 
+                    source = source,
+                    existingMissingNodes = conversionResult.missingNodes
+                )
+            }
+            android.util.Log.d("IMPORT_DEBUG", "Normalized JSON preview: ${normalized.jsonContent.take(500)}...")
 
             
             val baseModelsShort = normalized.baseModels.joinToString(", ")
@@ -525,13 +670,22 @@ class MainViewModel(
                 baseModelName = normalized.baseModels.firstOrNull(), // Keep legacy field updated
                 baseModels = baseModelsShort,
                 source = normalized.source.name,
-                formatVersion = normalized.formatVersion
+                formatVersion = normalized.formatVersion,
+                missingNodes = if (normalized.missingNodes.isNotEmpty()) normalized.missingNodes.joinToString(", ") else null
             )
-            val id = repository.insert(tempWorkflow)
+            
+            // Database insert on IO thread
+            _importStatus.value = "Saving..."
+            val id = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                repository.insert(tempWorkflow)
+            }
             
             val workflow = tempWorkflow.copy(id = id)
             _selectedWorkflow.value = workflow
             onSuccess(workflow)
+        } finally {
+            _isSyncing.value = false
+            _importStatus.value = ""
         }
     }
     
@@ -560,78 +714,81 @@ class MainViewModel(
                 var skippedCount = 0
                 try {
                     val existingIds = mediaRepository.getAllPromptIds().toSet()
-                    val responseBody = buildApiService().getHistory()
                     
+                    val downloadStart = System.currentTimeMillis()
                     val newMediaItems = mutableListOf<com.example.comfyui_remote.data.GeneratedMediaEntity>()
                     val gson = com.google.gson.Gson()
-                    val reader = com.google.gson.stream.JsonReader(responseBody.charStream())
-                    
-                    reader.beginObject()
-                    while (reader.hasNext()) {
-                        val executionId = reader.nextName()
-                        
-                        if (existingIds.contains(executionId)) {
-                            reader.skipValue()
-                            skippedCount++
-                            continue
-                        }
-                        
-                        val element = gson.fromJson<com.google.gson.JsonObject>(reader, com.google.gson.JsonObject::class.java)
-                        parsedCount++
-                        
-                        // Periodic yield to prevent thread starvation if processing is heavy
-                        if (parsedCount % 10 == 0) kotlinx.coroutines.yield()
-                        
-                        if (element != null && element.isJsonObject) {
-                            val item = element.asJsonObject
-                            
-                            if (item.has("prompt")) {
-                                val promptElement = item.get("prompt")
-                                var workflowJson: String? = null
+                    val responseBody = buildApiService().getHistory(maxItems = 100)
+                    responseBody.use { body ->
+                        val reader = com.google.gson.stream.JsonReader(body.charStream())
+                        reader.use { r ->
+                            r.beginObject()
+                            while (r.hasNext()) {
+                                val executionId = r.nextName()
                                 
-                                if (promptElement.isJsonArray) {
-                                    val arr = promptElement.asJsonArray
-                                    if (arr.size() >= 3) {
-                                        workflowJson = arr.get(2).toString()
-                                    }
-                                } else if (promptElement.isJsonObject) {
-                                    workflowJson = promptElement.toString()
+                                if (existingIds.contains(executionId)) {
+                                    skippedCount++
+                                    // OPTIMIZATION: Stop reading stream as soon as we hit an existing item
+                                    // We return from the .use block which closes both reader and body
+                                    return@use 
                                 }
                                 
-                                if (workflowJson != null) {
-                                    val name = extractNameFromHistoryItem(item, executionId)
-                                    val hostParts = _serverAddress.value.split(":")
-                                    val host = hostParts.getOrNull(0) ?: ""
-                                    val port = hostParts.getOrNull(1)?.toIntOrNull() ?: 8188
+                                val element = gson.fromJson<com.google.gson.JsonObject>(r, com.google.gson.JsonObject::class.java)
+                                parsedCount++
+                                
+                                if (parsedCount % 10 == 0) kotlinx.coroutines.yield()
+                                
+                                if (element != null && element.isJsonObject) {
+                                    val item = element.asJsonObject
+                                    if (item.has("prompt")) {
+                                        val promptElement = item.get("prompt")
+                                        var workflowJson: String? = null
+                                        
+                                        if (promptElement.isJsonArray) {
+                                            val arr = promptElement.asJsonArray
+                                            if (arr.size() >= 3) workflowJson = arr.get(2).toString()
+                                        } else if (promptElement.isJsonObject) {
+                                            workflowJson = promptElement.toString()
+                                        }
+                                        
+                                        if (workflowJson != null) {
+                                            val name = extractNameFromHistoryItem(item, executionId)
+                                            val hostParts = _serverAddress.value.split(":")
+                                            val host = hostParts.getOrNull(0) ?: ""
+                                            val port = hostParts.getOrNull(1)?.toIntOrNull() ?: 8188
 
-                                    if (item.has("outputs")) {
-                                        val outputs = item.getAsJsonObject("outputs")
-                                        outputs.entrySet().forEach { (_, nodeOutput) ->
-                                            if (nodeOutput.isJsonObject) {
-                                                val out = nodeOutput.asJsonObject
-                                                if (out.has("images")) {
-                                                    val images = out.getAsJsonArray("images")
-                                                    images.forEach { imgElement ->
-                                                        val img = imgElement.asJsonObject
-                                                        val filename = img.get("filename").asString
-                                                        val subfolder = if (img.has("subfolder")) img.get("subfolder").asString else null
-                                                        
-                                                        val extension = filename.substringAfterLast('.', "").lowercase()
-                                                        val isVideo = extension in listOf("mp4", "gif", "webm", "mkv")
-                                                        val mediaType = if (isVideo) "VIDEO" else "IMAGE"
+                                            if (item.has("outputs")) {
+                                                val outputs = item.getAsJsonObject("outputs")
+                                                outputs.entrySet().forEach { (_, nodeOutput) ->
+                                                    if (nodeOutput.isJsonObject) {
+                                                        val out = nodeOutput.asJsonObject
+                                                        if (out.has("images")) {
+                                                            val images = out.getAsJsonArray("images")
+                                                            images.forEach { imgElement ->
+                                                                val img = imgElement.asJsonObject
+                                                                val filename = img.get("filename").asString
+                                                                val subfolder = if (img.has("subfolder")) img.get("subfolder").asString else null
+                                                                val serverType = if (img.has("type")) img.get("type").asString else "output"
+                                                                
+                                                                val extension = filename.substringAfterLast('.', "").lowercase()
+                                                                val isVideo = extension in listOf("mp4", "gif", "webm", "mkv")
+                                                                val mediaType = if (isVideo) "VIDEO" else "IMAGE"
 
-                                                        newMediaItems.add(
-                                                            com.example.comfyui_remote.data.GeneratedMediaEntity(
-                                                                workflowName = name,
-                                                                fileName = filename,
-                                                                subfolder = subfolder,
-                                                                serverHost = host,
-                                                                serverPort = port,
-                                                                mediaType = mediaType,
-                                                                promptJson = workflowJson,
-                                                                promptId = executionId
-                                                            )
-                                                        )
+                                                                newMediaItems.add(
+                                                                    com.example.comfyui_remote.data.GeneratedMediaEntity(
+                                                                        workflowName = name,
+                                                                        fileName = filename,
+                                                                        subfolder = subfolder,
+                                                                        serverHost = host,
+                                                                        serverPort = port,
+                                                                        mediaType = mediaType,
+                                                                        promptJson = workflowJson,
+                                                                        promptId = executionId,
+                                                                        serverType = serverType
+                                                                    )
+                                                                )
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
@@ -639,11 +796,9 @@ class MainViewModel(
                                     }
                                 }
                             }
+                            r.endObject()
                         }
                     }
-                    reader.endObject()
-                    reader.close()
-                    responseBody.close()
                     
                     if (newMediaItems.isNotEmpty()) {
                         mediaRepository.insert(newMediaItems)

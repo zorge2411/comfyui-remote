@@ -12,5 +12,6 @@ data class NormalizedWorkflow(
     val jsonContent: String,
     val source: WorkflowSource,
     val baseModels: List<String>,
-    val formatVersion: Int = 1
+    val formatVersion: Int = 1,
+    val missingNodes: List<String> = emptyList()
 )
