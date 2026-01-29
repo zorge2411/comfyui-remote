@@ -345,3 +345,55 @@
 
 - [x] Pressing Enter on IP/Port field dismisses the keyboard.
 - [x] Clicking the 'Connect' button dismisses the keyboard.
+
+### Phase 57: Empty IP/Port Crash Fix
+
+**Status**: ✅ Done
+**Objective**: Prevent app crash when the user attempts to connect with empty or invalid IP address and port fields.
+
+**Tasks**:
+
+- [x] Create Plan
+- [x] Add Input Validation to ConnectionScreen
+- [x] Verify Behavior
+
+**Verification**:
+
+- [x] Empty IP + Connect → shows error, no crash
+- [x] Empty Port + Connect → shows error, no crash
+- [x] Valid IP + Port + Connect → connects normally
+
+---
+
+## Phase 58: Gallery Sync & Reliability Optimization
+
+**Status**: ✅ Done
+**Objective**: Resolve slow gallery loading and image timeouts via early stream termination and unified network configuration.
+
+**Tasks**:
+
+- [x] Centralize OkHttpClient with 30s timeouts
+- [x] Implement early `break` in history sync stream
+- [x] Extract `type` (output/input/temp) for correct image URLs
+- [x] Limit syncHistory to last 100 items (v1)
+
+**Verification**:
+
+- [x] Successful build
+- [x] Verified stream closure significantly reduces sync time for existing data.
+
+---
+
+### Phase 59: Server IP Address Selection
+
+**Status**: ⬜ Not Started
+**Objective**: Add a combo box to the connection screen allowing users to select from up to 5 saved server IP addresses, improving UX for users who connect to multiple ComfyUI servers.
+**Depends on**: Phase 58
+
+**Tasks**:
+
+- [ ] TBD (run /plan 59 to create)
+
+**Verification**:
+
+- TBD

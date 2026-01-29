@@ -3,9 +3,22 @@
 > **Updated**: 2026-01-26
 > **Milestone**: Milestone 3: Image Input Support
 >
-> - **Current Phase**: Phase 56 (Complete)
+> - **Current Phase**: Phase 58 (Complete)
 > - **Task**: Done
-> - **Status**: ✅ Phase 56 Completed (Keyboard Management UX)
+> - **Status**: ✅ Phase 58 Completed (Reliability & Early Break)
+>
+> ## Achieved in Phase 58
+>
+> - **Early Sync Termination**: History sync now breaks immediately when an existing item is found, stopping the network stream early and saving data/time.
+> - **Unified Network Client**: Centralized `OkHttpClient` in `ComfyApplication` with 30s timeouts for both API and Coil.
+> - **Robust Image Detection**: Correctly extracting image folder type (`output`, `input`, `temp`) during sync to ensure valid URLs.
+> - **Performance Data**: Integrated `max_items` limit and timing logs for bottleneck diagnosis.
+>
+> ## Achieved in Phase 57
+>
+> - Implemented input validation for IP and Port fields on the Connection Screen.
+> - Added UI error messaging for empty or non-numeric inputs.
+> - Prevented malformed WebSocket URL generation that caused app crashes.
 >
 > ## Achieved in Phase 56
 >
@@ -47,5 +60,5 @@
 > - Persistent Background Connection.
 >
 > > ## Next Steps
-> >
-> > 1. TBD (Backlog check)
+>>
+>> 1. Phase 59: Server IP Address Selection (run /plan 59 to create execution plan)
