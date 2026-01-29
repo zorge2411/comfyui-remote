@@ -308,14 +308,19 @@ fun GalleryItem(
             if (isSelected) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                        .align(Alignment.TopEnd)
+                        .padding(4.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = androidx.compose.foundation.shape.CircleShape
+                        )
+                        .padding(4.dp)
                 ) {
                     Icon(
                         androidx.compose.material.icons.Icons.Default.Check,
                         contentDescription = "Selected",
-                        tint = Color.White,
-                        modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
