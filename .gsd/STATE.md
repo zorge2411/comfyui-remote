@@ -1,18 +1,17 @@
 # STATE.md
 
-> **Updated**: 2026-01-26
+> **Updated**: 2026-01-29
 > **Milestone**: Milestone 3: Image Input Support
 >
-> - **Current Phase**: Phase 58 (Complete)
-> - **Task**: Done
-> - **Status**: ✅ Phase 58 Completed (Reliability & Early Break)
+> - **Current Phase**: Phase 59 (Planned)
+> - **Task**: Ready for execution
+> - **Status**: 📋 Planning Complete
 >
-> ## Achieved in Phase 58
+> ## Phase 59 Plan Ready
 >
-> - **Early Sync Termination**: History sync now breaks immediately when an existing item is found, stopping the network stream early and saving data/time.
-> - **Unified Network Client**: Centralized `OkHttpClient` in `ComfyApplication` with 30s timeouts for both API and Coil.
-> - **Robust Image Detection**: Correctly extracting image folder type (`output`, `input`, `temp`) during sync to ensure valid URLs.
-> - **Performance Data**: Integrated `max_items` limit and timing logs for bottleneck diagnosis.
+> - **Objective**: Add server IP address selection combo box (up to 5 saved servers)
+> - **Plan**: `59-PLAN.md` created with 3 tasks
+> - **Next Step**: `/execute 59`
 >
 > ## Achieved in Phase 57
 >

@@ -392,8 +392,12 @@
 
 **Tasks**:
 
-- [ ] TBD (run /plan 59 to create)
+- [ ] Create ServerProfile data class and update UserPreferencesRepository
+- [ ] Update MainViewModel with server profile state
+- [ ] Update ConnectionScreen UI with dropdown
 
 **Verification**:
 
-- TBD
+- [ ] Build succeeds
+- [ ] Dropdown shows saved servers, selection auto-fills fields
+- [ ] Max 5 servers maintained (FIFO)
