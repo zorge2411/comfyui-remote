@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
-    <!-- Rules for full backup. For more details,
-         see the Auto Backup documentation:
-         https://developer.android.com/guide/topics/data/autobackup.html -->
+    <!-- Exclude sensitive configuration and temp files from auto-backup -->
+    <exclude domain="sharedpref" path="."/>
+    <exclude domain="root" path="."/>
+    <exclude domain="external" path="."/>
 </full-backup-content>
