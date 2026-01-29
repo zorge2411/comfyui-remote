@@ -7,3 +7,7 @@
 **Vulnerability:** The default Android Auto Backup configuration (`allowBackup="true"`) included the application's database and DataStore preferences, which contain internal IP addresses, ports, and prompt history.
 **Learning:** Even for "local" apps, the default backup rules can inadvertently leak internal network topology and usage history to cloud providers. Users expect local-first apps to keep data local.
 **Prevention:** Explicitly exclude sensitive files (databases, preferences) from `cloud-backup` in `data_extraction_rules.xml` and `backup_rules.xml`.
+## 2025-02-18 - Cloud Backup of Sensitive Configuration
+**Vulnerability:** The application was configured to back up all data (including Shared Preferences containing Host IP/Port) to Google Cloud, which might expose private network topology or future sensitive credentials.
+**Learning:** Default Android backup rules (`include domain="sharedpref"`) are often too permissive for apps that store local network details or connection secrets in standard preferences.
+**Prevention:** Explicitly exclude sensitive domains (like `sharedpref`) from `cloud-backup` in `data_extraction_rules.xml` and `backup_rules.xml`, while retaining them for `device-transfer` to support local migration.
