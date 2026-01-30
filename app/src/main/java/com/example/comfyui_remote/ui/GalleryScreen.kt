@@ -207,7 +207,7 @@ fun GalleryScreen(
                                     
                                     for (i in start..end) {
                                         val item = mediaList[i]
-                                        val url = "http://${item.serverHost}:${item.serverPort}/view?filename=${item.fileName}${if (item.subfolder != null) "&subfolder=${item.subfolder}" else ""}&type=${item.serverType}"
+                                        val url = item.constructUrl(currentHost, currentPort, isSecure)
                                         
                                         val request = coil.request.ImageRequest.Builder(context)
                                             .data(url)
@@ -294,10 +294,7 @@ fun GalleryItem(
     // Construct URL
     val context = LocalContext.current
     val imageRequest = remember(item.serverHost, item.serverPort, item.fileName, item.subfolder, item.serverType, isSecure, currentHost, currentPort) {
-        val portInt = currentPort.toIntOrNull() ?: 8188
-        val shouldUseSecure = isSecure && item.serverHost == currentHost && item.serverPort == portInt
-        val protocol = if (shouldUseSecure) "https" else "http"
-        val url = "$protocol://${item.serverHost}:${item.serverPort}/view?filename=${item.fileName}${if (item.subfolder != null) "&subfolder=${item.subfolder}" else ""}&type=${item.serverType}"
+        val url = item.constructUrl(currentHost, currentPort, isSecure)
         
         // Calculate approximate size for grid (assuming 3 columns)
         val screenWidth = context.resources.displayMetrics.widthPixels

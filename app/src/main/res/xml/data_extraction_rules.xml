@@ -8,7 +8,7 @@
         <exclude domain="database" path="comfy_database"/>
         <exclude domain="database" path="comfy_database-wal"/>
         <exclude domain="database" path="comfy_database-shm"/>
-        <exclude domain="file" path="datastore/settings.preferences_pb"/>
+        <!-- Note: domain="file" (containing datastore) is implicitly excluded as it is not in the include list -->
     </cloud-backup>
     <device-transfer>
         <include domain="root" path="."/>
