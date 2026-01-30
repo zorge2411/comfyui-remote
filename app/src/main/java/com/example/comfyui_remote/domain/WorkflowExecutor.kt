@@ -26,6 +26,11 @@ class WorkflowExecutor {
                                     inputsObj.addProperty(input.fieldName, input.value)
                                 }
                             }
+                            is InputField.FloatInput -> {
+                                if (inputsObj.has(input.fieldName) || input.fieldName == "cfg" || input.fieldName == "denoise") {
+                                    inputsObj.addProperty(input.fieldName, input.value)
+                                }
+                            }
                             is InputField.SeedInput -> {
                                 if (inputsObj.has(input.fieldName)) {
                                     inputsObj.addProperty(input.fieldName, input.value)
