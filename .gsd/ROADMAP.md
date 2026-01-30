@@ -401,3 +401,97 @@
 - [x] Build succeeds
 - [x] Dropdown shows saved servers, selection auto-fills fields
 - [x] Max 5 servers maintained (FIFO)
+
+### Phase 60: Link Result to Gallery
+
+**Status**: ✅ Done
+**Objective**: Enable direct navigation from a generated image result to its full view in the Gallery, allowing for immediate management (zoom, share, delete).
+**Depends on**: Phase 40
+
+**Tasks**:
+
+- [x] Create Plan
+- [x] Implement Navigation Logic
+- [x] Add UI Action on Result Image
+- [x] Verify Navigation
+
+### Phase 61: Add Back Button on Workflow Generation
+
+**Status**: ✅ Done
+**Objective**: Improve navigation by adding an explicit back button to the workflow generation screen, allowing users to easily return to the workflow list.
+**Depends on**: None
+
+**Tasks**:
+
+- [ ] Create Plan
+- [ ] Add Back Callback to DynamicFormScreen
+- [ ] Add Back Icon to Header
+- [ ] Update MainActivity Navigation
+
+### Phase 62: Copy Button for Prompt Inputs
+
+**Status**: ✅ Done
+**Objective**: Add a "Copy" button to text input fields (especially prompts) to allow users to quickly copy the entire prompt text to the clipboard.
+**Depends on**: None
+
+**Tasks**:
+
+- [x] Create Plan
+- [x] Implement Clipboard Utility in ViewModel
+- [x] Update UI with Copy Icon in TextField
+- [x] Add Snackbar confirmation
+- [x] Verify functionality
+
+### Phase 63: Fix Reverted App Icon
+
+**Status**: ✅ Complete
+**Objective**: Restore the correct application icon that was accidentally reverted during a recent pull request/merge.
+**Depends on**: None
+
+**Tasks**:
+
+- [x] Investigate current icon configuration
+- [x] Restore correct icon assets/manifest reference
+- [x] Verify correct icon is displayed
+
+### Phase 64: Image-to-Image Support
+
+**Status**: ✅ Complete
+**Objective**: Enable using device images as input for workflows (Img2Img), supporting image upload and execution patching.
+**Depends on**: Phase 62
+
+**Tasks**:
+
+- [x] Create `WorkflowPatchingService`
+- [x] Update `MainViewModel` for Input State & Upload Logic
+- [x] Patch `GraphToApiConverter` for `LoadImage` fallback
+- [x] Integrate `ImageSelector` in `DynamicFormScreen`
+- [x] Verify Implementation
+
+### Phase 65: Robust Workflow Handling
+
+**Status**: ✅ Done
+**Objective**: Prevent execution failures by ensuring unknown/custom nodes (missing metadata) are not skipped during conversion, employing heuristic input mapping where possible.
+**Depends on**: Phase 64
+
+**Tasks**:
+
+- [x] Modify `GraphToApiConverter` to stop skipping unknown nodes
+- [x] Implement heuristic input mapping for Primitives/Loaders
+- [x] Verify fix with problem workflow
+
+### Phase 66: Heuristic Link Flattening
+
+**Status**: ✅ Done
+**Objective**: Detect and recursively bypass "unknown" nodes (missing metadata) by linking their consumers directly to their upstream inputs. This handles frontend-only nodes like custom Reroutes or Groups that the server rejects.
+**Depends on**: Phase 65
+
+**Tasks**:
+
+- [x] Create `GraphToApiConverterFlatteningTest` to enable TDD
+- [x] Implement `flattenLinks` logic in `GraphToApiConverter`
+  - [x] Handle Single-Hop bypass
+  - [x] Handle Multi-Hop bypass (Recursion)
+  - [x] Handle Multi-Input ambiguity (First input priority)
+- [x] Integrate flattening into the conversion pipeline
+- [x] Verify with previously failing workflow logs

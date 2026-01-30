@@ -1,11 +1,16 @@
 # STATE.md
 
-> **Updated**: 2026-01-29
-> **Milestone**: Milestone 3: Image Input Support
+- **Current Phase**: Phase 66 (Complete)
+- **Task**: Done
+- **Status**: ✅ Phase 66 Completed (Heuristic Link Flattening)
+
+## Achieved in Phase 62
+
+- **Prompt Copy Button**: Added a copy-to-clipboard button to the trailing icons of text prompts in the workflow generator.
 >
-> - **Current Phase**: Phase 59 (Complete)
-> - **Task**: Done
-> - **Status**: ✅ Phase 59 Completed (Multi-Server Selection)
+> ## Achieved in Phase 61
+>
+> - **Back Button on Workflow Screen**: Implemented a back button on the workflow generation screen for improved navigation.
 >
 > ## Achieved in Phase 59
 >
@@ -60,6 +65,45 @@
 > - Workflow History System.
 > - Persistent Background Connection.
 >
-> > ## Next Steps
->>
->> 1. Phase 59: Server IP Address Selection (run /plan 59 to create execution plan)
+## Current Position
+
+- **Phase**: Phase 66 (Complete)
+- **Task**: Done
+- **Status**: ✅ Phase 66 Completed (Heuristic Link Flattening)
+
+## Achieved in Phase 64
+
+- **Img2Img Support**: Enabled using device images as input for workflows.
+- **Auto-Upload**: Images are uploaded to the server automatically before execution.
+- **Workflow Patching**: Logic to inject uploaded filenames into the execution graph.
+- **Handling Missing Metadata**: Fixed issue where `LoadImage` nodes were stripped during import if server metadata was missing.
+
+## Achieved in Phase 65
+
+- **Robust Converter**: Implemented fallback logic in `GraphToApiConverter` to preserve nodes with missing metadata instead of skipping them.
+- **Heuristic Mapping**: Added best-effort input mapping for primitive widgets (int, float, string) and images in unknown nodes.
+- **UI Feedback**: Confirmed warning display for workflows with missing node definitions.
+- **Verification**: Added unit tests to ensure fallback logic produces valid JSON.
+
+## Achieved in Phase 66
+
+- **Link Flattening**: Implemented recursive bypassing of unknown/phantom nodes (e.g. Reroutes) to connect consumers directly to producers.
+- **Validation**: Added unit tests covering single-hop, multi-hop, and ambiguous link resolution.
+- **Server Compatibility**: Eliminated `HTTP 400` errors caused by sending frontend-only nodes to the backend.
+
+## Next Steps
+
+1. /execute 63
+
+## Achieved in Phase 60
+
+- **Direct Navigation**: Clicking a generated image in the form navigates directly to the full gallery view.
+- **Improved UX**: Seamless transition from creation to consumption/management of media.
+
+## Achieved in Task: Add Todo
+
+- Captured feature request: "link from resulting image to gallery" in `.gsd/TODO.md`.
+- Captured feature request: "copy all text button in prompt text box" in `.gsd/TODO.md`.
+- Captured feature request: "support for image to image workflow nodes" in `.gsd/TODO.md`.
+- Captured feature request: "positive prompt text input must be the most top one in workflow" in `.gsd/TODO.md`.
+- Captured bug report: "fix revert to old icon caused by pull request" in `.gsd/TODO.md`.
