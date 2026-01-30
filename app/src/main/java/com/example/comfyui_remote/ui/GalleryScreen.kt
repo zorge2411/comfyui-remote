@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -182,11 +183,29 @@ fun GalleryScreen(
                 .fillMaxSize()
         ) {
             if (mediaList.isEmpty()) {
-                Text(
-                    text = "No generated images yet.",
+                Column(
                     modifier = Modifier.align(Alignment.Center),
-                    style = MaterialTheme.typography.bodyLarge
-                )
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = androidx.compose.material.icons.Icons.Default.Info,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "No generated images",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Your generated creations will appear here.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             } else {
                 val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
                 val isScrolling by remember { derivedStateOf { gridState.isScrollInProgress } }
@@ -207,7 +226,7 @@ fun GalleryScreen(
                                     
                                     for (i in start..end) {
                                         val item = mediaList[i]
-                                        val url = "http://${item.serverHost}:${item.serverPort}/view?filename=${item.fileName}${if (item.subfolder != null) "&subfolder=${item.subfolder}" else ""}&type=${item.serverType}"
+                                        val url = item.constructUrl(currentHost, currentPort, isSecure)
                                         
                                         val request = coil.request.ImageRequest.Builder(context)
                                             .data(url)
@@ -294,10 +313,7 @@ fun GalleryItem(
     // Construct URL
     val context = LocalContext.current
     val imageRequest = remember(item.serverHost, item.serverPort, item.fileName, item.subfolder, item.serverType, isSecure, currentHost, currentPort) {
-        val portInt = currentPort.toIntOrNull() ?: 8188
-        val shouldUseSecure = isSecure && item.serverHost == currentHost && item.serverPort == portInt
-        val protocol = if (shouldUseSecure) "https" else "http"
-        val url = "$protocol://${item.serverHost}:${item.serverPort}/view?filename=${item.fileName}${if (item.subfolder != null) "&subfolder=${item.subfolder}" else ""}&type=${item.serverType}"
+        val url = item.constructUrl(currentHost, currentPort, isSecure)
         
         // Calculate approximate size for grid (assuming 3 columns)
         val screenWidth = context.resources.displayMetrics.widthPixels

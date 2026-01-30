@@ -11,3 +11,8 @@
 **Vulnerability:** The application was configured to back up all data (including Shared Preferences containing Host IP/Port) to Google Cloud, which might expose private network topology or future sensitive credentials.
 **Learning:** Default Android backup rules (`include domain="sharedpref"`) are often too permissive for apps that store local network details or connection secrets in standard preferences.
 **Prevention:** Explicitly exclude sensitive domains (like `sharedpref`) from `cloud-backup` in `data_extraction_rules.xml` and `backup_rules.xml`, while retaining them for `device-transfer` to support local migration.
+
+## 2025-02-18 - Hardcoded Protocols in Secondary UI Logic
+**Vulnerability:** Preloading logic in `GalleryScreen` and list items in `HistoryScreen` used hardcoded `http://` URLs, bypassing the secure connection setting even when `GalleryItem` was fixed.
+**Learning:** Security fixes often target the primary usage path but miss secondary paths (like preloading or history views) where logic is duplicated.
+**Prevention:** Centralize URL construction logic in a shared extension function (e.g., `GeneratedMediaListing.constructUrl`) and verify all usages with grep.

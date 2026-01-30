@@ -30,6 +30,9 @@ private val DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Loc
 fun HistoryScreen(viewModel: MainViewModel) {
     val historyList by viewModel.allMedia.collectAsState(initial = emptyList())
     val isSyncing by viewModel.isSyncing.collectAsState()
+    val isSecure by viewModel.isSecure.collectAsState()
+    val currentHost by viewModel.host.collectAsState()
+    val currentPort by viewModel.port.collectAsState()
 
     Scaffold(
         topBar = {
@@ -62,6 +65,9 @@ fun HistoryScreen(viewModel: MainViewModel) {
                     ) { item ->
                         HistoryItemCard(
                             item = item,
+                            isSecure = isSecure,
+                            currentHost = currentHost,
+                            currentPort = currentPort,
                             onClick = { viewModel.loadHistory(item) }
                         )
                     }
@@ -74,6 +80,9 @@ fun HistoryScreen(viewModel: MainViewModel) {
 @Composable
 fun HistoryItemCard(
     item: GeneratedMediaListing,
+    isSecure: Boolean,
+    currentHost: String,
+    currentPort: String,
     onClick: () -> Unit
 ) {
     Card(
@@ -90,7 +99,7 @@ fun HistoryItemCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Thumbnail
-            val url = "http://${item.serverHost}:${item.serverPort}/view?filename=${item.fileName}${if (item.subfolder != null) "&subfolder=${item.subfolder}" else ""}&type=output"
+            val url = item.constructUrl(currentHost, currentPort, isSecure)
             AsyncImage(
                 model = url,
                 contentDescription = "Thumbnail",
