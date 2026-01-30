@@ -27,6 +27,13 @@ sealed class InputField(
         override val nodeTitle: String
     ) : InputField("Seed", nodeTitle, nodeId, fieldName)
 
+    data class FloatInput(
+        override val nodeId: String,
+        override val fieldName: String,
+        val value: Float,
+        override val nodeTitle: String
+    ) : InputField("Number (Float)", nodeTitle, nodeId, fieldName)
+
     @Deprecated("Use SelectionInput for generic dropdowns")
     data class ModelInput(
         override val nodeId: String,
