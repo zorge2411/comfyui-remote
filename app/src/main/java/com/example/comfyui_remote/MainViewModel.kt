@@ -25,6 +25,10 @@ import retrofit2.HttpException
 import com.example.comfyui_remote.data.UserPreferencesRepository
 import kotlinx.coroutines.flow.first
 import com.example.comfyui_remote.network.ServerWorkflowFile
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 class MainViewModel(
     application: Application,
@@ -236,7 +240,7 @@ class MainViewModel(
                 // Create a temporary workflow entity
                 val tempWorkflow = WorkflowEntity(
                     id = 0,
-                    name = "History: ${java.text.SimpleDateFormat("MM-dd HH:mm").format(java.util.Date(media.timestamp))}",
+                    name = "History: ${DATE_FORMATTER_SHORT.withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(media.timestamp))}",
                     jsonContent = media.promptJson,
                     createdAt = media.timestamp,
                     lastImageName = media.fileName
@@ -839,7 +843,7 @@ class MainViewModel(
         }
         
         // Fallback to timestamped history
-        val date = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(java.util.Date())
+        val date = DATE_FORMATTER_LONG.format(LocalDateTime.now())
         return "History $date"
     }
 
@@ -1014,6 +1018,11 @@ class MainViewModel(
                 handleMessage(message)
             }
         }
+    }
+
+    companion object {
+        private val DATE_FORMATTER_SHORT = DateTimeFormatter.ofPattern("MM-dd HH:mm")
+        private val DATE_FORMATTER_LONG = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
     }
 }
 
