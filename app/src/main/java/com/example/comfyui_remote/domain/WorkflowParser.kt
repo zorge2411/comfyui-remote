@@ -57,7 +57,13 @@ class WorkflowParser {
                                         nodeTitle = title
                                     )
                                 }
-                                fieldName == "ckpt_name" || fieldName == "model" -> {
+                                fieldName == "ckpt_name" || fieldName == "model" || fieldName.endsWith("_name") -> {
+                                    // Heuristic: If it ends in _name, it's likely a loader (vae_name, lora_name).
+                                    // If we have options from metadata, it will be handled by the 'options != null' block above FIRST.
+                                    // If we reach here, it means we have no metadata options for this loader. 
+                                    // We fallback to ModelInput (which might just show a text field if we don't have list).
+                                    // Or better: defaulting to StringInput might be safer if we don't have a list?
+                                    // But ModelInput is intended for this. Let's use it.
                                     InputField.ModelInput(
                                         nodeId = nodeId,
                                         fieldName = fieldName,
@@ -66,14 +72,27 @@ class WorkflowParser {
                                     )
                                 }
                                 primitive.isNumber -> {
-                                    // If it's a long number or named 'seed', we already caught it.
-                                    // Otherwise, IntInput.
-                                    InputField.IntInput(
-                                        nodeId = nodeId,
-                                        fieldName = fieldName,
-                                        value = primitive.asInt,
-                                        nodeTitle = title
-                                    )
+                                    // Check if it's float or int
+                                    val number = primitive.asNumber
+                                    if (number.toDouble() % 1.0 != 0.0 || fieldName == "denoise" || fieldName == "cfg") {
+                                        // It has decimals OR it is a known float field (even if value is 1.0)
+                                        // Note: 1.0 might appear as 1 in JSON if printed simply.
+                                        // But primitive.asNumber handles it. 
+                                        // Let's rely on Double conversion logic or known fields.
+                                        InputField.FloatInput(
+                                            nodeId = nodeId,
+                                            fieldName = fieldName,
+                                            value = number.toFloat(),
+                                            nodeTitle = title
+                                        )
+                                    } else {
+                                        InputField.IntInput(
+                                            nodeId = nodeId,
+                                            fieldName = fieldName,
+                                            value = primitive.asInt,
+                                            nodeTitle = title
+                                        )
+                                    }
                                 }
                                 primitive.isString -> {
                                     InputField.StringInput(
