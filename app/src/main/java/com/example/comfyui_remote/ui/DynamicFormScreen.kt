@@ -18,6 +18,11 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +35,8 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -61,7 +68,9 @@ import kotlin.random.Random
 @Composable
 fun DynamicFormScreen(
     viewModel: MainViewModel,
-    workflow: WorkflowEntity
+    workflow: WorkflowEntity,
+    onBack: () -> Unit,
+    onViewInGallery: (Long) -> Unit
 ) {
     // We need to parse inputs once
     var inputs by remember { mutableStateOf<List<InputField>>(emptyList()) }
@@ -83,7 +92,13 @@ fun DynamicFormScreen(
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                }
                 Text(
                     text = workflow.name,
                     style = MaterialTheme.typography.headlineMedium,
@@ -148,6 +163,7 @@ fun DynamicFormScreen(
             inputs.forEachIndexed { index, inputField ->
                 when (inputField) {
                     is InputField.StringInput -> {
+                        val clipboardManager = LocalClipboardManager.current
                         OutlinedTextField(
                             value = inputField.value,
                             onValueChange = { newValue ->
@@ -159,12 +175,19 @@ fun DynamicFormScreen(
                             minLines = 3,
                             trailingIcon = if (inputField.value.isNotEmpty()) {
                                 {
-                                    IconButton(onClick = {
-                                        inputs = inputs.toMutableList().also {
-                                            it[index] = inputField.copy(value = "")
+                                    Row {
+                                        IconButton(onClick = {
+                                            clipboardManager.setText(AnnotatedString(inputField.value))
+                                        }) {
+                                            Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy text")
                                         }
-                                    }) {
-                                        Icon(Icons.Default.Clear, contentDescription = "Clear text")
+                                        IconButton(onClick = {
+                                            inputs = inputs.toMutableList().also {
+                                                it[index] = inputField.copy(value = "")
+                                            }
+                                        }) {
+                                            Icon(Icons.Default.Clear, contentDescription = "Clear text")
+                                        }
                                     }
                                 }
                             } else null,
@@ -183,6 +206,18 @@ fun DynamicFormScreen(
                             label = { Text("${inputField.nodeTitle} (${inputField.fieldName})") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                             modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    is InputField.ImageInput -> {
+                        val inputImages by viewModel.inputImages.collectAsState()
+                        val selectedUri = inputImages[inputField.nodeId]
+                        
+                        com.example.comfyui_remote.ui.components.ImageSelector(
+                            label = "${inputField.nodeTitle} (Image)",
+                            currentUri = selectedUri,
+                            onImageSelected = { uri ->
+                                viewModel.setInputImage(inputField.nodeId, uri.toString())
+                            }
                         )
                     }
                     is InputField.SeedInput -> {
@@ -391,14 +426,45 @@ fun DynamicFormScreen(
             Spacer(modifier = Modifier.height(24.dp))
             
             val image by viewModel.generatedImage.collectAsState()
+            val generatedMediaId by viewModel.generatedMediaId.collectAsState()
+            
             if (image != null) {
                 Text("Result:", style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(8.dp))
-                coil.compose.AsyncImage(
-                    model = image,
-                    contentDescription = "Generated Image",
-                    modifier = Modifier.fillMaxWidth().height(300.dp)
-                )
+                
+                Box(contentAlignment = Alignment.BottomEnd) {
+                    coil.compose.AsyncImage(
+                        model = image,
+                        contentDescription = "Generated Image",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(300.dp)
+                            .clickable(enabled = generatedMediaId != null) {
+                                generatedMediaId?.let { onViewInGallery(it) }
+                            }
+                    )
+                    
+                    if (generatedMediaId != null) {
+                         androidx.compose.material3.Surface(
+                             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                             shape = MaterialTheme.shapes.small,
+                             modifier = Modifier.padding(8.dp)
+                         ) {
+                             Row(
+                                 verticalAlignment = Alignment.CenterVertically,
+                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                             ) {
+                                 Icon(
+                                     Icons.Default.Search, 
+                                     contentDescription = null,
+                                     modifier = Modifier.size(16.dp)
+                                 )
+                                 Spacer(modifier = Modifier.width(4.dp))
+                                 Text("Open in Gallery", style = MaterialTheme.typography.labelSmall)
+                             }
+                         }
+                    }
+                }
             }
         }
     }
