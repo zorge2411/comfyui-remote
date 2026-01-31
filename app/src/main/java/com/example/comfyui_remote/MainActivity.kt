@@ -238,7 +238,14 @@ class MainActivity : ComponentActivity() {
                         composable("remote_control") {
                             val workflow by viewModel.selectedWorkflow.collectAsState()
                             if (workflow != null) {
-                                com.example.comfyui_remote.ui.DynamicFormScreen(viewModel, workflow!!)
+                                com.example.comfyui_remote.ui.DynamicFormScreen(
+                                    viewModel = viewModel,
+                                    workflow = workflow!!,
+                                    onBack = { navController.popBackStack() },
+                                    onViewInGallery = { mediaId ->
+                                        navController.navigate("media_detail/$mediaId")
+                                    }
+                                )
                             }
                         }
                     }

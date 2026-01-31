@@ -593,7 +593,9 @@ class MainViewModel(
         _importStatus.value = "Importing workflow..."
         try {
             var finalJson = json
-            android.util.Log.d("IMPORT_DEBUG", "Starting import for: $name, source: $source")
+            if (BuildConfig.DEBUG) {
+                android.util.Log.d("IMPORT_DEBUG", "Starting import for: $name, source: $source")
+            }
 
             // Phase 30: Auto-convert Graph Format -> API Format
             // Run heavy JSON parsing on IO thread
@@ -603,25 +605,29 @@ class MainViewModel(
                 try {
                     val jsonObj = com.google.gson.JsonParser.parseString(json).asJsonObject
                     val isFrontendFormat = jsonObj.has("nodes") && jsonObj.has("links")
-                    android.util.Log.d("IMPORT_DEBUG", "Is frontend format: $isFrontendFormat")
+                    if (BuildConfig.DEBUG) {
+                        android.util.Log.d("IMPORT_DEBUG", "Is frontend format: $isFrontendFormat")
+                    }
                     
                     if (isFrontendFormat) {
                         var meta = _nodeMetadata.value
-                        android.util.Log.d("IMPORT_DEBUG", "NodeMetadata available: ${meta != null}, size: ${meta?.size() ?: 0}")
+                        if (BuildConfig.DEBUG) {
+                            android.util.Log.d("IMPORT_DEBUG", "NodeMetadata available: ${meta != null}, size: ${meta?.size() ?: 0}")
+                        }
                         
                         if (meta == null) {
                             try {
                                 _importStatus.value = "Fetching metadata..."
-                                android.util.Log.d("IMPORT_DEBUG", "Fetching metadata (raw)...")
+                                if (BuildConfig.DEBUG) android.util.Log.d("IMPORT_DEBUG", "Fetching metadata (raw)...")
                                 // Use raw endpoint and parse manually to avoid blocking OkHttp thread
                                 val responseBody = buildApiService().getObjectInfoRaw()
                                 
                                 _importStatus.value = "Parsing metadata..."
-                                android.util.Log.d("IMPORT_DEBUG", "Parsing metadata JSON...")
+                                if (BuildConfig.DEBUG) android.util.Log.d("IMPORT_DEBUG", "Parsing metadata JSON...")
                                 val jsonString = responseBody.string()
                                 meta = com.google.gson.JsonParser.parseString(jsonString).asJsonObject
                                 _nodeMetadata.value = meta
-                                android.util.Log.d("IMPORT_DEBUG", "Metadata parsed, size: ${meta.size()}")
+                                if (BuildConfig.DEBUG) android.util.Log.d("IMPORT_DEBUG", "Metadata parsed, size: ${meta.size()}")
                             } catch (e: Exception) {
                                 android.util.Log.e("IMPORT_DEBUG", "Metadata fetch failed: ${e.message}")
                                 e.printStackTrace()
@@ -631,12 +637,12 @@ class MainViewModel(
                         val m = meta
                         if (m != null) {
                             _importStatus.value = "Converting format..."
-                            android.util.Log.d("IMPORT_DEBUG", "Converting frontend to API format...")
+                            if (BuildConfig.DEBUG) android.util.Log.d("IMPORT_DEBUG", "Converting frontend to API format...")
                             val result = com.example.comfyui_remote.domain.GraphToApiConverter.convert(
                                 json, 
                                 com.example.comfyui_remote.data.ComfyObjectInfo(m)
                             )
-                            android.util.Log.d("IMPORT_DEBUG", "Conversion complete. Preview: ${result.json.take(500)}...")
+                            if (BuildConfig.DEBUG) android.util.Log.d("IMPORT_DEBUG", "Conversion complete. Preview: ${result.json.take(500)}...")
                             result
                         } else {
                             android.util.Log.e("IMPORT_DEBUG", "No metadata available - conversion skipped!")
@@ -662,7 +668,9 @@ class MainViewModel(
                     existingMissingNodes = conversionResult.missingNodes
                 )
             }
-            android.util.Log.d("IMPORT_DEBUG", "Normalized JSON preview: ${normalized.jsonContent.take(500)}...")
+            if (BuildConfig.DEBUG) {
+                android.util.Log.d("IMPORT_DEBUG", "Normalized JSON preview: ${normalized.jsonContent.take(500)}...")
+            }
 
             
             val baseModelsShort = normalized.baseModels.joinToString(", ")
@@ -809,7 +817,9 @@ class MainViewModel(
                     }
                     
                     val duration = System.currentTimeMillis() - startTime
-                    android.util.Log.d("SyncHistory", "Sync complete in ${duration}ms. Skipped: $skippedCount, Parsed: $parsedCount, Inserted: ${newMediaItems.size}")
+                    if (BuildConfig.DEBUG) {
+                        android.util.Log.d("SyncHistory", "Sync complete in ${duration}ms. Skipped: $skippedCount, Parsed: $parsedCount, Inserted: ${newMediaItems.size}")
+                    }
                     
                 } catch (e: Exception) {
                     e.printStackTrace()

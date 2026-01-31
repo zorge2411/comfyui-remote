@@ -20,7 +20,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.foundation.lazy.LazyColumn
@@ -179,7 +179,7 @@ fun DynamicFormScreen(
                                         IconButton(onClick = {
                                             clipboardManager.setText(AnnotatedString(inputField.value))
                                         }) {
-                                            Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy text")
+                                            Icon(Icons.Default.Share, contentDescription = "Copy text")
                                         }
                                         IconButton(onClick = {
                                             inputs = inputs.toMutableList().also {
@@ -208,16 +208,18 @@ fun DynamicFormScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
-                    is InputField.ImageInput -> {
-                        val inputImages by viewModel.inputImages.collectAsState()
-                        val selectedUri = inputImages[inputField.nodeId]
-                        
-                        com.example.comfyui_remote.ui.components.ImageSelector(
-                            label = "${inputField.nodeTitle} (Image)",
-                            currentUri = selectedUri,
-                            onImageSelected = { uri ->
-                                viewModel.setInputImage(inputField.nodeId, uri.toString())
-                            }
+                    is InputField.FloatInput -> {
+                         OutlinedTextField(
+                            value = inputField.value.toString(),
+                            onValueChange = { newValue ->
+                                val floatVal = newValue.toFloatOrNull() ?: 0f
+                                inputs = inputs.toMutableList().also {
+                                    it[index] = inputField.copy(value = floatVal)
+                                }
+                            },
+                            label = { Text("${inputField.nodeTitle} (${inputField.fieldName})") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                     is InputField.SeedInput -> {
@@ -426,7 +428,6 @@ fun DynamicFormScreen(
             Spacer(modifier = Modifier.height(24.dp))
             
             val image by viewModel.generatedImage.collectAsState()
-            val generatedMediaId by viewModel.generatedMediaId.collectAsState()
             
             if (image != null) {
                 Text("Result:", style = MaterialTheme.typography.titleMedium)
@@ -439,31 +440,7 @@ fun DynamicFormScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(300.dp)
-                            .clickable(enabled = generatedMediaId != null) {
-                                generatedMediaId?.let { onViewInGallery(it) }
-                            }
                     )
-                    
-                    if (generatedMediaId != null) {
-                         androidx.compose.material3.Surface(
-                             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-                             shape = MaterialTheme.shapes.small,
-                             modifier = Modifier.padding(8.dp)
-                         ) {
-                             Row(
-                                 verticalAlignment = Alignment.CenterVertically,
-                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                             ) {
-                                 Icon(
-                                     Icons.Default.Search, 
-                                     contentDescription = null,
-                                     modifier = Modifier.size(16.dp)
-                                 )
-                                 Spacer(modifier = Modifier.width(4.dp))
-                                 Text("Open in Gallery", style = MaterialTheme.typography.labelSmall)
-                             }
-                         }
-                    }
                 }
             }
         }

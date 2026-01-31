@@ -28,11 +28,11 @@ class ComfyApplication : Application(), coil.ImageLoaderFactory {
             .addInterceptor { chain ->
                 val request = chain.request()
                 // Only log non-view requests to avoid log spam from images
-                if (!request.url.toString().contains("/view?")) {
+                if (BuildConfig.DEBUG && !request.url.toString().contains("/view?")) {
                     android.util.Log.d("API_DEBUG", "Sending request: ${request.method} ${request.url}")
                 }
                 val response = chain.proceed(request)
-                if (!request.url.toString().contains("/view?")) {
+                if (BuildConfig.DEBUG && !request.url.toString().contains("/view?")) {
                     android.util.Log.d("API_DEBUG", "Received response: ${response.code} for ${request.url}")
                 }
                 response

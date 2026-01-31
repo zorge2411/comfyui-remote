@@ -16,3 +16,8 @@
 **Vulnerability:** Preloading logic in `GalleryScreen` and list items in `HistoryScreen` used hardcoded `http://` URLs, bypassing the secure connection setting even when `GalleryItem` was fixed.
 **Learning:** Security fixes often target the primary usage path but miss secondary paths (like preloading or history views) where logic is duplicated.
 **Prevention:** Centralize URL construction logic in a shared extension function (e.g., `GeneratedMediaListing.constructUrl`) and verify all usages with grep.
+
+## 2025-02-18 - Sensitive Data Leakage in Logs
+**Vulnerability:** The application was logging all network requests (URL and method) and debug info (including potentially sensitive JSON content) to Logcat in release builds.
+**Learning:** Developers often leave `Log.d` calls or custom interceptors active in production, assuming Logcat is safe, but it can be read by other apps or exposed in bug reports.
+**Prevention:** Guard all debug logging with `if (BuildConfig.DEBUG)` checks or use ProGuard rules to strip logging calls. Explicitly enable `buildConfig` in Gradle for newer AGP versions.

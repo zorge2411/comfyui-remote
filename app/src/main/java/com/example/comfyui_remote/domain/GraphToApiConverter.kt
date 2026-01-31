@@ -59,10 +59,12 @@ object GraphToApiConverter {
                                  node.get("widgets_values").isJsonArray && 
                                  node.get("widgets_values").asJsonArray.size() > 0
 
-                if (!isManualLoadImage && !hasWidgets) {
+                val rawInputs = if (node.has("inputs")) node.get("inputs") else null
+                val hasKeyedInputs = rawInputs != null && rawInputs.isJsonObject
+
+                if (!isManualLoadImage && !hasWidgets && !hasKeyedInputs) {
                     // This is a candidate for flattening. Collect its input links.
                     val inputLinks = mutableListOf<Int>()
-                    val rawInputs = if (node.has("inputs")) node.get("inputs") else null
                     if (rawInputs != null && rawInputs.isJsonArray) {
                         rawInputs.asJsonArray.forEach { inputEl ->
                             val linkEl = inputEl.asJsonObject.get("link")
@@ -95,7 +97,6 @@ object GraphToApiConverter {
                 // For now: Take the first input link (Index 0). 
                 // Mostly these pass-through nodes have 1 input. If multiple, we gamble on the first.
                 val firstInputLink = inputs[0]
-                println("CONVERT_DEBUG: Flattening - Node $sourceId is phantom, bypassing to input link $firstInputLink")
                 return resolveRealSource(firstInputLink, visited)
             }
 
@@ -117,7 +118,6 @@ object GraphToApiConverter {
             // If it's in our phantom input map, it means it's missing metadata AND NOT a manual fallback.
             // So we skip generating it in the JSON -> It is "Flattened" out.
             if (phantomNodeInputs.containsKey(id)) {
-                println("CONVERT_DEBUG: Node $id ($type): skipping generation (will be flattened)")
                 return@forEach
             }
             
@@ -144,6 +144,9 @@ object GraphToApiConverter {
 
             // MODE A: Inputs is a JSONObject
             if (rawInputs != null && rawInputs.isJsonObject) {
+                if (nodeDef == null) {
+                    missingNodes.add(type)
+                }
                 val inputObj = rawInputs.asJsonObject
                 inputObj.entrySet().forEach { (key, element) ->
                     inputs.add(key, element)
@@ -163,8 +166,6 @@ object GraphToApiConverter {
                 val graphWidgets = if (node.has("widgets_values") && node.get("widgets_values").isJsonArray) {
                     node.get("widgets_values").asJsonArray
                 } else null
-                
-                println("CONVERT_DEBUG: Processing Node $id ($type). Metadata Found: ${nodeDef != null}. Widgets: ${graphWidgets?.size()}")
                 
                 var widgetIndex = 0
                 val slotNames = mutableSetOf<String>()
@@ -234,7 +235,6 @@ object GraphToApiConverter {
                                 inputs.add(key, linkArray)
                             } else {
                                 // Could not resolve (maybe link to missing node that has no input?)
-                                println("CONVERT_DEBUG: Warn: Node $id: key '$key' link $linkId resolved to null (broken chain?)")
                             }
                         } else {
                             val widget = findNextCompatibleWidget(key)
