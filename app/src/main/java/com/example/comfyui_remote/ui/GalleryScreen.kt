@@ -212,22 +212,24 @@ fun GalleryScreen(
                 val context = LocalContext.current
                 val imageLoader = context.imageLoader
                 
-                LaunchedEffect(gridState.firstVisibleItemIndex) {
+                LaunchedEffect(mediaList, isSecure, currentHost, currentPort) {
+                    var maxPreloadedIndex = -1
+                    val screenWidth = context.resources.displayMetrics.widthPixels
+                    val targetSize = screenWidth / 3
+
                     snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
                         .collect { lastIndex ->
                             if (lastIndex != null) {
                                 val preloadCount = 12 // Preload 4 rows
                                 val start = lastIndex + 1
                                 val end = (start + preloadCount).coerceAtMost(mediaList.size - 1)
-                                
-                                if (start <= end) {
-                                    val screenWidth = context.resources.displayMetrics.widthPixels
-                                    val targetSize = screenWidth / 3
-                                    
-                                    for (i in start..end) {
+                                val effectiveStart = kotlin.math.max(start, maxPreloadedIndex + 1)
+
+                                if (effectiveStart <= end) {
+                                    for (i in effectiveStart..end) {
                                         val item = mediaList[i]
                                         val url = item.constructUrl(currentHost, currentPort, isSecure)
-                                        
+
                                         val request = coil.request.ImageRequest.Builder(context)
                                             .data(url)
                                             .size(targetSize)
@@ -236,6 +238,7 @@ fun GalleryScreen(
                                             .build()
                                         imageLoader.enqueue(request)
                                     }
+                                    maxPreloadedIndex = end
                                 }
                             }
                         }
