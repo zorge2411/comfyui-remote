@@ -19,4 +19,9 @@
 - [x] when pressing the 'enter' key on the keyboard on connection screen - connect to server instead of making a new line in ip address field `medium` — 2026-01-25
 - [x] minimize keyboard when hitting enter on connection screen `low` — 2026-01-25
 - [x] when connecting with empty ip/port the app crashes - fix `high` — 2026-01-26
-- [ ] add back button on workflow generation page `medium` — 2026-01-26
+- [x] add back button on workflow generation page `medium` - 2026-01-30
+- [x] link from resulting image to gallery `medium` - 2026-01-30
+- [x] copy all text button in prompt text box `medium` - 2026-01-30
+- [ ] support for image to image workflow nodes `medium` — 2026-01-30
+- [ ] positive prompt text input must be the most top one in workflow `medium` — 2026-01-30
+- [x] fix revert to old icon caused by pull request `high` - 2026-01-30

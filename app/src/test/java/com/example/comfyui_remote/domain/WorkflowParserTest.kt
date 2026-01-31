@@ -1,8 +1,7 @@
 package com.example.comfyui_remote.domain
 
 import com.google.gson.JsonObject
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.*
 import org.junit.Test
 
 class WorkflowParserTest {
@@ -10,88 +9,59 @@ class WorkflowParserTest {
     private val parser = WorkflowParser()
 
     @Test
-    fun parse_detectsLoadImageNode() {
+    fun `parse detects Float inputs`() {
         val json = """
             {
-              "10": {
-                "inputs": {
-                  "image": "example.png",
-                  "upload": "image"
-                },
-                "class_type": "LoadImage",
-                "_meta": {
-                  "title": "Load Image"
+                "1": {
+                    "class_type": "KSampler",
+                    "_meta": { "title": "Sampler" },
+                    "inputs": {
+                        "cfg": 7.0,
+                        "denoise": 0.75,
+                        "steps": 20
+                    }
                 }
-              },
-              "3": {
-                "inputs": {
-                  "seed": 12345,
-                  "steps": 20,
-                  "cfg": 8.0,
-                  "sampler_name": "euler",
-                  "scheduler": "normal",
-                  "denoise": 1.0,
-                  "model": ["4", 0],
-                  "positive": ["6", 0],
-                  "negative": ["7", 0],
-                  "latent_image": ["5", 0]
-                },
-                "class_type": "KSampler",
-                "_meta": {
-                  "title": "KSampler"
-                }
-              }
             }
         """.trimIndent()
 
-        val results = parser.parse(json)
-
-        val imageInput = results.find { it is InputField.ImageInput } as? InputField.ImageInput
+        val inputs = parser.parse(json)
         
-        assertTrue("Should detect ImageInput", imageInput != null)
-        assertEquals("10", imageInput?.nodeId)
-        assertEquals("image", imageInput?.fieldName)
-        assertEquals("example.png", imageInput?.value)
-        assertEquals("Load Image", imageInput?.nodeTitle)
+        val cfg = inputs.find { it.fieldName == "cfg" }
+        val denoise = inputs.find { it.fieldName == "denoise" }
+        val steps = inputs.find { it.fieldName == "steps" }
+
+        assertTrue("CFG should be FloatInput", cfg is InputField.FloatInput)
+        assertEquals(7.0f, (cfg as InputField.FloatInput).value, 0.001f)
+
+        assertTrue("Denoise should be FloatInput", denoise is InputField.FloatInput)
+        assertEquals(0.75f, (denoise as InputField.FloatInput).value, 0.001f)
+
+        assertTrue("Steps should be IntInput", steps is InputField.IntInput)
+        assertEquals(20, (steps as InputField.IntInput).value)
     }
+
     @Test
-    fun parse_detectsComboAsSelectionInput() {
+    fun `parse detects generic loaders`() {
         val json = """
             {
-              "3": {
-                "inputs": {
-                  "sampler_name": "euler"
-                },
-                "class_type": "KSampler",
-                "_meta": {
-                  "title": "KSampler"
+                "1": {
+                    "class_type": "LoraLoader",
+                    "_meta": { "title": "Load LoRA" },
+                    "inputs": {
+                        "lora_name": "my_lora.safetensors",
+                        "strength_model": 1.0
+                    }
                 }
-              }
             }
         """.trimIndent()
-        
-        val metadataJson = """
-            {
-              "KSampler": {
-                "input": {
-                  "required": {
-                    "sampler_name": [["euler", "euler_ancestral", "heun"], {}]
-                  }
-                }
-              }
-            }
-        """.trimIndent()
-        val metadata = com.google.gson.JsonParser.parseString(metadataJson).asJsonObject
 
-        val results = parser.parse(json, metadata)
-
-        val selectionInput = results.find { it is InputField.SelectionInput } as? InputField.SelectionInput
+        val inputs = parser.parse(json)
         
-        assertTrue("Should detect SelectionInput", selectionInput != null)
-        assertEquals("3", selectionInput?.nodeId)
-        assertEquals("sampler_name", selectionInput?.fieldName)
-        assertEquals("euler", selectionInput?.value)
-        assertEquals(listOf("euler", "euler_ancestral", "heun"), selectionInput?.options)
+        val lora = inputs.find { it.fieldName == "lora_name" }
+        
+        assertNotNull(lora)
+        // We mapped generically to ModelInput (or SelectionInput if metadata existed, but here tested without metadata)
+        assertTrue("lora_name should be ModelInput", lora is InputField.ModelInput)
+        assertEquals("my_lora.safetensors", (lora as InputField.ModelInput).value)
     }
 }
-

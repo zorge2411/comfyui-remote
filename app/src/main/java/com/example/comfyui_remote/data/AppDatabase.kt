@@ -8,6 +8,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
@@ -26,10 +27,12 @@ interface WorkflowDao {
     suspend fun delete(workflow: WorkflowEntity)
 }
 
-@Database(entities = [WorkflowEntity::class, GeneratedMediaEntity::class], version = 9, exportSchema = false)
+@Database(entities = [WorkflowEntity::class, GeneratedMediaEntity::class, LocalQueueItem::class], version = 10, exportSchema = false)
+@TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun workflowDao(): WorkflowDao
     abstract fun generatedMediaDao(): GeneratedMediaDao
+    abstract fun localQueueDao(): LocalQueueDao
 
     companion object {
         @Volatile

@@ -35,7 +35,8 @@ class MainViewModel(
     private val repository: WorkflowRepository,
     private val mediaRepository: com.example.comfyui_remote.data.MediaRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
-    private val connectionRepository: ConnectionRepository
+    private val connectionRepository: ConnectionRepository,
+    private val localQueueRepository: com.example.comfyui_remote.data.LocalQueueRepository
 ) : AndroidViewModel(application) {
 
     private val imageRepository = com.example.comfyui_remote.data.ImageRepository()
@@ -170,6 +171,37 @@ class MainViewModel(
     private val workflowParser = com.example.comfyui_remote.domain.WorkflowParser()
     private val normalizationService = com.example.comfyui_remote.domain.WorkflowNormalizationService(workflowParser)
     private val workflowExecutor = com.example.comfyui_remote.domain.WorkflowExecutor()
+    private val workflowExecutionService = com.example.comfyui_remote.domain.WorkflowExecutionService(imageRepository, workflowExecutor)
+    
+    // ... (existing helper flows)
+
+
+    fun addToQueue(workflow: WorkflowEntity, inputs: List<com.example.comfyui_remote.domain.InputField>, batchCount: Int) {
+        viewModelScope.launch {
+            try {
+                // We need to serialize inputs to JSON
+                // Using standard Gson. InputField has 'label' property which should be serialized
+                // allowing polymorphic deserialization in QueueViewModel.
+                val gson = com.google.gson.Gson()
+                val inputsJson = gson.toJson(inputs)
+             
+                localQueueRepository.addToQueue(
+                    workflowId = workflow.id,
+                    workflowName = workflow.name,
+                    workflowJson = workflow.jsonContent,
+                    inputValuesJson = inputsJson,
+                    batchCount = batchCount
+                )
+                
+                // Optional: Notify success via a one-shot event or Snackbar state if needed
+                // For now, no crash is the priority.
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _errorMessage.value = "Failed to add to queue: ${e.message}"
+                _executionStatus.value = ExecutionStatus.ERROR
+            }
+        }
+    }
     
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
@@ -188,14 +220,22 @@ class MainViewModel(
 
     fun selectWorkflow(workflow: WorkflowEntity) {
         _selectedWorkflow.value = workflow
+        _inputImages.value = emptyMap() // Reset inputs
         
         // Fix: Update generated image view to show the last result if available
         if (workflow.lastImageName != null) {
              val protocol = if (_isSecure.value) "https" else "http"
              val url = "$protocol://${_serverAddress.value}/view?filename=${workflow.lastImageName}&type=output"
             _generatedImage.value = url
+            
+            // Phase 60: Fetch ID for navigation
+            viewModelScope.launch {
+                val media = mediaRepository.getLatestByFilename(workflow.lastImageName)
+                _generatedMediaId.value = media?.id
+            }
         } else {
             _generatedImage.value = null
+            _generatedMediaId.value = null
         }
         
         // Reset execution state when switching workflows
@@ -251,6 +291,7 @@ class MainViewModel(
                 val protocol = if (_isSecure.value) "https" else "http"
                 val url = "$protocol://${_serverAddress.value}/view?filename=${media.fileName}&type=output"
                 _generatedImage.value = url
+                _generatedMediaId.value = media.id
                 
                 _navigateToForm.value = true
             }
@@ -272,7 +313,20 @@ class MainViewModel(
         }
     }
 
-    fun executeWorkflow(workflow: WorkflowEntity, inputs: List<com.example.comfyui_remote.domain.InputField>) {
+    private val _inputImages = MutableStateFlow<Map<String, String?>>(emptyMap())
+    val inputImages: StateFlow<Map<String, String?>> = _inputImages.asStateFlow()
+
+    fun setInputImage(nodeId: String, uriString: String?) {
+        val current = _inputImages.value.toMutableMap()
+        if (uriString == null) {
+            current.remove(nodeId)
+        } else {
+            current[nodeId] = uriString
+        }
+        _inputImages.value = current
+    }
+
+    fun executeWorkflow(workflow: WorkflowEntity, inputs: List<com.example.comfyui_remote.domain.InputField>, batchCount: Int = 1) {
         viewModelScope.launch {
             _executionStatus.value = ExecutionStatus.QUEUED
             _errorMessage.value = null
@@ -280,30 +334,52 @@ class MainViewModel(
             // Warning for missing nodes
             if (!workflow.missingNodes.isNullOrBlank()) {
                 android.util.Log.w("EXECUTE_DEBUG", "Workflow has missing nodes but attempting execution anyway: ${workflow.missingNodes}")
-                // Optionally show a non-fatal message? For now, just log and proceed.
             }
 
             try {
-                // 1. Inject values
-                val updatedJson = workflowExecutor.injectValues(workflow.jsonContent, inputs)
-                val promptJson = com.google.gson.JsonParser.parseString(updatedJson).asJsonObject
-                
-                // 2. Queue Prompt
+                _executionStatus.value = ExecutionStatus.EXECUTING
                 val api = buildApiService()
-                val response = api.queuePrompt(
-                    com.example.comfyui_remote.network.PromptRequest(
-                        prompt = promptJson, 
-                        client_id = connectionRepository.clientId 
+                val resolver = getApplication<Application>().contentResolver
+
+                // Phase 64: Handle Image Uploads (ONCE for the batch)
+                val inputsToUpload = _inputImages.value
+                val uploadedFilenames = if (inputsToUpload.isNotEmpty()) {
+                     workflowExecutionService.uploadImages(api, inputsToUpload, resolver)
+                } else {
+                    emptyMap()
+                }
+
+                // Loop for Batch Generation
+                repeat(batchCount) { iteration ->
+                    // Randomize Seed for each run in the batch
+                    val runInputs = inputs.map { field ->
+                        if (field is com.example.comfyui_remote.domain.InputField.SeedInput) {
+                            field.copy(value = kotlin.random.Random.nextLong(1, Long.MAX_VALUE))
+                        } else {
+                            field
+                        }
+                    }
+
+                    // Patch & Queue via Service
+                    val (updatedJson, response) = workflowExecutionService.prepareAndQueue(
+                        api = api,
+                        clientId = connectionRepository.clientId ?: "",
+                        workflowJson = workflow.jsonContent,
+                        uploadedFilenames = uploadedFilenames,
+                        inputs = runInputs
                     )
-                )
+
+                    // CACHE INPUT for History
+                    _executionCache[response.prompt_id] = updatedJson
+                    
+                    android.util.Log.d("BatchGen", "Queued batch item ${iteration + 1}/$batchCount (Prompt ID: ${response.prompt_id})")
+                }
                 
-                // CACHE INPUT for History
-                _executionCache[response.prompt_id] = updatedJson
-                
-                // 3. Monitor
+                // Set status to EXECUTING (monitoring will handle updates)
                  _executionStatus.value = ExecutionStatus.EXECUTING
 
             } catch (e: retrofit2.HttpException) {
+                // ... (existing error handling)
                 val errorBody = e.response()?.errorBody()?.string()
                 android.util.Log.e("API_ERROR", "HTTP ${e.code()}: $errorBody")
                 
@@ -319,13 +395,16 @@ class MainViewModel(
                             val errors = nodeError.getAsJsonArray("errors")
                             val firstError = errors.get(0).asJsonObject
                             val errMsg = firstError.get("message").asString
-                            val details = firstError.get("details").asString
-                            "Node $nodeId ($classType):\n$errMsg - $details"
+                            val details = if (firstError.has("details")) firstError.get("details").asString else ""
+                            
+                            val detailsStr = if (details.isNotBlank()) "\nDetails: $details" else ""
+                            "Validation Error on Node $nodeId ($classType):\n$errMsg$detailsStr"
                         } else {
                             "Validation failed: ${obj.get("error").asJsonObject.get("message").asString}"
                         }
                     } else if (obj.has("error")) {
-                         obj.getAsJsonObject("error").get("message").asString
+                        val err = obj.get("error")
+                        if (err.isJsonObject) err.asJsonObject.get("message").asString else err.asString
                     } else {
                         "HTTP ${e.code()}: ${e.message()}"
                     }
@@ -346,6 +425,9 @@ class MainViewModel(
 
     private val _generatedImage = MutableStateFlow<String?>(null)
     val generatedImage: StateFlow<String?> = _generatedImage.asStateFlow()
+
+    private val _generatedMediaId = MutableStateFlow<Long?>(null)
+    val generatedMediaId: StateFlow<Long?> = _generatedMediaId.asStateFlow()
 
     private val _availableModels = MutableStateFlow<List<String>>(emptyList())
     val availableModels: StateFlow<List<String>> = _availableModels.asStateFlow()
@@ -542,18 +624,26 @@ class MainViewModel(
                                 val isVideo = extension in listOf("mp4", "gif", "webm", "mkv")
                                 val mediaType = if (isVideo) "VIDEO" else "IMAGE"
                                 
-                                mediaRepository.insert(
-                                    com.example.comfyui_remote.data.GeneratedMediaEntity(
-                                        workflowName = _selectedWorkflow.value?.name ?: "Unknown",
-                                        fileName = filename,
-                                        subfolder = subfolder,
-                                        serverHost = host,
-                                        serverPort = port,
-                                        mediaType = mediaType,
-                                        promptJson = promptJson,
-                                        promptId = promptId
-                                    )
+                                val mediaEntity = com.example.comfyui_remote.data.GeneratedMediaEntity(
+                                    workflowName = _selectedWorkflow.value?.name ?: "Unknown",
+                                    fileName = filename,
+                                    subfolder = subfolder,
+                                    serverHost = host,
+                                    serverPort = port,
+                                    mediaType = mediaType,
+                                    promptJson = promptJson,
+                                    promptId = promptId
                                 )
+
+                                val insertedId = mediaRepository.insert(mediaEntity)
+                                
+                                if (insertedId != -1L) {
+                                    _generatedMediaId.value = insertedId
+                                } else {
+                                    // Already exists, fetch ID
+                                    val existing = mediaRepository.getLatestByFilename(filename)
+                                    _generatedMediaId.value = existing?.id
+                                }
                                 
                                 _selectedWorkflow.value?.let { workflow ->
                                     if (workflow.id != 0L) {
@@ -1031,12 +1121,13 @@ class MainViewModelFactory(
     private val repository: WorkflowRepository,
     private val mediaRepository: com.example.comfyui_remote.data.MediaRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
-    private val connectionRepository: ConnectionRepository
+    private val connectionRepository: ConnectionRepository,
+    private val localQueueRepository: com.example.comfyui_remote.data.LocalQueueRepository
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return MainViewModel(application, repository, mediaRepository, userPreferencesRepository, connectionRepository) as T
+            return MainViewModel(application, repository, mediaRepository, userPreferencesRepository, connectionRepository, localQueueRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

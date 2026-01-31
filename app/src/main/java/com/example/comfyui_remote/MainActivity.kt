@@ -18,6 +18,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
@@ -79,6 +86,7 @@ class MainActivity : ComponentActivity() {
         val database = AppDatabase.getDatabase(this)
         val repository = WorkflowRepository(database.workflowDao())
         val mediaRepository = com.example.comfyui_remote.data.MediaRepository(database.generatedMediaDao())
+        val localQueueRepository = com.example.comfyui_remote.data.LocalQueueRepository(database.localQueueDao())
         val userPreferencesRepository = com.example.comfyui_remote.data.UserPreferencesRepository(this)
         val app = application as ComfyApplication
         val viewModelFactory = MainViewModelFactory(
@@ -86,9 +94,34 @@ class MainActivity : ComponentActivity() {
             repository, 
             mediaRepository, 
             userPreferencesRepository,
-            app.connectionRepository
+            app.connectionRepository,
+            localQueueRepository
         )
         val viewModel = ViewModelProvider(this, viewModelFactory)[MainViewModel::class.java]
+        
+        // Queue ViewModel
+        // We need to instantiate WorkflowExecutionService separately or get it from somewhere.
+        // For now, let's create a new instance or move definition up.
+        // Better: create `workflowExecutionService` once.
+        // Since MainViewModel creates it internally (which is not ideal but done), 
+        // we should probably expose it or create it here.
+        // Let's create it here to pass to QueueViewModel.
+        // MainViewModel created its oown. This is inconsistent but harmless for stateless usage 
+        // (assuming no shared state in Service itself, which is true).
+        // However, to be cleaner, we should have passed it to MainViewModelFactory too (Plan for next refactor).
+        // For now:
+        val workflowExecutor = com.example.comfyui_remote.domain.WorkflowExecutor()
+        val imageRepository = com.example.comfyui_remote.data.ImageRepository()
+        val workflowExecutionService = com.example.comfyui_remote.domain.WorkflowExecutionService(imageRepository, workflowExecutor)
+        
+        val queueViewModelFactory = com.example.comfyui_remote.QueueViewModelFactory(
+            app,
+            localQueueRepository,
+            app.connectionRepository,
+            userPreferencesRepository,
+            workflowExecutionService
+        )
+        val queueViewModel = ViewModelProvider(this, queueViewModelFactory)[com.example.comfyui_remote.QueueViewModel::class.java]
 
         setContent {
             val themeMode by viewModel.themeMode.collectAsState()
@@ -106,11 +139,8 @@ class MainActivity : ComponentActivity() {
                                     label = { Text("Home") },
                                     selected = currentRoute == "connection",
                                     onClick = {
-                                        // Simple navigation back to start
                                         navController.navigate("connection") {
-                                            popUpTo("connection") {
-                                                inclusive = false
-                                            }
+                                            popUpTo("connection") { inclusive = false }
                                             launchSingleTop = true
                                         }
                                     }
@@ -121,23 +151,34 @@ class MainActivity : ComponentActivity() {
                                     selected = currentRoute == "workflows",
                                     onClick = {
                                         navController.navigate("workflows") {
-                                            popUpTo("connection") {
-                                                saveState = true
-                                            }
+                                            popUpTo("connection") { saveState = true }
                                             launchSingleTop = true
                                             restoreState = true
                                         }
                                     }
                                 )
+                                
+                                // New Queue Item
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Filled.PlayArrow, contentDescription = "Queue") }, // Using PlayArrow as Queue icon equivalent
+                                    label = { Text("Queue") },
+                                    selected = currentRoute == "queue",
+                                    onClick = {
+                                        navController.navigate("queue") {
+                                            popUpTo("connection") { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
+                                )
+
                                 NavigationBarItem(
                                     icon = { Icon(Icons.Filled.Search, contentDescription = "Gallery") },
                                     label = { Text("Gallery") },
                                     selected = currentRoute == "gallery",
                                     onClick = {
                                         navController.navigate("gallery") {
-                                            popUpTo("connection") {
-                                                saveState = true
-                                            }
+                                            popUpTo("connection") { saveState = true }
                                             launchSingleTop = true
                                             restoreState = true
                                         }
@@ -150,9 +191,7 @@ class MainActivity : ComponentActivity() {
                                     selected = currentRoute == "history",
                                     onClick = {
                                         navController.navigate("history") {
-                                            popUpTo("connection") {
-                                                saveState = true
-                                            }
+                                            popUpTo("connection") { saveState = true }
                                             launchSingleTop = true
                                             restoreState = true
                                         }
@@ -164,9 +203,7 @@ class MainActivity : ComponentActivity() {
                                     selected = currentRoute == "settings",
                                     onClick = {
                                         navController.navigate("settings") {
-                                            popUpTo("connection") {
-                                                saveState = true
-                                            }
+                                            popUpTo("connection") { saveState = true }
                                             launchSingleTop = true
                                             restoreState = true
                                         }
@@ -204,6 +241,16 @@ class MainActivity : ComponentActivity() {
                                 viewModel.parseWorkflowInputs(workflow.jsonContent)
                                 viewModel.selectWorkflow(workflow)
                                 navController.navigate("remote_control")
+                            }
+                        }
+                        composable("queue") {
+                            com.example.comfyui_remote.ui.QueueScreen(queueViewModel) {
+                                // Back action for Queue Screen inside Tab Nav?
+                                // Usually BottomNav screens don't have back unless they go deeper.
+                                // But QueueScreen takes an onBack lambda.
+                                // For Top level, maybe no back?
+                                // Or back to Home?
+                                navController.popBackStack() 
                             }
                         }
                         composable("history") {
@@ -244,6 +291,9 @@ class MainActivity : ComponentActivity() {
                                     onBack = { navController.popBackStack() },
                                     onViewInGallery = { mediaId ->
                                         navController.navigate("media_detail/$mediaId")
+                                    },
+                                    onViewQueue = {
+                                        navController.navigate("queue")
                                     }
                                 )
                             }

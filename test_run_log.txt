@@ -14,20 +14,35 @@
 > Task :app:processDebugManifest UP-TO-DATE
 > Task :app:processDebugManifestForPackage UP-TO-DATE
 > Task :app:processDebugResources UP-TO-DATE
-> Task :app:kspDebugKotlin UP-TO-DATE
-> Task :app:compileDebugKotlin UP-TO-DATE
 > Task :app:javaPreCompileDebug UP-TO-DATE
-> Task :app:compileDebugJavaWithJavac UP-TO-DATE
 > Task :app:preDebugUnitTestBuild UP-TO-DATE
 > Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :app:kspDebugKotlin
+> Task :app:compileDebugKotlin
+
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+Java compiler version 21 has deprecated support for compiling with source/target version 8.
+Try one of the following options:
+    1. [Recommended] Use Java toolchain with a lower language version
+    2. Set a higher source/target version
+    3. Use a lower version of the JDK running the build (if you're not using Java toolchain)
+For more details on how to configure these settings, see https://developer.android.com/build/jdks.
+To suppress this warning, set android.javaCompile.suppressSourceTargetDeprecationWarning=true in gradle.properties.
+
 > Task :app:processDebugJavaRes UP-TO-DATE
 > Task :app:bundleDebugClassesToRuntimeJar
 > Task :app:bundleDebugClassesToCompileJar
 > Task :app:kspDebugUnitTestKotlin
+
 > Task :app:compileDebugUnitTestKotlin
+w: file:///D:/Antigravity/ComfyUI%20frontend/app/src/test/java/com/example/comfyui_remote/domain/GraphToApiConverterSubgraphTest.kt:53:26 'constructor(): JsonParser' is deprecated. Deprecated in Java.
+w: file:///D:/Antigravity/ComfyUI%20frontend/app/src/test/java/com/example/comfyui_remote/domain/GraphToApiConverterSubgraphTest.kt:57:24 'fun parse(p0: String!): JsonElement!' is deprecated. Deprecated in Java.
+w: file:///D:/Antigravity/ComfyUI%20frontend/app/src/test/java/com/example/comfyui_remote/domain/GraphToApiConverterSubgraphTest.kt:58:24 'fun parse(p0: String!): JsonElement!' is deprecated. Deprecated in Java.
+w: file:///D:/Antigravity/ComfyUI%20frontend/app/src/test/java/com/example/comfyui_remote/domain/GraphToApiConverterSubgraphTest.kt:63:24 'fun parse(p0: String!): JsonElement!' is deprecated. Deprecated in Java.
+
 > Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
 > Task :app:processDebugUnitTestJavaRes UP-TO-DATE
 > Task :app:testDebugUnitTest
 
-BUILD SUCCESSFUL in 2s
-25 actionable tasks: 5 executed, 20 up-to-date
+BUILD SUCCESSFUL in 5s
+25 actionable tasks: 7 executed, 18 up-to-date

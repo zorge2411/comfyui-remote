@@ -1,6 +1,7 @@
 package com.example.comfyui_remote.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,6 +21,9 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.foundation.lazy.LazyColumn
@@ -69,7 +73,8 @@ fun DynamicFormScreen(
     viewModel: MainViewModel,
     workflow: WorkflowEntity,
     onBack: () -> Unit,
-    onViewInGallery: (Long) -> Unit
+    onViewInGallery: (Long) -> Unit,
+    onViewQueue: () -> Unit
 ) {
     // We need to parse inputs once
     var inputs by remember { mutableStateOf<List<InputField>>(emptyList()) }
@@ -387,23 +392,94 @@ fun DynamicFormScreen(
                 }
             }
 
-            Button(
-                onClick = {
-                    viewModel.executeWorkflow(workflow, inputs)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = executionStatus == ExecutionStatus.IDLE || executionStatus == ExecutionStatus.FINISHED
-            ) {
-                if (executionStatus == ExecutionStatus.EXECUTING || executionStatus == ExecutionStatus.QUEUED) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.height(24.dp).padding(end = 8.dp),
-                        color = MaterialTheme.colorScheme.onPrimary
+                // Batch Generation Selector
+                var batchCount by remember { mutableStateOf(1) }
+                
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                ) {
+                    Text(
+                        text = "Batch Count:",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
-                    Text("Running...")
-                } else {
-                    Text("Generate")
+                    Spacer(modifier = Modifier.weight(1f))
+                    
+                    androidx.compose.material3.FilledIconButton(
+                        onClick = { if (batchCount > 1) batchCount-- },
+                        modifier = Modifier.size(36.dp),
+                        colors = androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        Icon(Icons.Default.Remove, contentDescription = "Decrease Batch")
+                    }
+                    
+                    Text(
+                        text = "$batchCount",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    
+                    androidx.compose.material3.FilledIconButton(
+                        onClick = { if (batchCount < 10) batchCount++ },
+                        modifier = Modifier.size(36.dp),
+                        colors = androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Increase Batch")
+                    }
                 }
-            }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Add to Queue (Secondary)
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = {
+                            viewModel.addToQueue(workflow, inputs, batchCount)
+                            // Optional: Show feedback
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = executionStatus == ExecutionStatus.IDLE || executionStatus == ExecutionStatus.FINISHED
+                    ) {
+                         Icon(Icons.Default.Add, contentDescription = null)
+                         Spacer(Modifier.width(8.dp))
+                         Text("Queue")
+                    }
+
+                    // Generate (Primary)
+                    Button(
+                        onClick = {
+                            viewModel.executeWorkflow(workflow, inputs, batchCount)
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = executionStatus == ExecutionStatus.IDLE || executionStatus == ExecutionStatus.FINISHED
+                    ) {
+                        if (executionStatus == ExecutionStatus.EXECUTING || executionStatus == ExecutionStatus.QUEUED) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.height(24.dp).padding(end = 8.dp),
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Text("Running...")
+                        } else {
+                            Text("Generate")
+                        }
+                    }
+                }
+                
+                // View Queue Link
+                androidx.compose.material3.TextButton(
+                    onClick = onViewQueue,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("View Queue Manager")
+                }
 
             // Save as Template Button (only show if it's a temporary/history workflow)
             if (workflow.id == 0L) {
@@ -427,12 +503,20 @@ fun DynamicFormScreen(
             Spacer(modifier = Modifier.height(24.dp))
             
             val image by viewModel.generatedImage.collectAsState()
+            val generatedMediaId by viewModel.generatedMediaId.collectAsState()
             
             if (image != null) {
+                // Ensure we are in an item block for Composable content if needed, 
+                // but observing strictly, we are replacing an existing block. 
+                // We'll output the content assuming the context allows it (or adding item {} if appropriate, but avoiding nesting risks).
+                // Given the clutter, let's just output the content directly and fix the logic.
+                
                 Text("Result:", style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                Box(contentAlignment = Alignment.BottomEnd) {
+                Box(contentAlignment = Alignment.BottomEnd, modifier = Modifier.clickable(enabled = generatedMediaId != null) {
+                    generatedMediaId?.let { onViewInGallery(it) }
+                }) {
                     coil.compose.AsyncImage(
                         model = image,
                         contentDescription = "Generated Image",
@@ -440,6 +524,27 @@ fun DynamicFormScreen(
                             .fillMaxWidth()
                             .height(300.dp)
                     )
+                    
+                    if (generatedMediaId != null) {
+                         androidx.compose.material3.Surface(
+                             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                             shape = MaterialTheme.shapes.small,
+                             modifier = Modifier.padding(8.dp)
+                         ) {
+                             Row(
+                                 verticalAlignment = Alignment.CenterVertically,
+                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                             ) {
+                                 Icon(
+                                     Icons.Default.Search, 
+                                     contentDescription = null,
+                                     modifier = Modifier.size(16.dp)
+                                 )
+                                 Spacer(modifier = Modifier.width(4.dp))
+                                 Text("Open in Gallery", style = MaterialTheme.typography.labelSmall)
+                             }
+                         }
+                    }
                 }
             }
         }

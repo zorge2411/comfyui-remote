@@ -1,84 +1,36 @@
-
 import os
-from PIL import Image, ImageEnhance
+from PIL import Image
 
-def generate_icons(source_path, res_dir):
-    """
-    Generates Android mipmap icons from a source image.
-    """
-    
-    # Define sizes for each density
-    densities = {
-        'mipmap-mdpi': (48, 48),
-        'mipmap-hdpi': (72, 72),
-        'mipmap-xhdpi': (96, 96),
-        'mipmap-xxhdpi': (144, 144),
-        'mipmap-xxxhdpi': (192, 192)
-    }
-    
-    try:
-        # Load source image
-        img = Image.open(source_path)
-        print(f"Loaded source image: {source_path} ({img.size})")
+# Configuration
+SOURCE_IMAGE = r'd:\Antigravity\ComfyUI frontend\.gsd\phases\72\icon_style_1_minimalist.png'
+RES_DIR = r'd:\Antigravity\ComfyUI frontend\app\src\main\res'
 
-        # LIGHTEN THE ICON (User Request II)
-        # Boost Brightness further
-        enhancer = ImageEnhance.Brightness(img)
-        img = enhancer.enhance(1.6) # +60% Brightness
-        
-        # ADD MORE COLORS (User Request)
-        # Boost Saturation heavily to bring out the "neon" vibe
-        enhancer_col = ImageEnhance.Color(img)
-        img = enhancer_col.enhance(1.8) # +80% Saturation
-        
-        # Increase Contrast to defining edges
-        enhancer_con = ImageEnhance.Contrast(img)
-        img = enhancer_con.enhance(1.2)
-        
-        # REMOVE SQUARE BACKGROUND (User Request)
-        # Convert to RGBA if not already
-        img = img.convert("RGBA")
-        
-        # Get pixel data
-        pixels = img.load()
-        width, height = img.size
-        
-        # Replace dark background with transparency
-        # Threshold: pixels darker than this are considered background
-        threshold = 40  # Adjust if needed
-        
-        for y in range(height):
-            for x in range(width):
-                r, g, b, a = pixels[x, y]
-                # If pixel is very dark (background), make it transparent
-                if r < threshold and g < threshold and b < threshold:
-                    pixels[x, y] = (r, g, b, 0)  # Set alpha to 0
+# Densities and sizes (Legacy standard icon size is 48dp)
+SIZES = {
+    'mipmap-mdpi': 48,
+    'mipmap-hdpi': 72,
+    'mipmap-xhdpi': 96,
+    'mipmap-xxhdpi': 144,
+    'mipmap-xxxhdpi': 192
+}
 
-        # Process standard launcher icon
-        for folder, size in densities.items():
-            target_dir = os.path.join(res_dir, folder)
-            os.makedirs(target_dir, exist_ok=True)
+def generate_icons():
+    if not os.path.exists(SOURCE_IMAGE):
+        print(f"Error: Source image not found at {SOURCE_IMAGE}")
+        return
+
+    with Image.open(SOURCE_IMAGE) as img:
+        # High quality resize
+        for folder, size in SIZES.items():
+            folder_path = os.path.join(RES_DIR, folder)
+            if not os.path.exists(folder_path):
+                os.makedirs(folder_path)
             
-            # Resize
-            resized_img = img.resize(size, Image.Resampling.LANCZOS)
-            
-            # Save standard icon
-            target_path = os.path.join(target_dir, "ic_launcher.png")
-            resized_img.save(target_path)
-            print(f"Saved {target_path}")
-
-            # Save round icon (using same image for now as design is rounded square)
-            # In a real scenario, we might want to mask it to a circle
-            target_path_round = os.path.join(target_dir, "ic_launcher_round.png")
-            resized_img.save(target_path_round)
-            print(f"Saved {target_path_round}")
-            
-        print("Icon generation complete.")
-        
-    except Exception as e:
-        print(f"Error generating icons: {e}")
+            # Legacy icon (standard)
+            out_img = img.resize((size, size), Image.Resampling.LANCZOS)
+            out_img.save(os.path.join(folder_path, 'ic_launcher.png'))
+            out_img.save(os.path.join(folder_path, 'ic_launcher_round.png'))
+            print(f"Generated icons for {folder} ({size}x{size})")
 
 if __name__ == "__main__":
-    source = r"d:\Antigravity\ComfyUI frontend\app\src\main\ic_launcher-web.png"
-    res = r"d:\Antigravity\ComfyUI frontend\app\src\main\res"
-    generate_icons(source, res)
+    generate_icons()

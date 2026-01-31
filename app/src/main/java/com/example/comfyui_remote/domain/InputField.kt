@@ -1,38 +1,39 @@
 package com.example.comfyui_remote.domain
 
 sealed class InputField(
-    val label: String,
-    open val nodeTitle: String,
-    open val nodeId: String,
-    open val fieldName: String
+    val label: String
 ) {
+    abstract val nodeTitle: String
+    abstract val nodeId: String
+    abstract val fieldName: String
+
     data class StringInput(
         override val nodeId: String,
         override val fieldName: String,
         val value: String,
         override val nodeTitle: String
-    ) : InputField("Text", nodeTitle, nodeId, fieldName)
+    ) : InputField("Text")
 
     data class IntInput(
         override val nodeId: String,
         override val fieldName: String,
         val value: Int,
         override val nodeTitle: String
-    ) : InputField("Number", nodeTitle, nodeId, fieldName)
+    ) : InputField("Number")
 
     data class SeedInput(
         override val nodeId: String,
         override val fieldName: String,
         val value: Long,
         override val nodeTitle: String
-    ) : InputField("Seed", nodeTitle, nodeId, fieldName)
+    ) : InputField("Seed")
 
     data class FloatInput(
         override val nodeId: String,
         override val fieldName: String,
         val value: Float,
         override val nodeTitle: String
-    ) : InputField("Number (Float)", nodeTitle, nodeId, fieldName)
+    ) : InputField("Number (Float)")
 
     @Deprecated("Use SelectionInput for generic dropdowns")
     data class ModelInput(
@@ -40,7 +41,7 @@ sealed class InputField(
         override val fieldName: String,
         val value: String,
         override val nodeTitle: String
-    ) : InputField("Model", nodeTitle, nodeId, fieldName)
+    ) : InputField("Model")
 
     data class SelectionInput(
         override val nodeId: String,
@@ -48,7 +49,7 @@ sealed class InputField(
         val value: String,
         val options: List<String>,
         override val nodeTitle: String
-    ) : InputField("Selection", nodeTitle, nodeId, fieldName)
+    ) : InputField("Selection")
 
     data class ImageInput(
         override val nodeId: String,
@@ -56,5 +57,5 @@ sealed class InputField(
         val value: String? = null, // The server filename
         val localUri: String? = null, // For preview before upload completes or just preview
         override val nodeTitle: String
-    ) : InputField("Image", nodeTitle, nodeId, fieldName)
+    ) : InputField("Image")
 }

@@ -9,7 +9,7 @@ interface GeneratedMediaDao {
     fun getAll(): Flow<List<GeneratedMediaEntity>>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insert(media: GeneratedMediaEntity)
+    suspend fun insert(media: GeneratedMediaEntity): Long
 
     @Delete
     suspend fun delete(media: GeneratedMediaEntity)
@@ -18,7 +18,7 @@ interface GeneratedMediaDao {
     suspend fun delete(media: List<GeneratedMediaEntity>)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insert(media: List<GeneratedMediaEntity>)
+    suspend fun insert(media: List<GeneratedMediaEntity>): List<Long>
 
     @Query("DELETE FROM generated_media")
     suspend fun deleteAll()
@@ -31,4 +31,7 @@ interface GeneratedMediaDao {
 
     @Query("SELECT * FROM generated_media WHERE id = :id")
     suspend fun getById(id: Long): GeneratedMediaEntity?
+
+    @Query("SELECT * FROM generated_media WHERE fileName = :filename ORDER BY timestamp DESC LIMIT 1")
+    suspend fun getLatestByFilename(filename: String): GeneratedMediaEntity?
 }

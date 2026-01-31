@@ -1,7 +1,7 @@
 # ROADMAP.md
 
-> **Current Milestone**: Milestone 3: Image Input Support
-> **Goal**: Enable users to use images from their device (gallery or camera) as inputs for ComfyUI workflows.
+> **Current Milestone**: Milestone 3 (In Progress)
+> **Goal**: Polish UX, fix bugs, and implement standard ComfyUI features (Subgraphs, Icons).
 
 ## Must-Haves
 
@@ -495,3 +495,282 @@
   - [x] Handle Multi-Input ambiguity (First input priority)
 - [x] Integrate flattening into the conversion pipeline
 - [x] Verify with previously failing workflow logs
+
+### Phase 67: Enhanced Input Support & Heuristics
+
+- [x] Create compat drawable for legacy PNG
+- [x] Configure Adaptive Icon XMLs
+- [x] Standardize Background Color
+- [x] Verify Build
+
+**Verification**:
+
+- [x] Build Successful
+- [ ] Visual Verification (Manual)
+
+### Phase 55: Connect on Enter Key
+
+**Status**: ✅ Done
+**Objective**: Improve the connection screen UX by ensuring the 'Enter' key triggers the connection action (or moves focus) instead of creating a new line in the IP address field.
+
+**Tasks**:
+
+- [x] Create Plan
+- [x] Update ConnectionScreen Input Fields
+- [x] Verify Behavior
+
+**Verification**:
+
+- [x] pressing Enter on IP field triggers Connect
+- [x] pressing Enter on Port field triggers Connect
+- [x] No newlines in IP field
+
+### Phase 56: Keyboard Management UX
+
+**Status**: ✅ Done
+**Objective**: Ensure the software keyboard is dismissed when the 'Connect' action is triggered from the keyboard or the button, preventing UI overlap and improving visibility during the connection state.
+
+**Tasks**:
+
+- [x] Create Plan
+- [x] Implement Keyboard Dismissal Logic
+- [x] Verify Behavior
+
+**Verification**:
+
+- [x] Pressing Enter on IP/Port field dismisses the keyboard.
+- [x] Clicking the 'Connect' button dismisses the keyboard.
+
+### Phase 57: Empty IP/Port Crash Fix
+
+**Status**: ✅ Done
+**Objective**: Prevent app crash when the user attempts to connect with empty or invalid IP address and port fields.
+
+**Tasks**:
+
+- [x] Create Plan
+- [x] Add Input Validation to ConnectionScreen
+- [x] Verify Behavior
+
+**Verification**:
+
+- [x] Empty IP + Connect → shows error, no crash
+- [x] Empty Port + Connect → shows error, no crash
+- [x] Valid IP + Port + Connect → connects normally
+
+---
+
+## Phase 58: Gallery Sync & Reliability Optimization
+
+**Status**: ✅ Done
+**Objective**: Resolve slow gallery loading and image timeouts via early stream termination and unified network configuration.
+
+**Tasks**:
+
+- [x] Centralize OkHttpClient with 30s timeouts
+- [x] Implement early `break` in history sync stream
+- [x] Extract `type` (output/input/temp) for correct image URLs
+- [x] Limit syncHistory to last 100 items (v1)
+
+**Verification**:
+
+- [x] Successful build
+- [x] Verified stream closure significantly reduces sync time for existing data.
+
+---
+
+### Phase 59: Server IP Address Selection
+
+**Status**: ✅ Done
+**Objective**: Add a combo box to the connection screen allowing users to select from up to 5 saved server IP addresses, improving UX for users who connect to multiple ComfyUI servers.
+**Depends on**: Phase 58
+
+**Tasks**:
+
+- [x] Create ServerProfile data class and update UserPreferencesRepository
+- [x] Update MainViewModel with server profile state
+- [x] Update ConnectionScreen UI with dropdown
+
+**Verification**:
+
+- [x] Build succeeds
+- [x] Dropdown shows saved servers, selection auto-fills fields
+- [x] Max 5 servers maintained (FIFO)
+
+### Phase 60: Link Result to Gallery
+
+**Status**: ✅ Done
+**Objective**: Enable direct navigation from a generated image result to its full view in the Gallery, allowing for immediate management (zoom, share, delete).
+**Depends on**: Phase 40
+
+**Tasks**:
+
+- [x] Create Plan
+- [x] Implement Navigation Logic
+- [x] Add UI Action on Result Image
+- [x] Verify Navigation
+
+### Phase 61: Add Back Button on Workflow Generation
+
+**Status**: ✅ Done
+**Objective**: Improve navigation by adding an explicit back button to the workflow generation screen, allowing users to easily return to the workflow list.
+**Depends on**: None
+
+**Tasks**:
+
+- [ ] Create Plan
+- [ ] Add Back Callback to DynamicFormScreen
+- [ ] Add Back Icon to Header
+- [ ] Update MainActivity Navigation
+
+### Phase 62: Copy Button for Prompt Inputs
+
+**Status**: ✅ Done
+**Objective**: Add a "Copy" button to text input fields (especially prompts) to allow users to quickly copy the entire prompt text to the clipboard.
+**Depends on**: None
+
+**Tasks**:
+
+- [x] Create Plan
+- [x] Implement Clipboard Utility in ViewModel
+- [x] Update UI with Copy Icon in TextField
+- [x] Add Snackbar confirmation
+- [x] Verify functionality
+
+### Phase 63: Fix Reverted App Icon
+
+**Status**: ✅ Complete
+**Objective**: Restore the correct application icon that was accidentally reverted during a recent pull request/merge.
+**Depends on**: None
+
+**Tasks**:
+
+- [x] Investigate current icon configuration
+- [x] Restore correct icon assets/manifest reference
+- [x] Verify correct icon is displayed
+
+### Phase 64: Image-to-Image Support
+
+**Status**: ✅ Complete
+**Objective**: Enable using device images as input for workflows (Img2Img), supporting image upload and execution patching.
+**Depends on**: Phase 62
+
+**Tasks**:
+
+- [x] Create `WorkflowPatchingService`
+- [x] Update `MainViewModel` for Input State & Upload Logic
+- [x] Patch `GraphToApiConverter` for `LoadImage` fallback
+- [x] Integrate `ImageSelector` in `DynamicFormScreen`
+- [x] Verify Implementation
+
+### Phase 65: Robust Workflow Handling
+
+**Status**: ✅ Done
+**Objective**: Prevent execution failures by ensuring unknown/custom nodes (missing metadata) are not skipped during conversion, employing heuristic input mapping where possible.
+**Depends on**: Phase 64
+
+**Tasks**:
+
+- [x] Modify `GraphToApiConverter` to stop skipping unknown nodes
+- [x] Implement heuristic input mapping for Primitives/Loaders
+- [x] Verify fix with problem workflow
+
+### Phase 66: Heuristic Link Flattening
+
+**Status**: ✅ Done
+**Objective**: Detect and recursively bypass "unknown" nodes (missing metadata) by linking their consumers directly to their upstream inputs. This handles frontend-only nodes like custom Reroutes or Groups that the server rejects.
+**Depends on**: Phase 65
+
+**Tasks**:
+
+- [x] Create `GraphToApiConverterFlatteningTest` to enable TDD
+- [x] Implement `flattenLinks` logic in `GraphToApiConverter`
+  - [x] Handle Single-Hop bypass
+  - [x] Handle Multi-Hop bypass (Recursion)
+  - [x] Handle Multi-Input ambiguity (First input priority)
+- [x] Integrate flattening into the conversion pipeline
+- [x] Verify with previously failing workflow logs
+
+### Phase 67: Enhanced Input Support & Heuristics
+
+**Status**: ✅ Done
+
+- [x] **New Input Types**: Implement `FloatInput` for decimal values (CFG, Denoise).
+- [x] **Improved Parser**: Detect generic loader nodes (e.g. `lora_name`, `vae_name`) and map to `ModelInput`/`SelectionInput`.
+- [x] **UI Support**: Render `FloatInput` with decimal keyboard.
+- [x] **Validation**: Verify parser correctly identifies floats vs ints.
+
+### Phase 68: Protocol Research
+
+**Status**: ✅ Done
+**Objective**: Research and document ComfyUI Graph vs API protocols.
+
+### Phase 69: Fix UUID Node Flattening
+
+**Status**: ✅ Done
+**Objective**: Fix 'Missing Node' errors by flattening UUID-typed nodes with widgets.
+**Depends on**: Phase 68
+
+**Tasks**:
+
+- [x] Fix GraphToApiConverter (Plan 69.1)
+- [x] Verify with BugReproTest
+
+### Phase 70: Subgraph Expansion
+
+**Status**: 🎯 Planned
+**Objective**: Implement subgraph expansion to properly handle ComfyUI group nodes
+**Depends on**: Phase 69
+
+**Context**: ComfyUI workflows use subgraphs (group nodes) to encapsulate complex logic. These appear as UUID-typed nodes with `proxyWidgets` that reference internal nodes. Currently, these are preserved in the API JSON but rejected by the server. Solution is to expand subgraphs by replacing the wrapper node with its  internal nodes.
+
+**Tasks**:
+
+- [ ] Parse subgraph definitions from `definitions.subgraphs`
+- [ ] Implement node ID remapping to avoid conflicts
+- [ ] Remap internal links to connect to external graph
+- [ ] Replace subgraph wrapper nodes with expanded internal nodes
+- [ ] Verify with real subgraph workflow
+
+### Phase 72: App Icon Implementation
+
+**Status**: ✅ Done
+**Objective**: Implement "Modern Minimalist" (Icon #1) as the new adaptive app icon.
+**Depends on**: Phase 71
+
+**Tasks**:
+
+- [x] Create Plan
+- [x] Create Vector Assets (Foreground)
+- [x] Create Background XML
+- [x] Update mipmap structure
+- [x] Update Manifest
+- [x] Verify
+
+### Phase 73: Batch Generation
+
+**Status**: 🔄 In Progress
+**Objective**: Allow users to queue multiple generations (batch) for a workflow in a single action, ensuring each run has a unique random seed.
+**Depends on**: Phase 72
+
+**Tasks**:
+
+- [ ] Create Plan
+- [ ] Implement Batch UI in `DynamicFormScreen`
+- [x] Implement Batch Logic in `MainViewModel` (Queue Loop + Seed Randomization)
+- [x] Verify
+
+### Phase 74: Local Queue
+
+**Status**: 🔍 Verification Needed
+**Objective**: Persistent local queue for processing multiple workflows.
+**Depends on**: Phase 73
+
+**Tasks**:
+
+- [x] Research & Plan
+- [x] Implement Data Layer (`LocalQueueItem`, DAO, Repo)
+- [x] Refactor Execution Logic (`ExecutionService`)
+- [x] Implement Queue UI (`DynamicFormScreen` update, `QueueScreen`)
+- [x] Implement Queue Logic (`QueueViewModel`)
+- [x] Verify (Build + Unit Tests Passed)
