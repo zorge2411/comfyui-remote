@@ -16,3 +16,8 @@
 **Vulnerability:** Preloading logic in `GalleryScreen` and list items in `HistoryScreen` used hardcoded `http://` URLs, bypassing the secure connection setting even when `GalleryItem` was fixed.
 **Learning:** Security fixes often target the primary usage path but miss secondary paths (like preloading or history views) where logic is duplicated.
 **Prevention:** Centralize URL construction logic in a shared extension function (e.g., `GeneratedMediaListing.constructUrl`) and verify all usages with grep.
+
+## 2025-02-18 - Sensitive Data Leakage in OkHttp Logs
+**Vulnerability:** `ComfyApplication` was configured to log full URLs (including query parameters) to Logcat via a custom OkHttp interceptor in all build types, including release.
+**Learning:** Custom logging interceptors often bypass standard ProGuard stripping if they use `Log.d` directly without conditional checks. This can leak sensitive API tokens or path information in production logs.
+**Prevention:** Always wrap manual logging logic in `if (BuildConfig.DEBUG)` or check `ApplicationInfo.FLAG_DEBUGGABLE` at runtime to ensure logs are stripped or silenced in release builds.
