@@ -61,6 +61,23 @@ class MainViewModel(
     private val _saveFolderUri = MutableStateFlow<String?>(null)
     val saveFolderUri: StateFlow<String?> = _saveFolderUri.asStateFlow()
 
+    // Date range state for history filtering
+    private val _historyStartDate = MutableStateFlow<Long?>(null)
+    val historyStartDate: StateFlow<Long?> = _historyStartDate.asStateFlow()
+
+    private val _historyEndDate = MutableStateFlow<Long?>(null)
+    val historyEndDate: StateFlow<Long?> = _historyEndDate.asStateFlow()
+
+    fun setHistoryDateRange(startDate: Long?, endDate: Long?) {
+        _historyStartDate.value = startDate
+        _historyEndDate.value = endDate
+    }
+
+    fun clearHistoryDateRange() {
+        _historyStartDate.value = null
+        _historyEndDate.value = null
+    }
+
     data class ExecutionProgress(
         val currentNodeId: String? = null,
         val currentNodeTitle: String? = null,
@@ -274,9 +291,30 @@ class MainViewModel(
     private val _executionCache = mutableMapOf<String, String>() // prompt_id -> json content
 
     fun loadHistory(listing: com.example.comfyui_remote.data.GeneratedMediaListing) {
+        android.util.Log.d("HISTORY_DEBUG", "==================== loadHistory() CALLED ====================")
+        android.util.Log.d("HISTORY_DEBUG", "Listing ID: ${listing.id}")
+        android.util.Log.d("HISTORY_DEBUG", "Listing workflowName: ${listing.workflowName}")
+        
         viewModelScope.launch {
+            android.util.Log.d("HISTORY_DEBUG", "Fetching media from repository with ID: ${listing.id}")
             val media = mediaRepository.getById(listing.id)
+            
+            android.util.Log.d("HISTORY_DEBUG", "Media retrieved: ${media != null}")
+            if (media != null) {
+                android.util.Log.d("HISTORY_DEBUG", "Media ID: ${media.id}")
+                android.util.Log.d("HISTORY_DEBUG", "Media fileName: ${media.fileName}")
+                android.util.Log.d("HISTORY_DEBUG", "Media timestamp: ${media.timestamp}")
+                android.util.Log.d("HISTORY_DEBUG", "Media promptJson is null: ${media.promptJson == null}")
+                android.util.Log.d("HISTORY_DEBUG", "Media promptJson length: ${media.promptJson?.length ?: 0}")
+                if (media.promptJson != null) {
+                    android.util.Log.d("HISTORY_DEBUG", "Media promptJson preview: ${media.promptJson.take(200)}")
+                }
+            } else {
+                android.util.Log.e("HISTORY_DEBUG", "ERROR: Media is NULL for ID ${listing.id}")
+            }
+            
             if (media?.promptJson != null) {
+                android.util.Log.d("HISTORY_DEBUG", "Creating temporary workflow...")
                 // Create a temporary workflow entity
                 val tempWorkflow = WorkflowEntity(
                     id = 0,
@@ -285,15 +323,22 @@ class MainViewModel(
                     createdAt = media.timestamp,
                     lastImageName = media.fileName
                 )
+                android.util.Log.d("HISTORY_DEBUG", "Temp workflow created: ${tempWorkflow.name}")
                 _selectedWorkflow.value = tempWorkflow
                 
                 // Set the preview image for the DynamicFormScreen
                 val protocol = if (_isSecure.value) "https" else "http"
                 val url = "$protocol://${_serverAddress.value}/view?filename=${media.fileName}&type=output"
+                android.util.Log.d("HISTORY_DEBUG", "Setting preview image URL: $url")
                 _generatedImage.value = url
                 _generatedMediaId.value = media.id
                 
+                android.util.Log.d("HISTORY_DEBUG", "Setting navigate to form = true")
                 _navigateToForm.value = true
+                android.util.Log.d("HISTORY_DEBUG", "loadHistory() completed successfully")
+            } else {
+                android.util.Log.e("HISTORY_DEBUG", "FAILED: promptJson is NULL - cannot load workflow")
+                android.util.Log.e("HISTORY_DEBUG", "This history item has no associated workflow data")
             }
         }
     }
@@ -465,21 +510,31 @@ class MainViewModel(
 
     fun importServerWorkflow(serverFile: ServerWorkflowFile, onSuccess: (WorkflowEntity) -> Unit) {
         viewModelScope.launch {
+            android.util.Log.d("WORKFLOW_IMPORT", "Importing server workflow: ${serverFile.name}")
             _isSyncing.value = true
             _importStatus.value = "Fetching workflow..."
             try {
-                val fullPath = serverFile.fullpath ?: return@launch
+                val fullPath = serverFile.fullpath ?: run {
+                    android.util.Log.e("WORKFLOW_ERROR", "Cannot import workflow: serverFile.fullpath is null for ${serverFile.name}")
+                    return@launch
+                }
+                android.util.Log.d("WORKFLOW_IMPORT", "Full path: $fullPath")
+                
                 val api = buildApiService()
                 
                 // URL-encode the path (slashes become %2F) as required by ComfyUI API
                 val encodedPath = java.net.URLEncoder.encode(fullPath, "UTF-8").replace("+", "%20")
-                android.util.Log.d("MainViewModel", "Importing server workflow: $fullPath -> encoded: $encodedPath")
+                android.util.Log.d("WORKFLOW_IMPORT", "Encoded path: $encodedPath")
+                android.util.Log.d("WORKFLOW_IMPORT", "API endpoint: api/userdata/$encodedPath")
                 
                 val json = api.getFileContent("api/userdata/$encodedPath")
+                android.util.Log.d("WORKFLOW_IMPORT", "Received workflow JSON (${json.toString().length} bytes)")
                 
                 val name = serverFile.name?.removeSuffix(".json") ?: "Unnamed Server Workflow"
+                android.util.Log.d("WORKFLOW_IMPORT", "Import successful, calling importWorkflowInternal with name: $name")
                 importWorkflowInternal(name, json.toString(), com.example.comfyui_remote.domain.WorkflowSource.SERVER_USERDATA, onSuccess)
             } catch (e: Exception) {
+                android.util.Log.e("WORKFLOW_ERROR", "Error importing workflow ${serverFile.name}: ${e.javaClass.simpleName} - ${e.message}", e)
                 e.printStackTrace()
             } finally {
                 _isSyncing.value = false
@@ -584,25 +639,52 @@ class MainViewModel(
     }
 
     /**
-     * Syncs a single history item from the server. 
+     * Syncs a single history item from the server.
      * If 'data' is null, it fetches it from the /history/{id} endpoint.
      */
     private fun syncHistoryItem(promptId: String, data: com.google.gson.JsonObject? = null) {
         viewModelScope.launch {
+            android.util.Log.d("SYNC_DEBUG", "syncHistoryItem() called for promptId: $promptId")
             try {
                 val finalData = data ?: buildApiService().getHistory(promptId).getAsJsonObject(promptId)
-                if (finalData == null || !finalData.has("outputs")) return@launch
-
-                val outputs = finalData.getAsJsonObject("outputs")
-                
-                // Extract image info (same as before but more robust)
-                // Extract image info (same as before but more robust)
-                val promptJson = _executionCache.get(promptId)
-                if (promptJson != null) {
-                    _executionCache.remove(promptId)
+                if (finalData == null || !finalData.has("outputs")) {
+                    android.util.Log.w("SYNC_DEBUG", "No outputs found for promptId: $promptId")
+                    return@launch
                 }
 
-                outputs.entrySet().forEach { (_, nodeOutput) ->
+                val outputs = finalData.getAsJsonObject("outputs")
+
+            // Extract image info (same as before but more robust)
+            // Try to get from cache first (for real-time executions)
+            var promptJson = _executionCache.get(promptId)
+            if (promptJson != null) {
+                android.util.Log.d("SYNC_DEBUG", "Found promptJson in execution cache for $promptId, length: ${promptJson.length}")
+                _executionCache.remove(promptId)
+            } else {
+                android.util.Log.w("SYNC_DEBUG", "promptJson NOT in cache for $promptId, extracting from server response")
+                // Fallback: Extract from server response (same as syncHistory)
+                if (finalData.has("prompt")) {
+                    val promptElement = finalData.get("prompt")
+                    if (promptElement.isJsonArray) {
+                        val arr = promptElement.asJsonArray
+                        if (arr.size() >= 3) {
+                            promptJson = arr.get(2).toString()
+                            android.util.Log.d("SYNC_DEBUG", "Extracted promptJson from server response, length: ${promptJson?.length}")
+                        } else {
+                            android.util.Log.w("SYNC_DEBUG", "Prompt array too small (size ${arr.size()}), cannot extract workflowJson")
+                        }
+                    } else if (promptElement.isJsonObject) {
+                        promptJson = promptElement.toString()
+                        android.util.Log.d("SYNC_DEBUG", "Extracted promptJson from JsonObject, length: ${promptJson?.length}")
+                    } else {
+                        android.util.Log.w("SYNC_DEBUG", "Prompt element is neither array nor object")
+                    }
+                } else {
+                    android.util.Log.w("SYNC_DEBUG", "No 'prompt' field in server response for $promptId")
+                }
+            }
+
+            outputs.entrySet().forEach { (_, nodeOutput) ->
                     if (nodeOutput.isJsonObject) {
                         val out = nodeOutput.asJsonObject
                         if (out.has("images")) {
@@ -611,7 +693,7 @@ class MainViewModel(
                                 val image = imgElement.asJsonObject
                                 val filename = image.get("filename").asString
                                 val subfolder = if (image.has("subfolder")) image.get("subfolder").asString else null
-                                
+
                                 val protocol = if (_isSecure.value) "https" else "http"
                                 val url = "$protocol://${_serverAddress.value}/view?filename=$filename&type=output"
                                 _generatedImage.value = url
@@ -619,11 +701,13 @@ class MainViewModel(
                                 val hostParts = _serverAddress.value.split(":")
                                 val host = hostParts.getOrNull(0) ?: ""
                                 val port = hostParts.getOrNull(1)?.toIntOrNull() ?: 8188
-                                
+
                                 val extension = filename.substringAfterLast('.', "").lowercase()
                                 val isVideo = extension in listOf("mp4", "gif", "webm", "mkv")
                                 val mediaType = if (isVideo) "VIDEO" else "IMAGE"
-                                
+
+                                android.util.Log.d("SYNC_DEBUG", "Inserting media item: $filename (promptId: $promptId)")
+
                                 val mediaEntity = com.example.comfyui_remote.data.GeneratedMediaEntity(
                                     workflowName = _selectedWorkflow.value?.name ?: "Unknown",
                                     fileName = filename,
@@ -636,15 +720,17 @@ class MainViewModel(
                                 )
 
                                 val insertedId = mediaRepository.insert(mediaEntity)
-                                
+
                                 if (insertedId != -1L) {
+                                    android.util.Log.d("SYNC_DEBUG", "Inserted media item with ID: $insertedId")
                                     _generatedMediaId.value = insertedId
                                 } else {
+                                    android.util.Log.d("SYNC_DEBUG", "Media item already exists, fetching ID")
                                     // Already exists, fetch ID
                                     val existing = mediaRepository.getLatestByFilename(filename)
                                     _generatedMediaId.value = existing?.id
                                 }
-                                
+
                                 _selectedWorkflow.value?.let { workflow ->
                                     if (workflow.id != 0L) {
                                         repository.insert(workflow.copy(lastImageName = filename))
@@ -655,6 +741,7 @@ class MainViewModel(
                     }
                 }
             } catch (e: Exception) {
+                android.util.Log.e("SYNC_DEBUG", "Error syncing history item $promptId: ${e.message}", e)
                 e.printStackTrace()
             }
         }
@@ -684,6 +771,7 @@ class MainViewModel(
         try {
             var finalJson = json
             android.util.Log.d("IMPORT_DEBUG", "Starting import for: $name, source: $source")
+            android.util.Log.d("IMPORT_DEBUG", "Input JSON size: ${json.length} bytes")
 
             // Phase 30: Auto-convert Graph Format -> API Format
             // Run heavy JSON parsing on IO thread
@@ -713,7 +801,7 @@ class MainViewModel(
                                 _nodeMetadata.value = meta
                                 android.util.Log.d("IMPORT_DEBUG", "Metadata parsed, size: ${meta.size()}")
                             } catch (e: Exception) {
-                                android.util.Log.e("IMPORT_DEBUG", "Metadata fetch failed: ${e.message}")
+                                android.util.Log.e("WORKFLOW_ERROR", "Metadata fetch failed for workflow '$name': ${e.javaClass.simpleName} - ${e.message}", e)
                                 e.printStackTrace()
                             }
                         }
@@ -726,7 +814,11 @@ class MainViewModel(
                                 json, 
                                 com.example.comfyui_remote.data.ComfyObjectInfo(m)
                             )
-                            android.util.Log.d("IMPORT_DEBUG", "Conversion complete. Preview: ${result.json.take(500)}...")
+                            android.util.Log.d("IMPORT_DEBUG", "Conversion complete. Result JSON size: ${result.json.length} bytes")
+                            android.util.Log.d("IMPORT_DEBUG", "Missing nodes after conversion: ${result.missingNodes.size}")
+                            if (result.missingNodes.isNotEmpty()) {
+                                android.util.Log.d("IMPORT_DEBUG", "Missing nodes: ${result.missingNodes.joinToString(", ")}")
+                            }
                             result
                         } else {
                             android.util.Log.e("IMPORT_DEBUG", "No metadata available - conversion skipped!")
@@ -736,7 +828,7 @@ class MainViewModel(
                         com.example.comfyui_remote.domain.GraphToApiConverter.ConversionResult(json, emptyList())
                     }
                 } catch (e: Exception) {
-                    android.util.Log.e("IMPORT_DEBUG", "Conversion error: ${e.message}")
+                    android.util.Log.e("WORKFLOW_ERROR", "Conversion error for workflow '$name': ${e.javaClass.simpleName} - ${e.message}", e)
                     e.printStackTrace()
                     com.example.comfyui_remote.domain.GraphToApiConverter.ConversionResult(json, emptyList())
                 }
@@ -752,7 +844,12 @@ class MainViewModel(
                     existingMissingNodes = conversionResult.missingNodes
                 )
             }
-            android.util.Log.d("IMPORT_DEBUG", "Normalized JSON preview: ${normalized.jsonContent.take(500)}...")
+            android.util.Log.d("IMPORT_DEBUG", "Normalization complete")
+            android.util.Log.d("IMPORT_DEBUG", "Normalized JSON size: ${normalized.jsonContent.length} bytes")
+            android.util.Log.d("IMPORT_DEBUG", "Base models detected: ${normalized.baseModels.joinToString(", ")}")
+            if (normalized.missingNodes.isNotEmpty()) {
+                android.util.Log.d("IMPORT_DEBUG", "Missing nodes: ${normalized.missingNodes.joinToString(", ")}")
+            }
 
             
             val baseModelsShort = normalized.baseModels.joinToString(", ")
@@ -770,13 +867,20 @@ class MainViewModel(
             
             // Database insert on IO thread
             _importStatus.value = "Saving..."
+            android.util.Log.d("IMPORT_DEBUG", "Inserting workflow into database...")
+            android.util.Log.d("IMPORT_DEBUG", "Workflow entity: name=\"${tempWorkflow.name}\", baseModels=\"${tempWorkflow.baseModels}\", missingNodes=\"${tempWorkflow.missingNodes}\"")
             val id = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 repository.insert(tempWorkflow)
             }
+            android.util.Log.d("IMPORT_DEBUG", "Database insert result: ID=$id")
             
             val workflow = tempWorkflow.copy(id = id)
             _selectedWorkflow.value = workflow
+            android.util.Log.d("IMPORT_DEBUG", "Import complete. Workflow ID: $id")
             onSuccess(workflow)
+        } catch (e: Exception) {
+            android.util.Log.e("WORKFLOW_ERROR", "Error in importWorkflowInternal for workflow '$name': ${e.javaClass.simpleName} - ${e.message}", e)
+            e.printStackTrace()
         } finally {
             _isSyncing.value = false
             _importStatus.value = ""
@@ -785,12 +889,22 @@ class MainViewModel(
     
     fun fetchServerWorkflows() {
         viewModelScope.launch {
+            android.util.Log.d("WORKFLOW_FETCH", "Starting fetchServerWorkflows()")
             _isSyncing.value = true
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 try {
                     val response = buildApiService().getUserData(dir = "workflows")
+                    android.util.Log.d("WORKFLOW_FETCH", "Received ${response.size} workflows from server")
+                    
+                    // Log each workflow file with details
+                    response.forEachIndexed { index, workflow ->
+                        android.util.Log.d("WORKFLOW_FETCH", "Workflow[$index]: name=\"${workflow.name}\", path=\"${workflow.path}\", type=\"${workflow.type}\", created=${workflow.created}")
+                    }
+                    
                     _serverWorkflows.value = response
+                    android.util.Log.d("WORKFLOW_FETCH", "Fetch complete. Updated _serverWorkflows with ${response.size} items")
                 } catch (e: Exception) {
+                    android.util.Log.e("WORKFLOW_ERROR", "Error in fetchServerWorkflows: ${e.javaClass.simpleName} - ${e.message}", e)
                     e.printStackTrace()
                 } finally {
                     _isSyncing.value = false
@@ -799,75 +913,119 @@ class MainViewModel(
         }
     }
 
-    fun syncHistory() {
+    fun syncHistory(startDate: Long? = null, endDate: Long? = null) {
         viewModelScope.launch {
+            android.util.Log.d("SYNC_DEBUG", "syncHistory() called with date range: $startDate - $endDate")
             _isSyncing.value = true
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 val startTime = System.currentTimeMillis()
                 var parsedCount = 0
                 var skippedCount = 0
+                var filteredCount = 0
                 try {
+                    android.util.Log.d("SYNC_DEBUG", "Fetching existing prompt IDs...")
                     val existingIds = mediaRepository.getAllPromptIds().toSet()
-                    
+                    android.util.Log.d("SYNC_DEBUG", "Found ${existingIds.size} existing prompt IDs")
+
                     val downloadStart = System.currentTimeMillis()
                     val newMediaItems = mutableListOf<com.example.comfyui_remote.data.GeneratedMediaEntity>()
                     val gson = com.google.gson.Gson()
-                    val responseBody = buildApiService().getHistory(maxItems = 100)
+                    android.util.Log.d("SYNC_DEBUG", "Fetching history from server...")
+                    
+                    // Use larger max_items when date filtering is active
+                    val maxItems = if (startDate != null || endDate != null) 1000 else 100
+                    val responseBody = buildApiService().getHistory(maxItems = maxItems)
+                    
                     responseBody.use { body ->
                         val reader = com.google.gson.stream.JsonReader(body.charStream())
                         reader.use { r ->
                             r.beginObject()
                             while (r.hasNext()) {
                                 val executionId = r.nextName()
-                                
+                                android.util.Log.d("SYNC_DEBUG", "Processing execution ID: $executionId")
+
                                 if (existingIds.contains(executionId)) {
                                     skippedCount++
+                                    android.util.Log.d("SYNC_DEBUG", "Hit existing item $executionId, stopping stream read")
+                                    android.util.Log.w("SYNC_DEBUG", "**EARLY EXIT** - This stops reading ALL remaining history items!")
                                     // OPTIMIZATION: Stop reading stream as soon as we hit an existing item
                                     // We return from the .use block which closes both reader and body
-                                    return@use 
+                                    return@use
                                 }
-                                
+
                                 val element = gson.fromJson<com.google.gson.JsonObject>(r, com.google.gson.JsonObject::class.java)
                                 parsedCount++
-                                
-                                if (parsedCount % 10 == 0) kotlinx.coroutines.yield()
-                                
+
+                                if (parsedCount % 10 == 0) {
+                                    android.util.Log.d("SYNC_DEBUG", "Parsed $parsedCount items so far")
+                                    kotlinx.coroutines.yield()
+                                }
+
                                 if (element != null && element.isJsonObject) {
                                     val item = element.asJsonObject
+                                    
+                                    // Extract timestamp from history item
+                                    val itemTimestamp = extractTimestampFromHistoryItem(item)
+                                    
+                                    // Filter by date range if specified
+                                    if (startDate != null && itemTimestamp < startDate) {
+                                        filteredCount++
+                                        continue
+                                    }
+                                    if (endDate != null && itemTimestamp > endDate) {
+                                        filteredCount++
+                                        continue
+                                    }
+
                                     if (item.has("prompt")) {
+                                        android.util.Log.d("SYNC_DEBUG", "Item $executionId has 'prompt' field")
                                         val promptElement = item.get("prompt")
                                         var workflowJson: String? = null
-                                        
+
                                         if (promptElement.isJsonArray) {
                                             val arr = promptElement.asJsonArray
-                                            if (arr.size() >= 3) workflowJson = arr.get(2).toString()
+                                            android.util.Log.d("SYNC_DEBUG", "Prompt is JsonArray, size: ${arr.size()}")
+                                            if (arr.size() >= 3) {
+                                                workflowJson = arr.get(2).toString()
+                                                android.util.Log.d("SYNC_DEBUG", "Extracted workflowJson from array[2], length: ${workflowJson?.length}")
+                                            } else {
+                                                android.util.Log.w("SYNC_DEBUG", "Prompt array size < 3, cannot extract workflowJson")
+                                            }
                                         } else if (promptElement.isJsonObject) {
                                             workflowJson = promptElement.toString()
+                                            android.util.Log.d("SYNC_DEBUG", "Extracted workflowJson from JsonObject, length: ${workflowJson?.length}")
+                                        } else {
+                                            android.util.Log.w("SYNC_DEBUG", "Prompt element is neither array nor object")
                                         }
-                                        
+
                                         if (workflowJson != null) {
+                                            android.util.Log.d("SYNC_DEBUG", "workflowJson is NOT null for $executionId")
                                             val name = extractNameFromHistoryItem(item, executionId)
                                             val hostParts = _serverAddress.value.split(":")
                                             val host = hostParts.getOrNull(0) ?: ""
                                             val port = hostParts.getOrNull(1)?.toIntOrNull() ?: 8188
 
                                             if (item.has("outputs")) {
+                                                android.util.Log.d("SYNC_DEBUG", "Item $executionId has outputs")
                                                 val outputs = item.getAsJsonObject("outputs")
+                                                var imageCount = 0
                                                 outputs.entrySet().forEach { (_, nodeOutput) ->
                                                     if (nodeOutput.isJsonObject) {
                                                         val out = nodeOutput.asJsonObject
                                                         if (out.has("images")) {
                                                             val images = out.getAsJsonArray("images")
                                                             images.forEach { imgElement ->
+                                                                imageCount++
                                                                 val img = imgElement.asJsonObject
                                                                 val filename = img.get("filename").asString
                                                                 val subfolder = if (img.has("subfolder")) img.get("subfolder").asString else null
                                                                 val serverType = if (img.has("type")) img.get("type").asString else "output"
-                                                                
+
                                                                 val extension = filename.substringAfterLast('.', "").lowercase()
                                                                 val isVideo = extension in listOf("mp4", "gif", "webm", "mkv")
                                                                 val mediaType = if (isVideo) "VIDEO" else "IMAGE"
 
+                                                                android.util.Log.d("SYNC_DEBUG", "Adding media item: $filename with promptJson length: ${workflowJson!!.length}")
                                                                 newMediaItems.add(
                                                                     com.example.comfyui_remote.data.GeneratedMediaEntity(
                                                                         workflowName = name,
@@ -878,30 +1036,41 @@ class MainViewModel(
                                                                         mediaType = mediaType,
                                                                         promptJson = workflowJson,
                                                                         promptId = executionId,
-                                                                        serverType = serverType
+                                                                        serverType = serverType,
+                                                                        timestamp = itemTimestamp
                                                                     )
                                                                 )
                                                             }
+                                                            android.util.Log.d("SYNC_DEBUG", "Item $executionId added $imageCount images to newMediaItems")
                                                         }
                                                     }
                                                 }
+                                            } else {
+                                                android.util.Log.w("SYNC_DEBUG", "Item $executionId has outputs but workflowJson is NULL")
                                             }
+                                        } else {
+                                            android.util.Log.w("SYNC_DEBUG", "Item $executionId: workflowJson is NULL - skipping")
                                         }
+                                    } else {
+                                        android.util.Log.w("SYNC_DEBUG", "Item $executionId has no 'prompt' field")
                                     }
                                 }
                             }
                             r.endObject()
                         }
                     }
-                    
+
                     if (newMediaItems.isNotEmpty()) {
+                        android.util.Log.d("SYNC_DEBUG", "Inserting ${newMediaItems.size} new media items into database...")
                         mediaRepository.insert(newMediaItems)
+                        android.util.Log.d("SYNC_DEBUG", "Insert complete")
                     }
-                    
+
                     val duration = System.currentTimeMillis() - startTime
-                    android.util.Log.d("SyncHistory", "Sync complete in ${duration}ms. Skipped: $skippedCount, Parsed: $parsedCount, Inserted: ${newMediaItems.size}")
-                    
+                    android.util.Log.d("SyncHistory", "Sync complete in ${duration}ms. Skipped: $skippedCount, Parsed: $parsedCount, Filtered: $filteredCount, Inserted: ${newMediaItems.size}")
+
                 } catch (e: Exception) {
+                    android.util.Log.e("SYNC_DEBUG", "Sync error: ${e.message}", e)
                     e.printStackTrace()
                 } finally {
                     _isSyncing.value = false
@@ -935,6 +1104,51 @@ class MainViewModel(
         // Fallback to timestamped history
         val date = DATE_FORMATTER_LONG.format(LocalDateTime.now())
         return "History $date"
+    }
+
+    private fun extractTimestampFromHistoryItem(item: com.google.gson.JsonObject): Long {
+        // Try to extract timestamp from various possible locations
+        return try {
+            when {
+                item.has("prompt") && item.get("prompt").isJsonArray -> {
+                    try {
+                        val arr = item.get("prompt").asJsonArray
+                        if (arr.size() >= 2 && arr.get(1).isJsonPrimitive) {
+                            val element = arr.get(1)
+                            // Try to parse as long, but catch if it's a string (like UUID)
+                            try {
+                                element.asLong
+                            } catch (e: NumberFormatException) {
+                                android.util.Log.w("SYNC_DEBUG", "Prompt array[1] is not a valid timestamp: ${element.asString}")
+                                // Fallback to current time
+                                System.currentTimeMillis()
+                            }
+                        } else {
+                            android.util.Log.w("SYNC_DEBUG", "Prompt array size < 2 or element[1] not primitive")
+                            System.currentTimeMillis()
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.w("SYNC_DEBUG", "Error extracting timestamp from prompt array: ${e.message}")
+                        System.currentTimeMillis()
+                    }
+                }
+                item.has("status") && item.getAsJsonObject("status").has("completed") -> {
+                    try {
+                        item.getAsJsonObject("status").get("completed").asLong
+                    } catch (e: Exception) {
+                        android.util.Log.w("SYNC_DEBUG", "Error extracting timestamp from status.completed: ${e.message}")
+                        System.currentTimeMillis()
+                    }
+                }
+                else -> {
+                    android.util.Log.d("SYNC_DEBUG", "No timestamp found in history item, using current time")
+                    System.currentTimeMillis()
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("SYNC_DEBUG", "Unexpected error in extractTimestampFromHistoryItem: ${e.message}")
+            System.currentTimeMillis()
+        }
     }
 
     fun renameWorkflow(workflow: WorkflowEntity, newName: String) {

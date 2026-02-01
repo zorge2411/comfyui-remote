@@ -7,16 +7,22 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.background
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,6 +35,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import coil.compose.AsyncImage
 import com.example.comfyui_remote.MainViewModel
 import com.example.comfyui_remote.data.GeneratedMediaListing
+import com.example.comfyui_remote.ui.components.EmptyState
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
@@ -60,6 +67,16 @@ fun GalleryScreen(
     var showSelectionDialog by remember { mutableStateOf(false) }
     var cameraTmpUriString by rememberSaveable { mutableStateOf<String?>(null) }
     val cameraTmpUri = cameraTmpUriString?.let { Uri.parse(it) }
+    
+    // Date picker state
+    var showDatePicker by remember { mutableStateOf(false) }
+    val historyStartDate = viewModel.historyStartDate.collectAsState()
+    val historyEndDate = viewModel.historyEndDate.collectAsState()
+
+    // DIAGNOSTIC: Track mediaList changes
+    LaunchedEffect(mediaList.size) {
+        android.util.Log.d("GALLERY_DEBUG", "MediaList updated: ${mediaList.size} items")
+    }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
@@ -127,7 +144,16 @@ fun GalleryScreen(
                 )
             } else {
                 TopAppBar(
-                    title = { Text("Gallery") }
+                    title = { Text("Gallery") },
+                    actions = {
+                        // Date filter button
+                        IconButton(onClick = { showDatePicker = true }) {
+                            Icon(
+                                imageVector = Icons.Default.DateRange,
+                                contentDescription = "Filter by Date"
+                            )
+                        }
+                    }
                 )
             }
         },
@@ -175,68 +201,111 @@ fun GalleryScreen(
             }
         }
     ) { paddingValues ->
-        PullToRefreshBox(
-            isRefreshing = isSyncing,
-            onRefresh = { viewModel.syncHistory() },
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
-        ) {
-            if (mediaList.isEmpty()) {
-                Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally
+        Column(modifier = Modifier.padding(paddingValues)) {
+            // Date range indicator
+            if (historyStartDate.value != null || historyEndDate.value != null) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    tonalElevation = 2.dp
                 ) {
-                    Icon(
-                        imageVector = androidx.compose.material.icons.Icons.Default.Info,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "No generated images",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Your generated creations will appear here.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Filtered: ${historyStartDate.value ?: "Any"} to ${historyEndDate.value ?: "Any"}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        TextButton(onClick = {
+                            viewModel.clearHistoryDateRange()
+                            viewModel.syncHistory()
+                        }) {
+                            Text("Clear")
+                        }
+                    }
                 }
+            }
+            
+            PullToRefreshBox(
+                isRefreshing = isSyncing,
+                onRefresh = { 
+                    viewModel.syncHistory(historyStartDate.value, historyEndDate.value)
+                },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .weight(1f)
+            ) {
+                if (mediaList.isEmpty()) {
+                EmptyState(
+                    icon = Icons.Default.PhotoLibrary,
+                    title = "No Generated Images",
+                    message = "Your generated creations will appear here once you start generating images."
+                )
             } else {
                 val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
                 val isScrolling by remember { derivedStateOf { gridState.isScrollInProgress } }
                 val context = LocalContext.current
                 val imageLoader = context.imageLoader
-                
-                LaunchedEffect(mediaList, isSecure, currentHost, currentPort) {
+
+                // FIX: Track connection settings separately to prevent unnecessary LaunchedEffect restarts
+                val connectionSettings = remember(isSecure, currentHost, currentPort) {
+                    Triple(isSecure, currentHost, currentPort)
+                }
+
+                // FIX: Only restart preload when mediaList size changes, not on every state update
+                LaunchedEffect(mediaList.size, connectionSettings) {
+                    android.util.Log.d("GALLERY_DEBUG", "Preload LaunchedEffect triggered - mediaList size: ${mediaList.size}")
                     var maxPreloadedIndex = -1
                     val screenWidth = context.resources.displayMetrics.widthPixels
                     val targetSize = screenWidth / 3
 
+                    // FIX: Track URLs being loaded to prevent duplicate requests
+                    val loadingUrls = mutableSetOf<String>()
+
                     snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
                         .collect { lastIndex ->
                             if (lastIndex != null) {
-                                val preloadCount = 12 // Preload 4 rows
+                                // FIX: Reduce preload count from 12 to 6 to lower concurrent load
+                                val preloadCount = 6 // Preload 2 rows instead of 4
                                 val start = lastIndex + 1
                                 val end = (start + preloadCount).coerceAtMost(mediaList.size - 1)
                                 val effectiveStart = kotlin.math.max(start, maxPreloadedIndex + 1)
 
                                 if (effectiveStart <= end) {
+                                    android.util.Log.d("GALLERY_DEBUG", "Preloading items $effectiveStart to $end (total: ${end - effectiveStart + 1})")
                                     for (i in effectiveStart..end) {
                                         val item = mediaList[i]
                                         val url = item.constructUrl(currentHost, currentPort, isSecure)
 
-                                        val request = coil.request.ImageRequest.Builder(context)
-                                            .data(url)
-                                            .size(targetSize)
-                                            .precision(coil.size.Precision.EXACT)
-                                            .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
-                                            .build()
-                                        imageLoader.enqueue(request)
+                                        // FIX: Skip if already loading this URL
+                                        if (url !in loadingUrls) {
+                                            loadingUrls.add(url)
+
+                                            val request = coil.request.ImageRequest.Builder(context)
+                                                .data(url)
+                                                .size(targetSize)
+                                                .precision(coil.size.Precision.EXACT)
+                                                .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
+                                                .listener(
+                                                    onStart = { android.util.Log.d("COIL_DEBUG", "Start loading: $url") },
+                                                    onCancel = {
+                                                        android.util.Log.w("COIL_DEBUG", "Cancelled: $url")
+                                                        loadingUrls.remove(url)
+                                                    },
+                                                    onSuccess = { _, _ ->
+                                                        android.util.Log.d("COIL_DEBUG", "Success: $url")
+                                                        loadingUrls.remove(url)
+                                                    },
+                                                    onError = { _, _ ->
+                                                        android.util.Log.e("COIL_DEBUG", "Error: $url")
+                                                        loadingUrls.remove(url)
+                                                    }
+                                                )
+                                                .build()
+                                            imageLoader.enqueue(request)
+                                        }
                                     }
                                     maxPreloadedIndex = end
                                 }
@@ -278,8 +347,23 @@ fun GalleryScreen(
                         )
                     }
                 }
+                }
             }
         }
+    }
+    
+    // Date picker dialog
+    if (showDatePicker) {
+        com.example.comfyui_remote.ui.components.DateRangePickerDialog(
+            onDismiss = { showDatePicker = false },
+            onDateRangeSelected = { startDate, endDate ->
+                viewModel.setHistoryDateRange(startDate, endDate)
+                showDatePicker = false
+                viewModel.syncHistory(startDate, endDate)
+            },
+            initialStartDate = historyStartDate.value,
+            initialEndDate = historyEndDate.value
+        )
     }
 }
 
@@ -317,7 +401,9 @@ fun GalleryItem(
     val context = LocalContext.current
     val imageRequest = remember(item.serverHost, item.serverPort, item.fileName, item.subfolder, item.serverType, isSecure, currentHost, currentPort) {
         val url = item.constructUrl(currentHost, currentPort, isSecure)
-        
+
+        android.util.Log.d("GALLERY_DEBUG", "Creating image request for: ${item.fileName}")
+
         // Calculate approximate size for grid (assuming 3 columns)
         val screenWidth = context.resources.displayMetrics.widthPixels
         val targetSize = screenWidth / 3
@@ -328,6 +414,12 @@ fun GalleryItem(
             .size(targetSize)
             .precision(coil.size.Precision.EXACT)
             .bitmapConfig(android.graphics.Bitmap.Config.RGB_565) // 50% memory saving for thumbs
+            .listener(
+                onStart = { android.util.Log.d("COIL_DEBUG", "GalleryItem Start: ${item.fileName}") },
+                onCancel = { android.util.Log.w("COIL_DEBUG", "GalleryItem Cancelled: ${item.fileName}") },
+                onSuccess = { _, _ -> android.util.Log.d("COIL_DEBUG", "GalleryItem Success: ${item.fileName}") },
+                onError = { _, _ -> android.util.Log.e("COIL_DEBUG", "GalleryItem Error: ${item.fileName}") }
+            )
             .build()
     }
 

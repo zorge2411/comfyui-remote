@@ -18,19 +18,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.AccountTree
+import androidx.compose.material.icons.filled.PendingActions
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -135,8 +132,13 @@ class MainActivity : ComponentActivity() {
                         if (currentRoute != "remote_control") { // Hide on dynamic form
                             NavigationBar {
                                 NavigationBarItem(
-                                    icon = { Icon(Icons.Filled.Home, contentDescription = "Home") },
-                                    label = { Text("Home") },
+                                    icon = { 
+                                        Icon(
+                                            Icons.Filled.Wifi, 
+                                            contentDescription = "Connection",
+                                            modifier = Modifier.size(28.dp)
+                                        ) 
+                                    },
                                     selected = currentRoute == "connection",
                                     onClick = {
                                         navController.navigate("connection") {
@@ -146,8 +148,13 @@ class MainActivity : ComponentActivity() {
                                     }
                                 )
                                 NavigationBarItem(
-                                    icon = { Icon(Icons.Filled.List, contentDescription = "Workflows") },
-                                    label = { Text("Workflows") },
+                                    icon = { 
+                                        Icon(
+                                            Icons.Filled.AccountTree, 
+                                            contentDescription = "Workflows",
+                                            modifier = Modifier.size(28.dp)
+                                        ) 
+                                    },
                                     selected = currentRoute == "workflows",
                                     onClick = {
                                         navController.navigate("workflows") {
@@ -158,10 +165,15 @@ class MainActivity : ComponentActivity() {
                                     }
                                 )
                                 
-                                // New Queue Item
+                                // Queue Item
                                 NavigationBarItem(
-                                    icon = { Icon(Icons.Filled.PlayArrow, contentDescription = "Queue") }, // Using PlayArrow as Queue icon equivalent
-                                    label = { Text("Queue") },
+                                    icon = { 
+                                        Icon(
+                                            Icons.Filled.PendingActions, 
+                                            contentDescription = "Queue",
+                                            modifier = Modifier.size(28.dp)
+                                        ) 
+                                    },
                                     selected = currentRoute == "queue",
                                     onClick = {
                                         navController.navigate("queue") {
@@ -173,8 +185,13 @@ class MainActivity : ComponentActivity() {
                                 )
 
                                 NavigationBarItem(
-                                    icon = { Icon(Icons.Filled.Search, contentDescription = "Gallery") },
-                                    label = { Text("Gallery") },
+                                    icon = { 
+                                        Icon(
+                                            Icons.Filled.PhotoLibrary, 
+                                            contentDescription = "Gallery",
+                                            modifier = Modifier.size(28.dp)
+                                        ) 
+                                    },
                                     selected = currentRoute == "gallery",
                                     onClick = {
                                         navController.navigate("gallery") {
@@ -186,23 +203,16 @@ class MainActivity : ComponentActivity() {
                                 )
 
                                 NavigationBarItem(
-                                    icon = { Icon(Icons.Filled.Info, contentDescription = "History") },
-                                    label = { Text("History") },
-                                    selected = currentRoute == "history",
+                                    icon = { 
+                                        Icon(
+                                            Icons.Filled.Menu, 
+                                            contentDescription = "More",
+                                            modifier = Modifier.size(28.dp)
+                                        ) 
+                                    },
+                                    selected = currentRoute == "history" || currentRoute == "settings",
                                     onClick = {
                                         navController.navigate("history") {
-                                            popUpTo("connection") { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    }
-                                )
-                                NavigationBarItem(
-                                    icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings") },
-                                    label = { Text("Settings") },
-                                    selected = currentRoute == "settings",
-                                    onClick = {
-                                        navController.navigate("settings") {
                                             popUpTo("connection") { saveState = true }
                                             launchSingleTop = true
                                             restoreState = true
@@ -254,7 +264,12 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         composable("history") {
-                            com.example.comfyui_remote.ui.HistoryScreen(viewModel)
+                            com.example.comfyui_remote.ui.HistoryScreen(
+                                viewModel = viewModel,
+                                onNavigateToSettings = {
+                                    navController.navigate("settings")
+                                }
+                            )
                         }
                         composable("gallery") {
                             com.example.comfyui_remote.ui.GalleryScreen(

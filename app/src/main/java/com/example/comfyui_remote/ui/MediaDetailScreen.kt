@@ -33,6 +33,7 @@ import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.example.comfyui_remote.MainViewModel
 import com.example.comfyui_remote.data.GeneratedMediaEntity
+import com.example.comfyui_remote.ui.components.LoadingIndicator
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
@@ -62,9 +63,7 @@ fun MediaDetailScreen(
     
     // Only proceed if we have the list
     if (mediaList.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = Color.White)
-        }
+        LoadingIndicator(message = "Loading media...")
         return
     }
 

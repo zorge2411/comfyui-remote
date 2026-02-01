@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -48,6 +49,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.comfyui_remote.MainViewModel
 import com.example.comfyui_remote.data.WorkflowEntity
 import com.example.comfyui_remote.network.ServerWorkflowFile
+import com.example.comfyui_remote.ui.components.EmptyState
 
 // Reusable date formatter to avoid instantiation on every recomposition
 private val DATE_FORMATTER = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd", java.util.Locale.getDefault())
@@ -89,30 +91,11 @@ fun WorkflowListScreen(
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
             if (workflows.isEmpty() && serverWorkflows.isEmpty()) {
-                Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(64.dp)
-                            .padding(bottom = 16.dp),
-                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                    )
-                    Text(
-                        text = "No Workflows Yet",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Tap the + button to import a workflow",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                EmptyState(
+                    icon = Icons.Default.AccountTree,
+                    title = "No Workflows Yet",
+                    message = "Tap the + button to import a workflow from your device or the server."
+                )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     if (workflows.isNotEmpty()) {

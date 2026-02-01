@@ -40,11 +40,15 @@ import coil.compose.AsyncImage
 fun ImageSelector(
     label: String,
     currentUri: String?,
+    serverUrl: String? = null,
     onImageSelected: (Uri) -> Unit
 ) {
     val context = LocalContext.current
     var showSelectionDialog by remember { mutableStateOf(false) }
     var cameraTmpUri by remember { mutableStateOf<Uri?>(null) }
+
+    // Determine which URL to use for thumbnail (prioritize local URI, fall back to server URL)
+    val thumbnailUrl = currentUri ?: serverUrl
 
     val singlePhotoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
@@ -131,9 +135,9 @@ fun ImageSelector(
                 },
             contentAlignment = Alignment.Center
         ) {
-            if (currentUri != null) {
+            if (thumbnailUrl != null) {
                 AsyncImage(
-                    model = currentUri,
+                    model = thumbnailUrl,
                     contentDescription = "Selected Image",
                     modifier = Modifier.matchParentSize(),
                     contentScale = ContentScale.Crop

@@ -92,6 +92,23 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_9_10 = object : androidx.room.migration.Migration(9, 10) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS local_queue (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        workflowId INTEGER NOT NULL,
+                        workflowName TEXT NOT NULL,
+                        workflowJson TEXT NOT NULL,
+                        inputValuesJson TEXT NOT NULL,
+                        batchCount INTEGER NOT NULL DEFAULT 1,
+                        status TEXT NOT NULL DEFAULT 'PENDING',
+                        createdAt INTEGER NOT NULL
+                    )
+                """)
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -99,7 +116,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "comfy_database"
                 )
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

@@ -64,6 +64,7 @@ import com.example.comfyui_remote.MainViewModel
 import com.example.comfyui_remote.data.WorkflowEntity
 import com.example.comfyui_remote.domain.InputField
 import com.example.comfyui_remote.network.ExecutionStatus
+import com.example.comfyui_remote.ui.components.ErrorCard
 import kotlin.random.Random
 
 @Suppress("DEPRECATION")
@@ -138,28 +139,11 @@ fun DynamicFormScreen(
 
             // Detailed Error Message
             if (executionStatus == ExecutionStatus.ERROR && errorMessage != null) {
-                androidx.compose.material3.Card(
-                    colors = androidx.compose.material3.CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                        .clickable { viewModel.clearErrorMessage() }
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            "❌ Execution Error",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                        Text(
-                            errorMessage!!,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    }
-                }
+                ErrorCard(
+                    title = "Execution Error",
+                    message = errorMessage!!,
+                    onDismiss = { viewModel.clearErrorMessage() }
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -324,10 +308,22 @@ fun DynamicFormScreen(
                     is InputField.ImageInput -> {
                         val context = LocalContext.current
                         val scope = androidx.compose.runtime.rememberCoroutineScope()
+                        val isSecure by viewModel.isSecure.collectAsState()
+                        val currentHost by viewModel.host.collectAsState()
+                        val currentPort by viewModel.port.collectAsState()
+
+                        // Build server URL if localUri is null but value exists
+                        val serverUrl = if (inputField.localUri == null && inputField.value != null) {
+                            val protocol = if (isSecure) "https" else "http"
+                            "$protocol://$currentHost:$currentPort/view?filename=${inputField.value}&type=input"
+                        } else {
+                            null
+                        }
 
                         com.example.comfyui_remote.ui.components.ImageSelector(
                             label = "${inputField.nodeTitle} (${inputField.fieldName})",
                             currentUri = inputField.localUri,
+                            serverUrl = serverUrl,
                             onImageSelected = { uri ->
                                 // 1. Optimistic Update
                                 inputs = inputs.toMutableList().also {
@@ -394,6 +390,7 @@ fun DynamicFormScreen(
 
                 // Batch Generation Selector
                 var batchCount by remember { mutableStateOf(1) }
+                val currentBatchCount by remember { mutableStateOf(1) }
                 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
