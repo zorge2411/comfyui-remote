@@ -408,6 +408,7 @@ fun DynamicFormScreen(
                     
                     androidx.compose.material3.FilledIconButton(
                         onClick = { if (batchCount > 1) batchCount-- },
+                        enabled = batchCount > 1,
                         modifier = Modifier.size(36.dp),
                         colors = androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -425,6 +426,7 @@ fun DynamicFormScreen(
                     
                     androidx.compose.material3.FilledIconButton(
                         onClick = { if (batchCount < 10) batchCount++ },
+                        enabled = batchCount < 10,
                         modifier = Modifier.size(36.dp),
                         colors = androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
