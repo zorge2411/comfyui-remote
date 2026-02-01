@@ -15,3 +15,7 @@
 ## 2024-05-24 - [LaunchedEffect Scroll Thrashing]
 **Learning:** Found `LaunchedEffect(gridState.firstVisibleItemIndex)` being used to trigger side effects (preloading). This restarts the coroutine on every scroll frame, causing significant overhead and defeating the purpose of `snapshotFlow`.
 **Action:** Use `LaunchedEffect(Unit)` or stable keys, and rely on `snapshotFlow` within the effect to observe changing state without restarting the job.
+
+## 2024-05-24 - [Main Thread Blocking in Init]
+**Learning:** Found heavy JSON parsing in `MainViewModel.init` running on the main thread (via `viewModelScope` default dispatcher). This delays app startup and UI responsiveness.
+**Action:** Always offload file I/O and heavy parsing (like Gson) to `Dispatchers.IO`, even in `init` blocks.

@@ -1066,8 +1066,11 @@ class MainViewModel(
             _saveFolderUri.value = userPreferencesRepository.saveFolderUri.first()
 
             updateServerAddressFull()
+        }
 
-            // Backfill baseModelName
+        // Backfill baseModelName
+        // Bolt: Moved to IO dispatcher to avoid blocking main thread with JSON parsing during startup
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 // We use a small delay or check to ensure DB is ready, but flow collection is safer
                 // This is a one-time check on startup
