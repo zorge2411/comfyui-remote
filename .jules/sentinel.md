@@ -16,3 +16,8 @@
 **Vulnerability:** Preloading logic in `GalleryScreen` and list items in `HistoryScreen` used hardcoded `http://` URLs, bypassing the secure connection setting even when `GalleryItem` was fixed.
 **Learning:** Security fixes often target the primary usage path but miss secondary paths (like preloading or history views) where logic is duplicated.
 **Prevention:** Centralize URL construction logic in a shared extension function (e.g., `GeneratedMediaListing.constructUrl`) and verify all usages with grep.
+
+## 2025-02-18 - Unconditional Production Logging of Sensitive API Data
+**Vulnerability:** `ComfyApplication` initialized a shared `OkHttpClient` with a logging interceptor that logged full request URLs (including query params) and headers to `Logcat` in all builds (including Release).
+**Learning:** Developers often add global logging interceptors for debugging early in development but forget to wrap them in `DEBUGGABLE` checks, assuming `Log.d` is stripped or harmless, whereas modern tools can capture these logs in production environments.
+**Prevention:** Always wrap `logging-interceptor` or any `addInterceptor` that logs data with a check for `(applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0`.
