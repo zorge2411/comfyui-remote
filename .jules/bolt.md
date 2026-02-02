@@ -19,3 +19,7 @@
 ## 2024-05-24 - [Main Thread Blocking in Init]
 **Learning:** Found heavy JSON parsing in `MainViewModel.init` running on the main thread (via `viewModelScope` default dispatcher). This delays app startup and UI responsiveness.
 **Action:** Always offload file I/O and heavy parsing (like Gson) to `Dispatchers.IO`, even in `init` blocks.
+
+## 2024-05-24 - [Repeated JSON Parsing in WebSocket Handler]
+**Learning:** `MainViewModel.handleMessage` (running on Main thread) was parsing the entire workflow JSON (O(N)) for every "executing" message to find a single node title. This caused UI jank during generation.
+**Action:** Implemented an in-memory cache for parsed node titles keyed by workflow reference. This reduces the operation to O(1) for subsequent updates. Always cache heavy parsing results if they are needed frequently on the main thread.
