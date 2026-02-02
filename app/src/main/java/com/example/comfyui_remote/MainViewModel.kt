@@ -290,6 +290,21 @@ class MainViewModel(
     // History & Caching
     private val _executionCache = mutableMapOf<String, String>() // prompt_id -> json content
 
+    // Cache for node titles to avoid re-parsing JSON during execution
+    private var cachedNodeTitles: Map<String, String>? = null
+    private var cachedWorkflowForTitles: WorkflowEntity? = null
+
+    private fun resolveNodeTitle(workflow: WorkflowEntity, nodeId: String): String? {
+        if (workflow !== cachedWorkflowForTitles) {
+            // This happens on the main thread (from handleMessage), but only ONCE per workflow selection.
+            // Subsequent lookups are O(1).
+            val nodes = parseAllNodes(workflow.jsonContent)
+            cachedNodeTitles = nodes.associate { it.id to it.title }
+            cachedWorkflowForTitles = workflow
+        }
+        return cachedNodeTitles?.get(nodeId)
+    }
+
     fun loadHistory(listing: com.example.comfyui_remote.data.GeneratedMediaListing) {
         android.util.Log.d("HISTORY_DEBUG", "==================== loadHistory() CALLED ====================")
         android.util.Log.d("HISTORY_DEBUG", "Listing ID: ${listing.id}")
@@ -599,8 +614,7 @@ class MainViewModel(
                         val nodeId = data.get("node").asString
                         // Optionally lookup node title from current workflow
                         val title = _selectedWorkflow.value?.let { wf ->
-                             val nodes = parseAllNodes(wf.jsonContent)
-                             nodes.find { it.id == nodeId }?.title
+                             resolveNodeTitle(wf, nodeId)
                         }
                         _executionProgress.value = _executionProgress.value.copy(
                             currentNodeId = nodeId,
