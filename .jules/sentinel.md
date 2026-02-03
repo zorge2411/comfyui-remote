@@ -16,3 +16,8 @@
 **Vulnerability:** Preloading logic in `GalleryScreen` and list items in `HistoryScreen` used hardcoded `http://` URLs, bypassing the secure connection setting even when `GalleryItem` was fixed.
 **Learning:** Security fixes often target the primary usage path but miss secondary paths (like preloading or history views) where logic is duplicated.
 **Prevention:** Centralize URL construction logic in a shared extension function (e.g., `GeneratedMediaListing.constructUrl`) and verify all usages with grep.
+
+## 2025-02-19 - Conditional Logging in Release Builds
+**Vulnerability:** `OkHttpClient` logging interceptor was added unconditionally, leaking API URLs to logcat in release builds.
+**Learning:** This project disables `buildConfig` generation, making `BuildConfig.DEBUG` unavailable. Standard conditional checks using `BuildConfig` fail to compile, leading developers to skip the check or rely on `Log.d` (which isn't stripped by default in this project's R8 config).
+**Prevention:** Use `(applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0` to robustly detect debuggable builds when `BuildConfig` is missing.

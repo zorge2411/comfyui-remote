@@ -21,11 +21,14 @@ class ComfyApplication : Application(), coil.ImageLoaderFactory {
 
     // Shared OkHttpClient for API and Image Loading
     val okHttpClient by lazy {
-        okhttp3.OkHttpClient.Builder()
+        val builder = okhttp3.OkHttpClient.Builder()
             .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
             .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
             .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-            .addInterceptor { chain ->
+
+        // Sentinel: Only enable logging in debug builds to prevent sensitive info leakage
+        if ((applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            builder.addInterceptor { chain ->
                 val request = chain.request()
                 // Only log non-view requests to avoid log spam from images
                 if (!request.url.toString().contains("/view?")) {
@@ -37,7 +40,9 @@ class ComfyApplication : Application(), coil.ImageLoaderFactory {
                 }
                 response
             }
-            .build()
+        }
+
+        builder.build()
     }
 
     override fun newImageLoader(): coil.ImageLoader {
