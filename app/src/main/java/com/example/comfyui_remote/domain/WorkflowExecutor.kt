@@ -6,6 +6,8 @@ import com.google.gson.JsonParser
 
 class WorkflowExecutor {
 
+    private val gson = Gson()
+
     fun injectValues(originalJson: String, inputs: List<InputField>): String {
         return try {
             val jsonObject = JsonParser.parseString(originalJson).asJsonObject
@@ -55,7 +57,7 @@ class WorkflowExecutor {
                     }
                 }
             }
-            Gson().toJson(jsonObject)
+            gson.toJson(jsonObject)
         } catch (e: Exception) {
             e.printStackTrace()
             originalJson // Return original on failure

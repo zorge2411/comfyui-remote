@@ -23,3 +23,7 @@
 ## 2024-05-24 - [Repeated JSON Parsing in WebSocket Handler]
 **Learning:** `MainViewModel.handleMessage` (running on Main thread) was parsing the entire workflow JSON (O(N)) for every "executing" message to find a single node title. This caused UI jank during generation.
 **Action:** Implemented an in-memory cache for parsed node titles keyed by workflow reference. This reduces the operation to O(1) for subsequent updates. Always cache heavy parsing results if they are needed frequently on the main thread.
+
+## 2026-02-03 - [Gson Instantiation Overhead]
+**Learning:** Found multiple instances of `Gson()` being created inside methods (like `addToQueue` and `injectValues`). Gson initialization involves building type adapters and is expensive.
+**Action:** Introduced a shared `gson` instance in `ComfyApplication`. Reuse this global instance or use class-level properties instead of creating local instances in hot paths.
