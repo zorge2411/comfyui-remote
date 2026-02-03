@@ -14,6 +14,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,6 +39,7 @@ fun QueueScreen(
     val queueItems by viewModel.queueItems.collectAsState()
     val isRunning by viewModel.isQueueRunning.collectAsState()
     val currentItemId by viewModel.currentExecutingItemId.collectAsState()
+    var itemToDelete by remember { mutableStateOf<LocalQueueItem?>(null) }
 
     Scaffold(
         topBar = {
@@ -92,10 +96,33 @@ fun QueueScreen(
                     QueueItemCard(
                         item = item,
                         isExecuting = item.id == currentItemId,
-                        onDelete = { viewModel.deleteItem(item) }
+                        onDelete = { itemToDelete = item }
                     )
                 }
             }
+        }
+
+        if (itemToDelete != null) {
+            AlertDialog(
+                onDismissRequest = { itemToDelete = null },
+                title = { Text("Remove from Queue?") },
+                text = { Text("Are you sure you want to remove '${itemToDelete?.workflowName}'? This action cannot be undone.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            itemToDelete?.let { viewModel.deleteItem(it) }
+                            itemToDelete = null
+                        }
+                    ) {
+                        Text("Remove", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { itemToDelete = null }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }
@@ -147,7 +174,7 @@ fun QueueItemCard(
                 IconButton(onClick = onDelete) {
                     Icon(
                         Icons.Default.Delete, 
-                        contentDescription = "Delete",
+                        contentDescription = "Delete ${item.workflowName}",
                         tint = MaterialTheme.colorScheme.error 
                     )
                 }
