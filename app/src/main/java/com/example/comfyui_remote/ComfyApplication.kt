@@ -19,6 +19,9 @@ class ComfyApplication : Application(), coil.ImageLoaderFactory {
     // Global connection state
     val connectionRepository by lazy { ConnectionRepository() }
 
+    // Shared Gson instance
+    val gson by lazy { com.google.gson.Gson() }
+
     // Shared OkHttpClient for API and Image Loading
     val okHttpClient by lazy {
         okhttp3.OkHttpClient.Builder()

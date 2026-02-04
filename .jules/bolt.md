@@ -23,3 +23,7 @@
 ## 2024-05-24 - [Repeated JSON Parsing in WebSocket Handler]
 **Learning:** `MainViewModel.handleMessage` (running on Main thread) was parsing the entire workflow JSON (O(N)) for every "executing" message to find a single node title. This caused UI jank during generation.
 **Action:** Implemented an in-memory cache for parsed node titles keyed by workflow reference. This reduces the operation to O(1) for subsequent updates. Always cache heavy parsing results if they are needed frequently on the main thread.
+
+## 2024-05-24 - [Shared Gson Instance]
+**Learning:** Repeated instantiation of `Gson()` in ViewModels and execution logic adds unnecessary overhead (reflection, adapter building).
+**Action:** Use a shared `Gson` instance (e.g., in `Application` class or dependency injection) and reuse it across the app.
