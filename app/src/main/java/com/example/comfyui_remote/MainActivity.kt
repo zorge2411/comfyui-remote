@@ -69,6 +69,7 @@ import com.example.comfyui_remote.data.WorkflowRepository
 import com.example.comfyui_remote.network.WebSocketState
 import com.example.comfyui_remote.ui.WorkflowListScreen
 import com.example.comfyui_remote.ui.theme.ComfyUI_front_endTheme
+import com.example.comfyui_remote.util.ValidationUtils
 
 import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -356,16 +357,13 @@ fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
         } else {
             // Validate
             var hasError = false
-            if (host.isBlank()) {
-                hostError = "IP address is required"
+            if (!ValidationUtils.isValidHost(host)) {
+                hostError = "Invalid Hostname or IP"
                 hasError = true
             }
             
-            if (port.isBlank()) {
-                portError = "Port is required"
-                hasError = true
-            } else if (port.toIntOrNull() == null) {
-                portError = "Invalid port number"
+            if (!ValidationUtils.isValidPort(port)) {
+                portError = "Port must be 1-65535"
                 hasError = true
             }
 

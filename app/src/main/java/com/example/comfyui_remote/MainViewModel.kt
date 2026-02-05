@@ -25,6 +25,7 @@ import retrofit2.HttpException
 import com.example.comfyui_remote.data.UserPreferencesRepository
 import kotlinx.coroutines.flow.first
 import com.example.comfyui_remote.network.ServerWorkflowFile
+import com.example.comfyui_remote.util.ValidationUtils
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -129,6 +130,12 @@ class MainViewModel(
     }
 
     fun saveConnection() {
+        // Defense in depth: Validate inputs before saving
+        if (!ValidationUtils.isValidHost(_host.value) || !ValidationUtils.isValidPort(_port.value)) {
+            android.util.Log.e("Connection", "Invalid host or port, ignoring save request.")
+            return
+        }
+
         viewModelScope.launch {
             val p = _port.value.toIntOrNull() ?: 8188
             userPreferencesRepository.saveConnectionDetails(_host.value, p, _isSecure.value)
