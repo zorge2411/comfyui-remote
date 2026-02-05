@@ -27,3 +27,7 @@
 ## 2024-05-24 - [Shared Gson Instance]
 **Learning:** Repeated instantiation of `Gson()` in ViewModels and execution logic adds unnecessary overhead (reflection, adapter building).
 **Action:** Use a shared `Gson` instance (e.g., in `Application` class or dependency injection) and reuse it across the app.
+
+## 2024-05-24 - [ViewModel Scope Dispatcher Pitfall]
+**Learning:** `viewModelScope.launch` defaults to `Dispatchers.Main.Immediate`. Heavy processing (like JSON parsing in a loop or Retrofit instantiation) inside a `collect` block launched this way will block the main thread.
+**Action:** Explicitly use `viewModelScope.launch(Dispatchers.IO)` for background data processing, even if the upstream flow is already on IO.
