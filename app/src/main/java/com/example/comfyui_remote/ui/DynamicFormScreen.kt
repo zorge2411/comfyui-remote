@@ -152,6 +152,7 @@ fun DynamicFormScreen(
                 when (inputField) {
                     is InputField.StringInput -> {
                         val clipboardManager = LocalClipboardManager.current
+                        val context = LocalContext.current
                         OutlinedTextField(
                             value = inputField.value,
                             onValueChange = { newValue ->
@@ -166,8 +167,9 @@ fun DynamicFormScreen(
                                     Row {
                                         IconButton(onClick = {
                                             clipboardManager.setText(AnnotatedString(inputField.value))
+                                            android.widget.Toast.makeText(context, "Copied to clipboard", android.widget.Toast.LENGTH_SHORT).show()
                                         }) {
-                                            Icon(Icons.Default.Info, contentDescription = "Copy text")
+                                            Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy text")
                                         }
                                         IconButton(onClick = {
                                             inputs = inputs.toMutableList().also {
