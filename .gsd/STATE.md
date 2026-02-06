@@ -2,24 +2,23 @@
 
 ## Current Position
 
-- **Phase**: 74 (Local Queue)
-- **Status**: Build Passed / Verification Needed
-- **Session Goal**: Implement Persistent Local Queue
+- **Phase**: 75 (MP4 Video Support)
+- **Status**: ⬜ Not Started
+- **Session Goal**: Add MP4 support to gallery
 
 ## Achievements
 
-- [x] Data Layer: `LocalQueueItem`, `LocalQueueDao`, `LocalQueueRepository`
-- [x] Logic: `WorkflowExecutionService` (Refactored), `QueueViewModel` (Implementation + Deserializer)
-- [x] UI: `QueueScreen`, `MainActivity` Navigation, `DynamicFormScreen` Integration
-- [x] Verification: Build Successful, Unit Tests Passed (24/24)
+- [x] Verified Phase 70 (Subgraph Expansion) - New unit tests passed (2/2)
+- [x] Verified Phase 73 (Batch Generation) - Implementation confirmed
+- [x] Verified Phase 74 (Local Queue) - Navigation gap closed, Logic confirmed
+- [x] Cleaned up `ROADMAP.md` (Removed duplicate/corrupted lines)
+- [x] Added Phase 75 to Roadmap
 
 ## Context & Decisions
 
-- **Serialization**: Used custom `Gson` deserializer in `QueueViewModel` to handle polymorphic `InputField` list serialization in the DB.
-- **Image Uploads**: `QueueViewModel` handles checking if images need upload (local URI present but no server filename).
-- **Navigation**: Added "Queue" to the main bottom navigation bar.
+- **Phase 70**: Logic was found pre-existing in `GraphToApiConverter`. Verified correctness with a new test suite ensuring ID remapping and boundary link redirection.
+- **Roadmap**: Added Phase 75 to support video outputs (AnimateDiff, etc).
 
 ## Next Steps
 
-1. **Manual Verification**: Run the app, add items to queue, verify execution.
-2. **Phase 75**: (To be defined - potentially optimization or more queue features).
+1. **Phase 75**: Create execution plan for MP4 video support.
