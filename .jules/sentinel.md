@@ -21,3 +21,8 @@
 **Vulnerability:** The logging interceptor in `ComfyApplication` and usage of `Log.d` in services were unconditional, leaking sensitive URLs (Host IP, Port) and usage data to system logs in production builds because `isMinifyEnabled` is false (disabling R8/Proguard stripping).
 **Learning:** Developers often rely on R8/Proguard to strip `Log.d` calls, but if minification is disabled (common in early release cycles or open source debug builds), these logs persist and expose internal data to anyone with ADB access.
 **Prevention:** Explicitly guard sensitive logging with a check for `(applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0`, or use a custom logger that performs this check.
+
+## 2025-05-21 - Missing Security Infrastructure
+**Vulnerability:** Core security components (`ValidationUtils`) described in architectural standards were missing from the implementation, leading to unvalidated network inputs across the UI and ViewModel layers.
+**Learning:** Documentation and memory of "standards" can create a false sense of security if the underlying code is not verified to exist.
+**Prevention:** Verify the existence of referenced security utilities before assuming they are enforcing policies.
