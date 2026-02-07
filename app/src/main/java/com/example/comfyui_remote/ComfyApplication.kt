@@ -1,6 +1,7 @@
 package com.example.comfyui_remote
 
 import android.app.Application
+import android.content.pm.ApplicationInfo
 import com.example.comfyui_remote.data.AppDatabase
 import com.example.comfyui_remote.data.ConnectionRepository
 import com.example.comfyui_remote.data.MediaRepository
@@ -8,6 +9,8 @@ import com.example.comfyui_remote.data.UserPreferencesRepository
 import com.example.comfyui_remote.data.WorkflowRepository
 
 class ComfyApplication : Application(), coil.ImageLoaderFactory {
+    private val isDebuggable by lazy { (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0 }
+
     // Database instance
     val database by lazy { AppDatabase.getDatabase(this) }
     
@@ -19,23 +22,30 @@ class ComfyApplication : Application(), coil.ImageLoaderFactory {
     // Global connection state
     val connectionRepository by lazy { ConnectionRepository() }
 
+    // Shared Gson instance
+    val gson by lazy { com.google.gson.Gson() }
+
     // Shared OkHttpClient for API and Image Loading
     val okHttpClient by lazy {
         okhttp3.OkHttpClient.Builder()
             .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
             .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
             .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-            .addInterceptor { chain ->
-                val request = chain.request()
-                // Only log non-view requests to avoid log spam from images
-                if (!request.url.toString().contains("/view?")) {
-                    android.util.Log.d("API_DEBUG", "Sending request: ${request.method} ${request.url}")
+            .apply {
+                if (isDebuggable) {
+                    addInterceptor { chain ->
+                        val request = chain.request()
+                        // Only log non-view requests to avoid log spam from images
+                        if (!request.url.toString().contains("/view?")) {
+                            android.util.Log.d("API_DEBUG", "Sending request: ${request.method} ${request.url}")
+                        }
+                        val response = chain.proceed(request)
+                        if (!request.url.toString().contains("/view?")) {
+                            android.util.Log.d("API_DEBUG", "Received response: ${response.code} for ${request.url}")
+                        }
+                        response
+                    }
                 }
-                val response = chain.proceed(request)
-                if (!request.url.toString().contains("/view?")) {
-                    android.util.Log.d("API_DEBUG", "Received response: ${response.code} for ${request.url}")
-                }
-                response
             }
             .build()
     }

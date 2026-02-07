@@ -14,6 +14,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,9 +26,9 @@ import com.example.comfyui_remote.QueueViewModel
 import com.example.comfyui_remote.data.LocalQueueItem
 import com.example.comfyui_remote.data.QueueStatus
 import com.example.comfyui_remote.ui.components.EmptyState
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+
+// Reusable date formatter to avoid instantiation on every recomposition
+private val DATE_FORMATTER = java.time.format.DateTimeFormatter.ofPattern("MMM dd, HH:mm", java.util.Locale.getDefault())
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +39,7 @@ fun QueueScreen(
     val queueItems by viewModel.queueItems.collectAsState()
     val isRunning by viewModel.isQueueRunning.collectAsState()
     val currentItemId by viewModel.currentExecutingItemId.collectAsState()
+    var showDeleteDialog by remember { mutableStateOf<LocalQueueItem?>(null) }
 
     Scaffold(
         topBar = {
@@ -92,11 +96,37 @@ fun QueueScreen(
                     QueueItemCard(
                         item = item,
                         isExecuting = item.id == currentItemId,
-                        onDelete = { viewModel.deleteItem(item) }
+                        onDelete = { showDeleteDialog = item }
                     )
                 }
             }
         }
+    }
+
+    showDeleteDialog?.let { item ->
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = null },
+            title = { Text("Delete Queue Item") },
+            text = { Text("Are you sure you want to delete '${item.workflowName}' from the queue?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteItem(item)
+                        showDeleteDialog = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -130,9 +160,8 @@ fun QueueItemCard(
                     text = "Batch: ${item.batchCount} • Status: ${item.status.name}",
                     style = MaterialTheme.typography.bodySmall
                 )
-                val dateFormat = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
                 Text(
-                    text = dateFormat.format(Date(item.createdAt)),
+                    text = DATE_FORMATTER.withZone(java.time.ZoneId.systemDefault()).format(java.time.Instant.ofEpochMilli(item.createdAt)),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )

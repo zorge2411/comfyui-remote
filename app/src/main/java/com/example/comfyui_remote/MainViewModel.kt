@@ -199,7 +199,7 @@ class MainViewModel(
                 // We need to serialize inputs to JSON
                 // Using standard Gson. InputField has 'label' property which should be serialized
                 // allowing polymorphic deserialization in QueueViewModel.
-                val gson = com.google.gson.Gson()
+                val gson = getApplication<ComfyApplication>().gson
                 val inputsJson = gson.toJson(inputs)
              
                 localQueueRepository.addToQueue(
@@ -943,7 +943,7 @@ class MainViewModel(
 
                     val downloadStart = System.currentTimeMillis()
                     val newMediaItems = mutableListOf<com.example.comfyui_remote.data.GeneratedMediaEntity>()
-                    val gson = com.google.gson.Gson()
+                    val gson = getApplication<ComfyApplication>().gson
                     android.util.Log.d("SYNC_DEBUG", "Fetching history from server...")
                     
                     // Use larger max_items when date filtering is active

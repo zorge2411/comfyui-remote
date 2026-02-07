@@ -16,3 +16,8 @@
 **Vulnerability:** Preloading logic in `GalleryScreen` and list items in `HistoryScreen` used hardcoded `http://` URLs, bypassing the secure connection setting even when `GalleryItem` was fixed.
 **Learning:** Security fixes often target the primary usage path but miss secondary paths (like preloading or history views) where logic is duplicated.
 **Prevention:** Centralize URL construction logic in a shared extension function (e.g., `GeneratedMediaListing.constructUrl`) and verify all usages with grep.
+
+## 2025-02-18 - Unconditional Production Logging
+**Vulnerability:** The logging interceptor in `ComfyApplication` and usage of `Log.d` in services were unconditional, leaking sensitive URLs (Host IP, Port) and usage data to system logs in production builds because `isMinifyEnabled` is false (disabling R8/Proguard stripping).
+**Learning:** Developers often rely on R8/Proguard to strip `Log.d` calls, but if minification is disabled (common in early release cycles or open source debug builds), these logs persist and expose internal data to anyone with ADB access.
+**Prevention:** Explicitly guard sensitive logging with a check for `(applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0`, or use a custom logger that performs this check.

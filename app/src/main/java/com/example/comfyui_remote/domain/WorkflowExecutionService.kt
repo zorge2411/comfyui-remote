@@ -32,9 +32,7 @@ class WorkflowExecutionService(
                     val uri = Uri.parse(uriString)
                     val response = imageRepository.uploadImage(api, uri, contentResolver)
                     uploadedFilenames[nodeId] = response.name
-                    android.util.Log.d("WorkflowExec", "Uploaded $nodeId -> ${response.name}")
                 } catch (e: Exception) {
-                    android.util.Log.e("WorkflowExec", "Upload failed for $nodeId", e)
                     throw Exception("Image upload failed: ${e.message}")
                 }
             }
