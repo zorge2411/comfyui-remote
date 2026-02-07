@@ -32,13 +32,14 @@ class ComfyWebSocket(
 
     fun connect() {
         val protocol = if (isSecure) "wss" else "ws"
-        val request = Request.Builder()
-            .url("$protocol://$serverAddress/ws?clientId=$clientId")
-            .build()
+        try {
+            val request = Request.Builder()
+                .url("$protocol://$serverAddress/ws?clientId=$clientId")
+                .build()
 
-        _connectionState.value = WebSocketState.CONNECTING
+            _connectionState.value = WebSocketState.CONNECTING
 
-        webSocket = client.newWebSocket(request, object : WebSocketListener() {
+            webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 _connectionState.value = WebSocketState.CONNECTED
             }
@@ -60,6 +61,12 @@ class ComfyWebSocket(
                 _connectionState.value = WebSocketState.ERROR
             }
         })
+        } catch (e: IllegalArgumentException) {
+            // Handle malformed URL or invalid arguments
+            _connectionState.value = WebSocketState.ERROR
+        } catch (e: Exception) {
+            _connectionState.value = WebSocketState.ERROR
+        }
     }
 
     fun disconnect() {

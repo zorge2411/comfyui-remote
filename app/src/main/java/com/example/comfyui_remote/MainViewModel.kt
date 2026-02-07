@@ -25,6 +25,7 @@ import retrofit2.HttpException
 import com.example.comfyui_remote.data.UserPreferencesRepository
 import kotlinx.coroutines.flow.first
 import com.example.comfyui_remote.network.ServerWorkflowFile
+import com.example.comfyui_remote.utils.ValidationUtils
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -129,14 +130,26 @@ class MainViewModel(
     }
 
     fun saveConnection() {
+        val currentHost = _host.value
+        val currentPort = _port.value
+
+        if (!ValidationUtils.isValidHost(currentHost)) {
+            _errorMessage.value = "Invalid Host: Use alphanumeric, dots, hyphens."
+            return
+        }
+        if (!ValidationUtils.isValidPort(currentPort)) {
+            _errorMessage.value = "Invalid Port: Must be 1-65535."
+            return
+        }
+
         viewModelScope.launch {
-            val p = _port.value.toIntOrNull() ?: 8188
-            userPreferencesRepository.saveConnectionDetails(_host.value, p, _isSecure.value)
+            val p = currentPort.toIntOrNull() ?: 8188
+            userPreferencesRepository.saveConnectionDetails(currentHost, p, _isSecure.value)
             
             // Phase 59: Save to profiles list
             userPreferencesRepository.saveServerProfile(
                 com.example.comfyui_remote.data.ServerProfile(
-                    host = _host.value,
+                    host = currentHost,
                     port = p,
                     isSecure = _isSecure.value
                 )
@@ -559,6 +572,18 @@ class MainViewModel(
     }
 
     fun connect() {
+        val currentHost = _host.value
+        val currentPort = _port.value
+
+        if (!ValidationUtils.isValidHost(currentHost)) {
+            _errorMessage.value = "Invalid Host: Use alphanumeric, dots, hyphens."
+            return
+        }
+        if (!ValidationUtils.isValidPort(currentPort)) {
+            _errorMessage.value = "Invalid Port: Must be 1-65535."
+            return
+        }
+
         // Start Foreground Service
         val context = getApplication<Application>()
         val serviceIntent = Intent(context, ExecutionService::class.java)
@@ -569,8 +594,8 @@ class MainViewModel(
         }
         
         // Connect via Repository
-        val p = _port.value.toIntOrNull() ?: 8188
-        connectionRepository.connect(_host.value, p, _isSecure.value)
+        val p = currentPort.toIntOrNull() ?: 8188
+        connectionRepository.connect(currentHost, p, _isSecure.value)
         fetchAvailableModels()
         fetchNodeMetadata()
         fetchServerWorkflows()
