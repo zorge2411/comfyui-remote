@@ -59,6 +59,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.core.net.toUri
 import com.example.comfyui_remote.MainViewModel
 import com.example.comfyui_remote.data.WorkflowEntity
@@ -152,6 +153,7 @@ fun DynamicFormScreen(
                 when (inputField) {
                     is InputField.StringInput -> {
                         val clipboardManager = LocalClipboardManager.current
+                        val context = LocalContext.current
                         OutlinedTextField(
                             value = inputField.value,
                             onValueChange = { newValue ->
@@ -166,8 +168,9 @@ fun DynamicFormScreen(
                                     Row {
                                         IconButton(onClick = {
                                             clipboardManager.setText(AnnotatedString(inputField.value))
+                                            Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
                                         }) {
-                                            Icon(Icons.Default.Info, contentDescription = "Copy text")
+                                            Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy text")
                                         }
                                         IconButton(onClick = {
                                             inputs = inputs.toMutableList().also {
