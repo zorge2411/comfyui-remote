@@ -553,6 +553,12 @@ fun DynamicFormScreen(
         ModalBottomSheet(
             onDismissRequest = { showNodeSheet = false }
         ) {
+            // Load nodes asynchronously to prevent UI blocking
+            var allNodes by remember { mutableStateOf<List<com.example.comfyui_remote.domain.NodeInfo>>(emptyList()) }
+            LaunchedEffect(workflow.jsonContent) {
+                allNodes = viewModel.parseAllNodes(workflow.jsonContent)
+            }
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -562,21 +568,26 @@ fun DynamicFormScreen(
                 Text("Workflow Architecture", style = MaterialTheme.typography.headlineSmall)
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                val allNodes = viewModel.parseAllNodes(workflow.jsonContent)
-                LazyColumn {
-                    items(allNodes) { node ->
-                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                            Row {
-                                Text("#${node.id}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(node.title, fontWeight = FontWeight.SemiBold)
+                if (allNodes.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else {
+                    LazyColumn {
+                        items(allNodes) { node ->
+                            Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                                Row {
+                                    Text("#${node.id}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(node.title, fontWeight = FontWeight.SemiBold)
+                                }
+                                Text(
+                                    text = "Class: ${node.classType}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                                HorizontalDivider(modifier = Modifier.padding(top = 8.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
                             }
-                            Text(
-                                text = "Class: ${node.classType}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.secondary
-                            )
-                            HorizontalDivider(modifier = Modifier.padding(top = 8.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
                         }
                     }
                 }

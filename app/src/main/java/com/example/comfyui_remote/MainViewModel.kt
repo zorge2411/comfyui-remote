@@ -279,12 +279,16 @@ class MainViewModel(
             .create(com.example.comfyui_remote.network.ComfyApiService::class.java)
     }
 
-    fun parseWorkflowInputs(json: String): List<com.example.comfyui_remote.domain.InputField> {
-        return workflowParser.parse(json, _nodeMetadata.value)
+    suspend fun parseWorkflowInputs(json: String): List<com.example.comfyui_remote.domain.InputField> {
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            workflowParser.parse(json, _nodeMetadata.value)
+        }
     }
 
-    fun parseAllNodes(json: String): List<com.example.comfyui_remote.domain.NodeInfo> {
-        return workflowParser.parseAllNodes(json)
+    suspend fun parseAllNodes(json: String): List<com.example.comfyui_remote.domain.NodeInfo> {
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            workflowParser.parseAllNodes(json)
+        }
     }
 
     // History & Caching
@@ -294,7 +298,7 @@ class MainViewModel(
     private var cachedNodeTitles: Map<String, String>? = null
     private var cachedWorkflowForTitles: WorkflowEntity? = null
 
-    private fun resolveNodeTitle(workflow: WorkflowEntity, nodeId: String): String? {
+    private suspend fun resolveNodeTitle(workflow: WorkflowEntity, nodeId: String): String? {
         if (workflow !== cachedWorkflowForTitles) {
             // This happens on the main thread (from handleMessage), but only ONCE per workflow selection.
             // Subsequent lookups are O(1).
@@ -585,9 +589,11 @@ class MainViewModel(
         context.stopService(Intent(context, ExecutionService::class.java))
     }
 
-    private fun handleMessage(json: String) {
+    private suspend fun handleMessage(json: String) {
         try {
-            val obj = com.google.gson.JsonParser.parseString(json).asJsonObject
+            val obj = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                com.google.gson.JsonParser.parseString(json).asJsonObject
+            }
             val type = obj.get("type").asString
             
             when (type) {
