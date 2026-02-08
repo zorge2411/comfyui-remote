@@ -27,3 +27,7 @@
 ## 2024-05-24 - [Shared Gson Instance]
 **Learning:** Repeated instantiation of `Gson()` in ViewModels and execution logic adds unnecessary overhead (reflection, adapter building).
 **Action:** Use a shared `Gson` instance (e.g., in `Application` class or dependency injection) and reuse it across the app.
+
+## 2024-05-24 - [Room Flow Performance]
+**Learning:** Found `MainViewModel` using `getAll().map { list -> list.find { ... } }` to retrieve a single item. This triggers a full list query and iteration on every database update, which is O(N) and memory-intensive for large datasets.
+**Action:** Use specific `@Query("SELECT * FROM table WHERE id = :id")` returning a `Flow` in DAO. This allows Room to emit updates only when the specific row changes (mostly) and avoids loading the entire table into memory.

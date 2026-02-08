@@ -42,5 +42,7 @@ class MediaRepository(private val mediaDao: GeneratedMediaDao) {
 
     suspend fun getById(id: Long): GeneratedMediaEntity? = mediaDao.getById(id)
 
+    fun getByIdFlow(id: Long): Flow<GeneratedMediaEntity?> = mediaDao.getByIdFlow(id)
+
     suspend fun getLatestByFilename(filename: String): GeneratedMediaEntity? = mediaDao.getLatestByFilename(filename)
 }

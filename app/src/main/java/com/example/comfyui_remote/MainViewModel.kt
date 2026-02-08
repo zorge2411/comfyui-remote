@@ -179,9 +179,7 @@ class MainViewModel(
     val allMedia = mediaRepository.allMediaListings
 
     fun getMediaById(id: Long): kotlinx.coroutines.flow.Flow<com.example.comfyui_remote.data.GeneratedMediaEntity?> {
-        return mediaRepository.allMedia.map { list ->
-            list.find { it.id == id }
-        }
+        return mediaRepository.getByIdFlow(id)
     }
 
     // Phase 3: Execution Logic
