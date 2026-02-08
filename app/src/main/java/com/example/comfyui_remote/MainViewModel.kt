@@ -657,7 +657,7 @@ class MainViewModel(
      * If 'data' is null, it fetches it from the /history/{id} endpoint.
      */
     private fun syncHistoryItem(promptId: String, data: com.google.gson.JsonObject? = null) {
-        viewModelScope.launch {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             android.util.Log.d("SYNC_DEBUG", "syncHistoryItem() called for promptId: $promptId")
             try {
                 val finalData = data ?: buildApiService().getHistory(promptId).getAsJsonObject(promptId)
@@ -1334,7 +1334,7 @@ class MainViewModel(
         }
         
         // Observe messages from Repository
-        viewModelScope.launch {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             connectionRepository.messages.collect { message ->
                 handleMessage(message)
             }
