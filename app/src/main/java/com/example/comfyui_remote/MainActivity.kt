@@ -359,13 +359,16 @@ fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
             if (host.isBlank()) {
                 hostError = "IP address is required"
                 hasError = true
+            } else if (!com.example.comfyui_remote.utils.ValidationUtils.isValidHost(host)) {
+                hostError = "Invalid host (alphanumeric, dot, hyphen only)"
+                hasError = true
             }
             
             if (port.isBlank()) {
                 portError = "Port is required"
                 hasError = true
-            } else if (port.toIntOrNull() == null) {
-                portError = "Invalid port number"
+            } else if (!com.example.comfyui_remote.utils.ValidationUtils.isValidPort(port)) {
+                portError = "Invalid port (1-65535)"
                 hasError = true
             }
 
