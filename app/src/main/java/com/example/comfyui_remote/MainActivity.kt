@@ -27,7 +27,17 @@ import androidx.compose.material.icons.filled.PendingActions
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.Icons
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.ui.draw.rotate
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -524,21 +534,43 @@ fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
 
 @Composable
 fun StatusIndicator(state: WebSocketState) {
-    val color = when (state) {
-        WebSocketState.CONNECTED -> Color.Green
-        WebSocketState.CONNECTING -> Color.Yellow
-        WebSocketState.ERROR -> Color.Red
-        WebSocketState.DISCONNECTED -> Color.Gray
-        WebSocketState.RECONNECTING -> Color.Yellow
+    val (color, icon, contentDescription) = when (state) {
+        WebSocketState.CONNECTED -> Triple(Color.Green, Icons.Filled.CheckCircle, "Connected")
+        WebSocketState.CONNECTING -> Triple(Color.Yellow, Icons.Filled.Sync, "Connecting")
+        WebSocketState.ERROR -> Triple(Color.Red, Icons.Filled.Error, "Connection Error")
+        WebSocketState.DISCONNECTED -> Triple(Color.Gray, Icons.Filled.CloudOff, "Disconnected")
+        WebSocketState.RECONNECTING -> Triple(Color.Yellow, Icons.Filled.Sync, "Reconnecting")
+    }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "connection_status_anim")
+    val angle by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing)
+        ),
+        label = "rotation"
+    )
+
+    val modifier = if (state == WebSocketState.CONNECTING || state == WebSocketState.RECONNECTING) {
+        Modifier.rotate(angle)
+    } else {
+        Modifier
     }
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = color,
             modifier = Modifier
-                .size(24.dp)
-                .background(color, CircleShape)
+                .size(48.dp)
+                .then(modifier)
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Text(text = state.name)
+        Text(
+            text = state.name.replace("_", " "),
+            style = MaterialTheme.typography.labelLarge
+        )
     }
 }
