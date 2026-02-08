@@ -23,6 +23,7 @@ import okhttp3.OkHttpClient
 import retrofit2.HttpException
 
 import com.example.comfyui_remote.data.UserPreferencesRepository
+import com.example.comfyui_remote.utils.ValidationUtils
 import kotlinx.coroutines.flow.first
 import com.example.comfyui_remote.network.ServerWorkflowFile
 import java.time.Instant
@@ -130,6 +131,9 @@ class MainViewModel(
 
     fun saveConnection() {
         viewModelScope.launch {
+            if (!ValidationUtils.isValidHost(_host.value) || !ValidationUtils.isValidPort(_port.value)) {
+                return@launch
+            }
             val p = _port.value.toIntOrNull() ?: 8188
             userPreferencesRepository.saveConnectionDetails(_host.value, p, _isSecure.value)
             
