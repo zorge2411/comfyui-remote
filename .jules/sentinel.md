@@ -21,3 +21,8 @@
 **Vulnerability:** The logging interceptor in `ComfyApplication` and usage of `Log.d` in services were unconditional, leaking sensitive URLs (Host IP, Port) and usage data to system logs in production builds because `isMinifyEnabled` is false (disabling R8/Proguard stripping).
 **Learning:** Developers often rely on R8/Proguard to strip `Log.d` calls, but if minification is disabled (common in early release cycles or open source debug builds), these logs persist and expose internal data to anyone with ADB access.
 **Prevention:** Explicitly guard sensitive logging with a check for `(applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0`, or use a custom logger that performs this check.
+
+## 2025-02-19 - Untrusted Local Network Configuration
+**Vulnerability:** The application accepted arbitrary strings for Host and Port, trusting the user to provide valid inputs for the local server. This allowed invalid characters or path injection in the Retrofit Base URL construction.
+**Learning:** Even in "Remote Control" apps where the user defines the endpoint, inputs must be validated to prevent crashing the networking stack or injecting path segments (e.g. `example.com/api` as host).
+**Prevention:** Implement strict regex validation for Hostnames/IPs and range checks for Ports before persisting configuration or initializing network clients.
