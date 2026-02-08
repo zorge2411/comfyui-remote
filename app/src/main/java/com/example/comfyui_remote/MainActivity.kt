@@ -248,7 +248,7 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("workflows") {
                             WorkflowListScreen(viewModel) { workflow ->
-                                viewModel.parseWorkflowInputs(workflow.jsonContent)
+                                // Bolt: Removed redundant parsing call. Inputs are parsed in DynamicFormScreen.
                                 viewModel.selectWorkflow(workflow)
                                 navController.navigate("remote_control")
                             }
