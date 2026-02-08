@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.platform.LocalClipboardManager
+import android.widget.Toast
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.text.font.FontWeight
@@ -152,6 +153,7 @@ fun DynamicFormScreen(
                 when (inputField) {
                     is InputField.StringInput -> {
                         val clipboardManager = LocalClipboardManager.current
+                        val context = LocalContext.current
                         OutlinedTextField(
                             value = inputField.value,
                             onValueChange = { newValue ->
@@ -166,8 +168,9 @@ fun DynamicFormScreen(
                                     Row {
                                         IconButton(onClick = {
                                             clipboardManager.setText(AnnotatedString(inputField.value))
+                                            Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
                                         }) {
-                                            Icon(Icons.Default.Info, contentDescription = "Copy text")
+                                            Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy text")
                                         }
                                         IconButton(onClick = {
                                             inputs = inputs.toMutableList().also {
