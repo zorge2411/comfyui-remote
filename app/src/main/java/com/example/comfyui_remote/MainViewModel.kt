@@ -1334,7 +1334,8 @@ class MainViewModel(
         }
         
         // Observe messages from Repository
-        viewModelScope.launch {
+        // Bolt: Move message handling (JSON parsing) to IO thread to prevent UI jank
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             connectionRepository.messages.collect { message ->
                 handleMessage(message)
             }
