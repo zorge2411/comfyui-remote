@@ -31,6 +31,20 @@ class WorkflowParser {
                             val options = getOptionsFromMetadata(metadata, classType, fieldName)
                             
                             val inputField = when {
+                                (classType == "LoadImage" && fieldName == "image") -> {
+                                    // Must be checked before the generic combo-options branch below:
+                                    // real ComfyUI servers declare LoadImage's "image" input as a combo
+                                    // list of already-uploaded server filenames, which would otherwise
+                                    // always win and render a dropdown instead of the gallery/camera
+                                    // picker — silently disabling img2img image selection entirely.
+                                    InputField.ImageInput(
+                                        nodeId = nodeId,
+                                        fieldName = fieldName,
+                                        value = primitive.asString, // Likely the default filename
+                                        localUri = null,
+                                        nodeTitle = title
+                                    )
+                                }
                                 options != null -> {
                                     InputField.SelectionInput(
                                         nodeId = nodeId,
@@ -45,15 +59,6 @@ class WorkflowParser {
                                         nodeId = nodeId,
                                         fieldName = fieldName,
                                         value = try { primitive.asLong } catch(e: Exception) { 0L },
-                                        nodeTitle = title
-                                    )
-                                }
-                                (classType == "LoadImage" && fieldName == "image") -> {
-                                    InputField.ImageInput(
-                                        nodeId = nodeId,
-                                        fieldName = fieldName,
-                                        value = primitive.asString, // Likely the default filename
-                                        localUri = null,
                                         nodeTitle = title
                                     )
                                 }

@@ -64,4 +64,43 @@ class WorkflowParserTest {
         assertTrue("lora_name should be ModelInput", lora is InputField.ModelInput)
         assertEquals("my_lora.safetensors", (lora as InputField.ModelInput).value)
     }
+
+    @Test
+    fun `parse gives LoadImage's image field the picker, not a combo dropdown, even when server metadata declares combo options`() {
+        // Real ComfyUI servers declare LoadImage's "image" input as a combo list of
+        // already-uploaded server filenames in /object_info. Before the fix, the generic
+        // combo-options branch was checked first and always won, so LoadImage's image field
+        // rendered as a SelectionInput dropdown instead of the gallery/camera ImageInput
+        // picker — silently disabling img2img image selection on any real server.
+        val json = """
+            {
+                "1": {
+                    "class_type": "LoadImage",
+                    "_meta": { "title": "Load Image" },
+                    "inputs": {
+                        "image": "example.png"
+                    }
+                }
+            }
+        """.trimIndent()
+
+        val metaJson = """
+            {
+                "LoadImage": {
+                    "input": {
+                        "required": {
+                            "image": [["example.png", "other_uploaded.png"], {"image_upload": true}]
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        val metadata = com.google.gson.JsonParser.parseString(metaJson).asJsonObject
+
+        val inputs = parser.parse(json, metadata)
+
+        val image = inputs.find { it.fieldName == "image" }
+        assertTrue("LoadImage's image field should be ImageInput despite combo metadata", image is InputField.ImageInput)
+        assertEquals("example.png", (image as InputField.ImageInput).value)
+    }
 }
