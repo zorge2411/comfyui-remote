@@ -71,7 +71,7 @@
 ## Next Steps
 
 1. **Phase 80 wrap-up**: Themed-icon retinting under Android 13+ Material You wasn't interactively spot-checked in Settings — optional manual confirmation if desired.
-2. **Phase 81**: Plan and implement image-to-image workflow node support.
+2. **Phase 81**: Context gathered (`.gsd/phases/81/81-CONTEXT.md`) — verify the existing LoadImage img2img flow end-to-end against a live server, fix bugs found inline, defer other node-type coverage (ControlNet etc.) to a future phase. Ready to plan.
 3. **Phase 82**: Plan and implement prompt field ordering fix.
 4. **Phase 83**: Plan and implement camera capture for gallery add-image.
 5. **Phase 84**: Plan and implement real progress indicator.
