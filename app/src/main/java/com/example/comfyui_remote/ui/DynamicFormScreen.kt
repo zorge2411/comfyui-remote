@@ -84,6 +84,12 @@ fun DynamicFormScreen(
         inputs = viewModel.parseWorkflowInputs(workflow.jsonContent)
     }
 
+    // Tracks indices of ImageInput fields with an upload in flight, so Generate/Queue
+    // can be blocked until the selected image's server filename is actually available —
+    // otherwise injectValues() silently skips the field and the workflow runs with
+    // whatever image the node already had (default/placeholder), with no error.
+    var pendingImageUploads by remember { mutableStateOf(setOf<Int>()) }
+
     var showNodeSheet by remember { mutableStateOf(false) }
 
     val executionStatus by viewModel.executionStatus.collectAsState()
@@ -325,25 +331,40 @@ fun DynamicFormScreen(
                             currentUri = inputField.localUri,
                             serverUrl = serverUrl,
                             onImageSelected = { uri ->
+                                val previousLocalUri = inputField.localUri
+                                val previousValue = inputField.value
+
                                 // 1. Optimistic Update
                                 inputs = inputs.toMutableList().also {
                                     it[index] = inputField.copy(localUri = uri.toString(), value = null)
                                 }
-                                
-                                // 2. Trigger Upload
+
+                                // 2. Trigger Upload — track in-flight so Generate/Queue stay disabled
+                                pendingImageUploads = pendingImageUploads + index
                                 scope.launch {
-                                    val uploadResponse = viewModel.uploadImage(uri, context.contentResolver)
-                                    if (uploadResponse != null) {
-                                        // 3. Update with Server Filename
-                                        inputs = inputs.toMutableList().also { list ->
-                                            // Re-fetch item to be safe, though index should be stable
-                                            val current = list[index] as? InputField.ImageInput
-                                            if (current != null) {
-                                                list[index] = current.copy(value = uploadResponse.name)
+                                    try {
+                                        val uploadResponse = viewModel.uploadImage(uri, context.contentResolver)
+                                        if (uploadResponse != null) {
+                                            // 3. Update with Server Filename
+                                            inputs = inputs.toMutableList().also { list ->
+                                                // Re-fetch item to be safe, though index should be stable
+                                                val current = list[index] as? InputField.ImageInput
+                                                if (current != null) {
+                                                    list[index] = current.copy(value = uploadResponse.name)
+                                                }
                                             }
+                                        } else {
+                                            // Upload failed — revert the optimistic update and surface the error
+                                            inputs = inputs.toMutableList().also { list ->
+                                                val current = list[index] as? InputField.ImageInput
+                                                if (current != null) {
+                                                    list[index] = current.copy(localUri = previousLocalUri, value = previousValue)
+                                                }
+                                            }
+                                            viewModel.reportError("Image upload failed — please try again")
                                         }
-                                    } else {
-                                        // Upload failed
+                                    } finally {
+                                        pendingImageUploads = pendingImageUploads - index
                                     }
                                 }
                             }
@@ -445,7 +466,7 @@ fun DynamicFormScreen(
                             // Optional: Show feedback
                         },
                         modifier = Modifier.weight(1f),
-                        enabled = executionStatus == ExecutionStatus.IDLE || executionStatus == ExecutionStatus.FINISHED
+                        enabled = (executionStatus == ExecutionStatus.IDLE || executionStatus == ExecutionStatus.FINISHED) && pendingImageUploads.isEmpty()
                     ) {
                          Icon(Icons.Default.Add, contentDescription = null)
                          Spacer(Modifier.width(8.dp))
@@ -458,7 +479,7 @@ fun DynamicFormScreen(
                             viewModel.executeWorkflow(workflow, inputs, batchCount)
                         },
                         modifier = Modifier.weight(1f),
-                        enabled = executionStatus == ExecutionStatus.IDLE || executionStatus == ExecutionStatus.FINISHED
+                        enabled = (executionStatus == ExecutionStatus.IDLE || executionStatus == ExecutionStatus.FINISHED) && pendingImageUploads.isEmpty()
                     ) {
                         if (executionStatus == ExecutionStatus.EXECUTING || executionStatus == ExecutionStatus.QUEUED) {
                             CircularProgressIndicator(
@@ -466,6 +487,12 @@ fun DynamicFormScreen(
                                 color = MaterialTheme.colorScheme.onPrimary
                             )
                             Text("Running...")
+                        } else if (pendingImageUploads.isNotEmpty()) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.height(24.dp).padding(end = 8.dp),
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Text("Uploading image...")
                         } else {
                             Text("Generate")
                         }

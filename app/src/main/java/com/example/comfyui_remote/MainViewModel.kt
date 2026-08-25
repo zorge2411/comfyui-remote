@@ -538,6 +538,11 @@ class MainViewModel(
         }
     }
 
+    fun reportError(message: String) {
+        _errorMessage.value = message
+        _executionStatus.value = ExecutionStatus.ERROR
+    }
+
     private val _inputImages = MutableStateFlow<Map<String, String?>>(emptyMap())
     val inputImages: StateFlow<Map<String, String?>> = _inputImages.asStateFlow()
 
