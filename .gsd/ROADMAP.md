@@ -790,7 +790,7 @@
 
 ### Phase 85: Fix Subgraph Flattening Output-Link Bug
 
-**Status**: 🔄 Planned
+**Status**: ✅ Done (targeted bug fixed; installDebug pending device reconnect)
 **Objective**: Fix `GraphToApiConverter`'s subgraph-instance detection (`isSubgraph`) to key off `definitions.containsKey(type)` instead of requiring `properties.proxyWidgets`, so subgraph nodes lacking that property are properly expanded instead of falling through to the crude phantom-flattening heuristic.
 **Depends on**: Phase 81
 
@@ -800,17 +800,32 @@
 
 **Tasks**:
 
-- [ ] Fix `isSubgraph` check in `expandGraphOnce` (~line 502): `def != null` (drop `proxyWidgets` requirement)
-- [ ] Fix `isSubgraph` check in `convert()`'s pre-scan (~line 78-79): `definitions.containsKey(type)`
-- [ ] Add synthetic unit tests (no real/sensitive fixture data) covering expansion without `proxyWidgets` and full `convert()` pipeline correctness
-- [ ] One-time live proof-of-fix against the real failing workflow + server `/prompt` (not committed)
+- [x] Fix `isSubgraph` check in `expandGraphOnce` (~line 502): `def != null` (drop `proxyWidgets` requirement)
+- [x] Fix `isSubgraph` check in `convert()`'s pre-scan (~line 78-79): `definitions.containsKey(type)`
+- [x] Add synthetic unit tests (no real/sensitive fixture data) covering expansion without `proxyWidgets` and full `convert()` pipeline correctness
+- [x] One-time live proof-of-fix against the real failing workflow + server `/prompt` (not committed)
 
 **Verification**:
 
-- [ ] `testDebugUnitTest` passes, including new subgraph tests
-- [ ] Live `/prompt` POST with the fixed conversion no longer returns `HTTP 400 prompt_outputs_failed_validation`
-- [ ] No real workflow content lands in any commit
-- [ ] `assembleDebug` / `installDebug` succeed
+- [x] `testDebugUnitTest` passes, including new subgraph tests (4/4 in `GraphToApiConverterSubgraphTest`, full suite green)
+- [x] Live `/prompt` POST with the fixed conversion no longer returns the `video`/`IMAGE` type-mismatch error — confirmed resolved to `CreateVideo`, not `LoadImage`
+- [x] No real workflow content lands in any commit (throwaway test + scratch files deleted before commit)
+- [~] `assembleDebug` succeeds; `installDebug` pending — no device connected this session
+- **Note:** the live POST surfaced a *second, unrelated* pre-existing gap (see Phase 86) — `ComfyMathExpression`'s `COMFY_AUTOGROW_V3` dynamic input isn't understood by the app, so this specific workflow still won't fully execute end-to-end until Phase 86 lands. That's expected and out of this phase's scope.
+
+---
+
+### Phase 86: Support COMFY_AUTOGROW_V3 Dynamic Input Type
+
+**Status**: ⬜ Not Started
+**Objective**: Support ComfyUI's `COMFY_AUTOGROW_V3` dynamic/auto-expanding input type (used by nodes like `ComfyMathExpression` for variable-count named inputs, e.g. `values.a`, `values.b`, ...) in the app's workflow input-mapping logic, so workflows using such nodes can execute instead of failing `required_input_missing` validation.
+**Depends on**: Phase 85
+
+**Discovered**: 2026-08-25, during Phase 85's live proof-of-fix. `/object_info` shows `ComfyMathExpression`'s registered required input is a single top-level key `values` of type `COMFY_AUTOGROW_V3` (a template-based group that expands into named sub-inputs `a`, `b`, `c`... per the node's `template`/`names`/`min` config), but the workflow graph JSON represents each expanded slot as its own top-level input (`values.a`, `values.b`). The app's `GraphToApiConverter` only matches input keys directly against `/object_info`'s declared `required`/`optional` keys (`values`), so dotted sub-keys like `values.a` never match and their links never get copied into the API JSON — the server then rejects the prompt with `required_input_missing` for `values.a`.
+
+**Tasks**:
+
+- [ ] TBD (run /gsd:discuss-phase 86 or /gsd:plan-phase 86 to create — will need to study `COMFY_AUTOGROW_V3`'s schema shape more broadly, ideally across more than one example node, before committing to a parsing approach)
 
 **Verification**:
 

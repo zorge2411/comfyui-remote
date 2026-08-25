@@ -2,12 +2,18 @@
 
 ## Current Position
 
-- **Phase**: 81 (Image-to-Image Workflow Node Support)
-- **Status**: 🔄 In Progress — code done, live verification inconclusive
-- **Session Goal**: Fixed 2 real bugs in img2img upload flow; live test surfaced a different, unrelated bug (now Phase 85) before the target scenario could be confirmed
+- **Phase**: 85 (Fix Subgraph Flattening Output-Link Bug)
+- **Status**: ✅ Done (targeted bug fixed; `installDebug` pending device reconnect)
+- **Session Goal**: Diagnosed and fixed the subgraph isSubgraph-detection bug against real live-server data; surfaced a second, unrelated gap now tracked as Phase 86
 
 ## Achievements
 
+- [x] Implemented Phase 85 (Fix Subgraph Flattening Output-Link Bug)
+  - [x] Fixed `isSubgraph` detection in both `expandGraphOnce` and `convert()`'s pre-scan to key off `definitions.containsKey(type)` instead of requiring `properties.proxyWidgets`
+  - [x] Added 2 permanent synthetic regression tests to `GraphToApiConverterSubgraphTest.kt` (now tracked in git for the first time)
+  - [x] Verified against the real failing workflow via a throwaway test + live `/prompt` POST — original `video`/`IMAGE` type-mismatch error confirmed gone (resolves to `CreateVideo`, not `LoadImage`); throwaway test and scratch files deleted before commit, nothing sensitive touched the repo
+  - [x] Full `testDebugUnitTest` suite green, `assembleDebug` succeeds
+  - [~] `installDebug` not run this session — no device connected
 - [x] Implemented Phase 81 (Image-to-Image Workflow Node Support) — code portion
   - [x] Fixed race condition: Generate/Queue now disabled while an image upload is in flight (`DynamicFormScreen.kt`)
   - [x] Fixed silent upload failure: now reverts state and surfaces an error via new `MainViewModel.reportError()`
@@ -73,13 +79,15 @@
 - Phase 83 added: Camera capture for gallery add-image (was open TODO, 2026-01-24)
 - Phase 84 added: Real progress indicator (was unchecked Nice-to-Have, never phased)
 - Phase 85 added: Fix subgraph flattening output-link bug (discovered during Phase 81 live testing, 2026-08-25 — HTTP 400 "video/IMAGE mismatch" on `SaveVideo` node when a phantom subgraph node gets bypassed)
+- Phase 86 added: Support `COMFY_AUTOGROW_V3` dynamic input type (discovered during Phase 85's live proof-of-fix, 2026-08-25 — `ComfyMathExpression`'s dynamic `values.a`/`values.b`... inputs aren't understood by the app's input-mapping logic)
 
 ## Next Steps
 
 1. **Phase 80 wrap-up**: Themed-icon retinting under Android 13+ Material You wasn't interactively spot-checked in Settings — optional manual confirmation if desired.
-2. **Phase 81**: Code done and installed (Fairphone 6) — both bugs fixed (`pendingImageUploads` gate on Generate/Queue; upload failures now revert state + call `viewModel.reportError()`). `assembleDebug`/`testDebugUnitTest` green. Live test only exercised an image-to-video subgraph workflow, which hit the unrelated Phase 85 bug before reaching the img2img upload path. **Still needs**: a plain `LoadImage`-only workflow to actually confirm the button-gating/error-surfacing fixes, if/when one is available.
-3. **Phase 85**: Planned (`.gsd/phases/85/85-PLAN.md`) — 2-line fix (`isSubgraph` detection) plus new synthetic unit tests plus a one-time live proof-of-fix against the real server (not committed). Ready to execute.
-4. **Phase 82**: Plan and implement prompt field ordering fix.
-5. **Phase 83**: Plan and implement camera capture for gallery add-image.
-6. **Phase 84**: Plan and implement real progress indicator.
-6. **Verify** all recent completions once more on a physical device (Manual verification of UI layout).
+2. **Phase 85 wrap-up**: Run `installDebug` next time a device is connected (code fix already verified live against the server independent of the device).
+3. **Phase 81**: Code done — both bugs fixed (`pendingImageUploads` gate on Generate/Queue; upload failures now revert state + call `viewModel.reportError()`). `assembleDebug`/`testDebugUnitTest` green. Live test only exercised an image-to-video subgraph workflow, which hit the (now-fixed) Phase 85 bug before reaching the img2img upload path. **Still needs**: a plain `LoadImage`-only workflow to actually confirm the button-gating/error-surfacing fixes, if/when one is available — or retry the same MiniMax i2v workflow now that Phase 85 is fixed, since it also exercises a `LoadImage` node.
+4. **Phase 86**: Study `COMFY_AUTOGROW_V3`'s schema shape (ideally across more than one example node) before planning a parsing approach.
+5. **Phase 82**: Plan and implement prompt field ordering fix.
+6. **Phase 83**: Plan and implement camera capture for gallery add-image.
+7. **Phase 84**: Plan and implement real progress indicator.
+8. **Verify** all recent completions once more on a physical device (Manual verification of UI layout).
