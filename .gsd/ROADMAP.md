@@ -722,17 +722,21 @@
 
 ### Phase 81: Image-to-Image Workflow Node Support
 
-**Status**: ⬜ Not Started
-**Objective**: Support image-to-image workflow nodes (loading/supplying an input image into workflows that require one), per the outstanding TODO from 2026-01-30.
+**Status**: 🔄 Planned
+**Objective**: Verify the existing LoadImage img2img flow (built Phase 64) works end-to-end against a live server; fix the two race-condition/silent-failure bugs found via code review. Broader node-type coverage (ControlNet, inpainting) explicitly deferred.
 **Depends on**: Phase 80
 
 **Tasks**:
 
-- [ ] TBD (run /gsd:discuss-phase 81 or /gsd:plan-phase 81 to create)
+- [ ] Block Generate/Queue buttons while an image upload is in flight (`DynamicFormScreen.kt`)
+- [ ] Surface upload failures to the user instead of failing silently (`DynamicFormScreen.kt`, `MainViewModel.kt`)
+- [ ] Live end-to-end test on user's ComfyUI server (user-run)
 
 **Verification**:
 
-- TBD
+- [ ] `assembleDebug` / `installDebug` succeed, `testDebugUnitTest` passes
+- [ ] User confirms img2img actually uses the selected image, not a default/placeholder
+- [ ] Any node-type gaps found are logged as deferred, not built here
 
 ---
 
