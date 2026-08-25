@@ -60,6 +60,6 @@
 
 ## Next Steps
 
-1. **Phase 80**: Context gathered (`.gsd/phases/80/80-CONTEXT.md`) — aperture/lens icon on the existing blue background, plus a new themed/monochrome variant. Ready to plan.
+1. **Phase 80**: Planned (`.gsd/phases/80/80-PLAN.md`) — aperture/lens icon on the existing blue background, themed/monochrome variant, and removal of dead legacy PNG mipmaps (minSdk 26 makes them unused). Ready to execute.
 2. **Verify** all recent completions once more on a physical device (Manual verification of UI layout).
 3. **Project Complete?** Check for any remaining polish or edge cases.

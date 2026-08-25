@@ -695,3 +695,24 @@
 - [x] Saved lists persist across app restarts
 - [x] Users can view, apply, and delete saved lists via UI
 - [x] Unit tests pass for filter logic and repository operations (25 + 12 tests, all green)
+
+---
+
+### Phase 80: Improve Android Icon
+
+**Status**: 🔄 Planned
+**Objective**: Replace the node-graph launcher icon with a camera aperture/lens motif on the existing blue background, and add Android 13+ themed (monochrome) icon support.
+**Depends on**: Phase 79
+
+**Tasks**:
+
+- [ ] Replace `ic_launcher_foreground.xml` node-graph motif with aperture/lens vector
+- [ ] Create `ic_launcher_monochrome.xml` themed-icon variant
+- [ ] Wire `<monochrome>` into `ic_launcher.xml` and `ic_launcher_round.xml`
+- [ ] Remove unused legacy per-density PNG mipmaps (dead weight on minSdk 26+)
+
+**Verification**:
+
+- [ ] `assembleDebug` build success
+- [ ] Icon visually confirmed on physical device, no clipping under adaptive-icon masking
+- [ ] Themed icon retints correctly under Android 13+ Material You theming (if device/launcher supports it)
