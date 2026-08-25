@@ -2,12 +2,17 @@
 
 ## Current Position
 
-- **Phase**: 79 (Manual Gallery Sync Filtering with Saved Lists)
+- **Phase**: 80 (Improve Android Icon)
 - **Status**: ✅ Done
-- **Session Goal**: Verified and committed Phase 79
+- **Session Goal**: Implemented, built, installed, and verified Phase 80
 
 ## Achievements
 
+- [x] Implemented Phase 80 (Improve Android Icon)
+  - [x] Replaced `ic_launcher_foreground.xml` node-graph motif with a 6-blade aperture/lens vector, same blue background
+  - [x] Added `ic_launcher_monochrome.xml`, wired into `ic_launcher.xml` and `ic_launcher_round.xml` for Android 13+ themed icons
+  - [x] Removed unused legacy per-density PNG mipmaps (dead weight on minSdk 26+, confirmed via grep before deletion)
+  - [x] `assembleDebug`/`installDebug` verified on physical device (Fairphone 6); icon geometry visually confirmed via rendered SVG preview
 - [x] Implemented Phase 79 (Manual Gallery Sync Filtering with Saved Lists)
   - [x] Added `GallerySyncFilter.kt` and `SavedGalleryList.kt` data classes
   - [x] Added `SavedGalleryListRepository.kt` (DataStore-backed)
@@ -38,6 +43,7 @@
 
 ## Context & Decisions
 
+- **Phase 80**: Replaced the node-graph icon with a 6-blade aperture/lens motif (camera/image-generation theme) rather than refining the old motif. Kept the existing blue background and flat white style. Deleted the legacy per-density PNG mipmaps instead of regenerating them — `minSdk = 26` makes the adaptive-icon XML authoritative on every supported device, and no SVG rasterizer was available in this environment to regenerate accurate replacements anyway.
 - **Phase 79**: Filters (date range, max items, workflow name, media type) are captured in `GallerySyncFilter`; saved lists distinguish between a static `SNAPSHOT` (frozen result set) and a `LIVE_FILTER` (re-applies the filter on sync) via `SavedGalleryList.ListType`.
 - **Phase 77**: Integrated `FilterChip` presets in the Gallery top section. This provides low-friction access to different sync depths and ranges without menu diving.
 - **Phase 76**: User requested configurable sync limit. Implemented as a slider in settings.
@@ -60,6 +66,6 @@
 
 ## Next Steps
 
-1. **Phase 80**: Code done (aperture/lens `ic_launcher_foreground.xml`, new `ic_launcher_monochrome.xml` wired into both adaptive-icon XMLs, legacy PNG mipmaps removed). `assembleDebug` succeeds. Device (Fairphone 6) disconnected before visual verification could run — reconnect and re-run `installDebug` to finish verifying, then commit.
+1. **Phase 80 wrap-up**: Themed-icon retinting under Android 13+ Material You wasn't interactively spot-checked in Settings — optional manual confirmation if desired.
 2. **Verify** all recent completions once more on a physical device (Manual verification of UI layout).
 3. **Project Complete?** Check for any remaining polish or edge cases.

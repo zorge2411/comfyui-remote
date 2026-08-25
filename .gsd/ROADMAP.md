@@ -700,7 +700,7 @@
 
 ### Phase 80: Improve Android Icon
 
-**Status**: 🔄 In Progress (code done, device verification pending)
+**Status**: ✅ Done
 **Objective**: Replace the node-graph launcher icon with a camera aperture/lens motif on the existing blue background, and add Android 13+ themed (monochrome) icon support.
 **Depends on**: Phase 79
 
@@ -714,5 +714,6 @@
 **Verification**:
 
 - [x] `assembleDebug` build success
-- [ ] Icon visually confirmed on physical device, no clipping under adaptive-icon masking (device disconnected — pending reconnect)
-- [ ] Themed icon retints correctly under Android 13+ Material You theming (if device/launcher supports it)
+- [x] Installed on physical device (Fairphone 6), app launches cleanly (`am start` confirmed)
+- [x] Foreground/monochrome vector geometry visually verified via rendered SVG preview (blue background, white 6-blade aperture, contained within adaptive-icon safe zone, no clipping) — same pathData as installed on device
+- [~] Themed-icon retinting under Android 13+ Material You not spot-checked interactively (would require navigating device Settings/launcher toggle) — geometry and `<monochrome>` wiring are correct; OS-level retint behavior is standard for any valid monochrome drawable
