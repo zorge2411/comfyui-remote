@@ -722,19 +722,19 @@
 
 ### Phase 81: Image-to-Image Workflow Node Support
 
-**Status**: 🔄 Planned
+**Status**: 🔄 In Progress (code done, live test pending)
 **Objective**: Verify the existing LoadImage img2img flow (built Phase 64) works end-to-end against a live server; fix the two race-condition/silent-failure bugs found via code review. Broader node-type coverage (ControlNet, inpainting) explicitly deferred.
 **Depends on**: Phase 80
 
 **Tasks**:
 
-- [ ] Block Generate/Queue buttons while an image upload is in flight (`DynamicFormScreen.kt`)
-- [ ] Surface upload failures to the user instead of failing silently (`DynamicFormScreen.kt`, `MainViewModel.kt`)
+- [x] Block Generate/Queue buttons while an image upload is in flight (`DynamicFormScreen.kt`)
+- [x] Surface upload failures to the user instead of failing silently (`DynamicFormScreen.kt`, `MainViewModel.kt`)
 - [ ] Live end-to-end test on user's ComfyUI server (user-run)
 
 **Verification**:
 
-- [ ] `assembleDebug` / `installDebug` succeed, `testDebugUnitTest` passes
+- [x] `assembleDebug` / `installDebug` succeed, `testDebugUnitTest` passes
 - [ ] User confirms img2img actually uses the selected image, not a default/placeholder
 - [ ] Any node-type gaps found are logged as deferred, not built here
 

@@ -71,7 +71,7 @@
 ## Next Steps
 
 1. **Phase 80 wrap-up**: Themed-icon retinting under Android 13+ Material You wasn't interactively spot-checked in Settings — optional manual confirmation if desired.
-2. **Phase 81**: Planned (`.gsd/phases/81/81-PLAN.md`). Code review already found 2 real bugs before any live test: (1) Generate/Queue aren't blocked while an image upload is in flight, so tapping too fast silently drops the selected image and runs with the default one; (2) upload failures are swallowed silently (bare comment, no error surfaced). Plan fixes both, then has the user live-test against their server. Ready to execute.
+2. **Phase 81**: Code done and installed (Fairphone 6) — both bugs fixed (`pendingImageUploads` gate on Generate/Queue; upload failures now revert state + call `viewModel.reportError()`). `assembleDebug`/`testDebugUnitTest` green. **Blocked on user's live test**: pick a LoadImage-workflow image, confirm Generate/Queue disable during upload, confirm the executed result actually uses the selected image, try to break it with a failed upload. Report back pass/fail and any node-type gaps (ControlNet etc. — log as new deferred item, don't fix here).
 3. **Phase 82**: Plan and implement prompt field ordering fix.
 4. **Phase 83**: Plan and implement camera capture for gallery add-image.
 5. **Phase 84**: Plan and implement real progress indicator.
