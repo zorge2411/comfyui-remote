@@ -75,8 +75,7 @@ object GraphToApiConverter {
 
                 val isUuidType = type.matches(Regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", RegexOption.IGNORE_CASE))
 
-                val isSubgraph = node.has("properties") && 
-                                 node.get("properties").asJsonObject.has("proxyWidgets")
+                val isSubgraph = definitions.containsKey(type)
 
                 val hasOutputs = nodesWithOutputs.contains(id)
 
@@ -499,7 +498,7 @@ object GraphToApiConverter {
             
             // Check if it's a wrapper
             val def = definitions[type]
-            val isSubgraph = def != null && node.has("properties") && node.get("properties").asJsonObject.has("proxyWidgets")
+            val isSubgraph = def != null
             
             if (isSubgraph) {
                 subgraphsExpanded++
