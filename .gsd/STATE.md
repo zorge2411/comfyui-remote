@@ -3,7 +3,7 @@
 ## Current Position
 
 - **Phase**: 85 (Fix Subgraph Flattening Output-Link Bug)
-- **Status**: ✅ Done (targeted bug fixed; `installDebug` pending device reconnect)
+- **Status**: ✅ Done
 - **Session Goal**: Diagnosed and fixed the subgraph isSubgraph-detection bug against real live-server data; surfaced a second, unrelated gap now tracked as Phase 86
 
 ## Achievements
@@ -13,7 +13,7 @@
   - [x] Added 2 permanent synthetic regression tests to `GraphToApiConverterSubgraphTest.kt` (now tracked in git for the first time)
   - [x] Verified against the real failing workflow via a throwaway test + live `/prompt` POST — original `video`/`IMAGE` type-mismatch error confirmed gone (resolves to `CreateVideo`, not `LoadImage`); throwaway test and scratch files deleted before commit, nothing sensitive touched the repo
   - [x] Full `testDebugUnitTest` suite green, `assembleDebug` succeeds
-  - [~] `installDebug` not run this session — no device connected
+  - [x] `installDebug` succeeded (Fairphone 6)
 - [x] Implemented Phase 81 (Image-to-Image Workflow Node Support) — code portion
   - [x] Fixed race condition: Generate/Queue now disabled while an image upload is in flight (`DynamicFormScreen.kt`)
   - [x] Fixed silent upload failure: now reverts state and surfaces an error via new `MainViewModel.reportError()`
@@ -84,10 +84,9 @@
 ## Next Steps
 
 1. **Phase 80 wrap-up**: Themed-icon retinting under Android 13+ Material You wasn't interactively spot-checked in Settings — optional manual confirmation if desired.
-2. **Phase 85 wrap-up**: Run `installDebug` next time a device is connected (code fix already verified live against the server independent of the device).
-3. **Phase 81**: Code done — both bugs fixed (`pendingImageUploads` gate on Generate/Queue; upload failures now revert state + call `viewModel.reportError()`). `assembleDebug`/`testDebugUnitTest` green. Live test only exercised an image-to-video subgraph workflow, which hit the (now-fixed) Phase 85 bug before reaching the img2img upload path. **Still needs**: a plain `LoadImage`-only workflow to actually confirm the button-gating/error-surfacing fixes, if/when one is available — or retry the same MiniMax i2v workflow now that Phase 85 is fixed, since it also exercises a `LoadImage` node.
-4. **Phase 86**: Study `COMFY_AUTOGROW_V3`'s schema shape (ideally across more than one example node) before planning a parsing approach.
-5. **Phase 82**: Plan and implement prompt field ordering fix.
-6. **Phase 83**: Plan and implement camera capture for gallery add-image.
-7. **Phase 84**: Plan and implement real progress indicator.
+2. **Phase 81**: Code done, now installed (Fairphone 6) — both bugs fixed (`pendingImageUploads` gate on Generate/Queue; upload failures now revert state + call `viewModel.reportError()`). `assembleDebug`/`testDebugUnitTest` green. Live test only exercised an image-to-video subgraph workflow, which hit the (now-fixed) Phase 85 bug before reaching the img2img upload path. **Still needs**: retry the MiniMax i2v workflow now that Phase 85 is fixed (it also exercises a `LoadImage` node), or a plain `LoadImage`-only workflow if available, to actually confirm the button-gating/error-surfacing fixes.
+3. **Phase 86**: Study `COMFY_AUTOGROW_V3`'s schema shape (ideally across more than one example node) before planning a parsing approach.
+4. **Phase 82**: Plan and implement prompt field ordering fix.
+5. **Phase 83**: Plan and implement camera capture for gallery add-image.
+6. **Phase 84**: Plan and implement real progress indicator.
 8. **Verify** all recent completions once more on a physical device (Manual verification of UI layout).

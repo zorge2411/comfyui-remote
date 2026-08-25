@@ -790,7 +790,7 @@
 
 ### Phase 85: Fix Subgraph Flattening Output-Link Bug
 
-**Status**: ✅ Done (targeted bug fixed; installDebug pending device reconnect)
+**Status**: ✅ Done
 **Objective**: Fix `GraphToApiConverter`'s subgraph-instance detection (`isSubgraph`) to key off `definitions.containsKey(type)` instead of requiring `properties.proxyWidgets`, so subgraph nodes lacking that property are properly expanded instead of falling through to the crude phantom-flattening heuristic.
 **Depends on**: Phase 81
 
@@ -810,7 +810,7 @@
 - [x] `testDebugUnitTest` passes, including new subgraph tests (4/4 in `GraphToApiConverterSubgraphTest`, full suite green)
 - [x] Live `/prompt` POST with the fixed conversion no longer returns the `video`/`IMAGE` type-mismatch error — confirmed resolved to `CreateVideo`, not `LoadImage`
 - [x] No real workflow content lands in any commit (throwaway test + scratch files deleted before commit)
-- [~] `assembleDebug` succeeds; `installDebug` pending — no device connected this session
+- [x] `assembleDebug` / `installDebug` succeed (installed on Fairphone 6)
 - **Note:** the live POST surfaced a *second, unrelated* pre-existing gap (see Phase 86) — `ComfyMathExpression`'s `COMFY_AUTOGROW_V3` dynamic input isn't understood by the app, so this specific workflow still won't fully execute end-to-end until Phase 86 lands. That's expected and out of this phase's scope.
 
 ---
