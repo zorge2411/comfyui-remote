@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -48,11 +49,41 @@ fun HistoryScreen(viewModel: MainViewModel, onNavigateToSettings: () -> Unit = {
     val historyStartDate = viewModel.historyStartDate.collectAsState()
     val historyEndDate = viewModel.historyEndDate.collectAsState()
 
+    var showClearConfirm by remember { mutableStateOf(false) }
+
+    if (showClearConfirm) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirm = false },
+            title = { Text("Clear and Refresh?") },
+            text = { Text("This will clear your local history data and fetch a fresh view from the server. Your data on the server will NOT be deleted.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.clearAndRefreshHistory()
+                    showClearConfirm = false
+                }) {
+                    Text("Refresh")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirm = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Execution History") },
                 actions = {
+                    // Refresh button
+                    IconButton(onClick = { showClearConfirm = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Clear and Refresh from Server"
+                        )
+                    }
                     // Date filter button
                     IconButton(onClick = { showDatePicker = true }) {
                         Icon(

@@ -18,30 +18,29 @@ object ShareUtils {
     suspend fun downloadAndShare(context: Context, url: String) {
         withContext(Dispatchers.IO) {
             try {
-                val file = downloadFile(context, url)
+                val filename = url.substringAfter("filename=").substringBefore("&")
+                val file = downloadFile(context, url, filename)
                 shareFile(context, file)
             } catch (e: Exception) {
                 e.printStackTrace()
-                // Handle error (maybe callback or return result)
             }
         }
     }
 
-    private fun downloadFile(context: Context, url: String): File {
+    private fun downloadFile(context: Context, url: String, filename: String): File {
         val client = OkHttpClient()
         val request = Request.Builder().url(url).build()
         val response = client.newCall(request).execute()
         
         val inputStream = response.body?.byteStream() ?: throw Exception("Body is null")
-        val bitmap = BitmapFactory.decodeStream(inputStream)
         
         val cachePath = File(context.cacheDir, "shared")
         if (!cachePath.exists()) cachePath.mkdirs()
         
-        val file = File(cachePath, "shared_image.png")
-        val stream = FileOutputStream(file)
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
-        stream.close()
+        val file = File(cachePath, filename)
+        val outputStream = FileOutputStream(file)
+        inputStream.copyTo(outputStream)
+        outputStream.close()
         
         return file
     }
@@ -53,13 +52,23 @@ object ShareUtils {
             file
         )
         
+        val extension = file.extension.lowercase()
+        val mimeType = when (extension) {
+            "mp4" -> "video/mp4"
+            "webm" -> "video/webm"
+            "gif" -> "image/gif"
+            "png" -> "image/png"
+            "jpg", "jpeg" -> "image/jpeg"
+            else -> if (listOf("mp4", "webm", "mkv").contains(extension)) "video/*" else "image/*"
+        }
+
         val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "image/png"
+            type = mimeType
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         
-        val chooser = Intent.createChooser(intent, "Share Image")
+        val chooser = Intent.createChooser(intent, "Share Media")
         chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(chooser)
     }

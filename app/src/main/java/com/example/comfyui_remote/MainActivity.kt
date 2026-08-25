@@ -85,6 +85,7 @@ class MainActivity : ComponentActivity() {
         val mediaRepository = com.example.comfyui_remote.data.MediaRepository(database.generatedMediaDao())
         val localQueueRepository = com.example.comfyui_remote.data.LocalQueueRepository(database.localQueueDao())
         val userPreferencesRepository = com.example.comfyui_remote.data.UserPreferencesRepository(this)
+        val savedGalleryListRepository = com.example.comfyui_remote.data.SavedGalleryListRepository(this)
         val app = application as ComfyApplication
         val viewModelFactory = MainViewModelFactory(
             app,
@@ -92,7 +93,8 @@ class MainActivity : ComponentActivity() {
             mediaRepository, 
             userPreferencesRepository,
             app.connectionRepository,
-            localQueueRepository
+            localQueueRepository,
+            savedGalleryListRepository
         )
         val viewModel = ViewModelProvider(this, viewModelFactory)[MainViewModel::class.java]
         

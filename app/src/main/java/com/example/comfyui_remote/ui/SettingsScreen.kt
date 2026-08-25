@@ -80,6 +80,44 @@ fun SettingsScreen(viewModel: MainViewModel) {
         }
 
         Card(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            )
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Synchronization",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                val maxItems by viewModel.maxSyncItems.collectAsState()
+                
+                Text(
+                    text = "Max History Items: ${maxItems.toInt()}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                
+                Slider(
+                    value = maxItems.toFloat(),
+                    onValueChange = { viewModel.updateMaxSyncItems(it.toInt()) },
+                    valueRange = 100f..2000f,
+                    steps = 18,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Text(
+                    text = "Higher limits sync more history but take longer.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)

@@ -5,8 +5,10 @@ import android.content.pm.ApplicationInfo
 import com.example.comfyui_remote.data.AppDatabase
 import com.example.comfyui_remote.data.ConnectionRepository
 import com.example.comfyui_remote.data.MediaRepository
+import com.example.comfyui_remote.data.SavedGalleryListRepository
 import com.example.comfyui_remote.data.UserPreferencesRepository
 import com.example.comfyui_remote.data.WorkflowRepository
+import coil.decode.VideoFrameDecoder
 
 class ComfyApplication : Application(), coil.ImageLoaderFactory {
     private val isDebuggable by lazy { (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0 }
@@ -18,6 +20,7 @@ class ComfyApplication : Application(), coil.ImageLoaderFactory {
     val workflowRepository by lazy { WorkflowRepository(database.workflowDao()) }
     val mediaRepository by lazy { MediaRepository(database.generatedMediaDao()) }
     val userPreferencesRepository by lazy { UserPreferencesRepository(this) }
+    val savedGalleryListRepository by lazy { SavedGalleryListRepository(this) }
     
     // Global connection state
     val connectionRepository by lazy { ConnectionRepository() }
@@ -66,6 +69,7 @@ class ComfyApplication : Application(), coil.ImageLoaderFactory {
                     .build()
             }
             .components {
+                add(VideoFrameDecoder.Factory())
                 add(coil.intercept.Interceptor { chain ->
                     try {
                         chain.proceed(chain.request)

@@ -3,6 +3,7 @@ package com.example.comfyui_remote.ui
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -16,6 +17,9 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -75,6 +79,11 @@ fun GalleryScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     val historyStartDate = viewModel.historyStartDate.collectAsState()
     val historyEndDate = viewModel.historyEndDate.collectAsState()
+
+    // Phase 79: Gallery Sync Filtering state
+    var showFilterDialog by remember { mutableStateOf(false) }
+    var showSavedListsDrawer by remember { mutableStateOf(false) }
+    val gallerySyncFilter = viewModel.gallerySyncFilter.collectAsState()
 
     // DIAGNOSTIC: Track mediaList changes
     LaunchedEffect(mediaList.size) {
@@ -146,14 +155,59 @@ fun GalleryScreen(
                     )
                 )
             } else {
+                var showClearConfirm by remember { mutableStateOf(false) }
+                
+                if (showClearConfirm) {
+                    AlertDialog(
+                        onDismissRequest = { showClearConfirm = false },
+                        title = { Text("Clear and Refresh?") },
+                        text = { Text("This will clear your local gallery data and fetch a fresh view from the server. Your images on the server will NOT be deleted.") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                viewModel.clearAndRefreshHistory()
+                                showClearConfirm = false
+                            }) {
+                                Text("Refresh")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showClearConfirm = false }) {
+                                Text("Cancel")
+                            }
+                        }
+                    )
+                }
+
                 TopAppBar(
                     title = { Text("Gallery") },
                     actions = {
+                        // Saved lists button
+                        IconButton(onClick = { showSavedListsDrawer = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Bookmark,
+                                contentDescription = "Saved Lists"
+                            )
+                        }
+                        // Filter button
+                        IconButton(onClick = { showFilterDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.FilterList,
+                                contentDescription = "Filter Gallery",
+                                tint = if (gallerySyncFilter.value.isActive()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                         // Date filter button
                         IconButton(onClick = { showDatePicker = true }) {
                             Icon(
                                 imageVector = Icons.Default.DateRange,
                                 contentDescription = "Filter by Date"
+                            )
+                        }
+                        // Refresh button
+                        IconButton(onClick = { showClearConfirm = true }) {
+                            Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Default.Refresh,
+                                contentDescription = "Clear and Refresh from Server"
                             )
                         }
                     }
@@ -205,6 +259,33 @@ fun GalleryScreen(
         }
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
+            // Phase 79: Active filter chips
+            if (gallerySyncFilter.value.isActive()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    tonalElevation = 2.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = gallerySyncFilter.value.getSummary(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(onClick = {
+                            viewModel.clearGallerySyncFilter()
+                            viewModel.syncHistory()
+                        }) {
+                            Text("Clear All")
+                        }
+                    }
+                }
+            }
+
             // Date range indicator
             if (historyStartDate.value != null || historyEndDate.value != null) {
                 Surface(
@@ -230,7 +311,8 @@ fun GalleryScreen(
                     }
                 }
             }
-            
+
+
             PullToRefreshBox(
                 isRefreshing = isSyncing,
                 onRefresh = { 
@@ -366,6 +448,34 @@ fun GalleryScreen(
             },
             initialStartDate = historyStartDate.value,
             initialEndDate = historyEndDate.value
+        )
+    }
+
+    // Phase 79: Gallery Filter Dialog
+    if (showFilterDialog) {
+        GalleryFilterDialog(
+            viewModel = viewModel,
+            onDismiss = { showFilterDialog = false },
+            onSyncWithFilter = { filter ->
+                showFilterDialog = false
+                viewModel.syncGalleryWithFilter(filter)
+            },
+            onSaveAsList = { filter ->
+                showFilterDialog = false
+                // Save list dialog will be shown from within GalleryFilterDialog
+            }
+        )
+    }
+
+    // Phase 79: Saved Lists Drawer
+    if (showSavedListsDrawer) {
+        SavedListsDrawer(
+            viewModel = viewModel,
+            onDismiss = { showSavedListsDrawer = false },
+            onApplyList = { listId ->
+                showSavedListsDrawer = false
+                viewModel.applySavedFilter(listId)
+            }
         )
     }
 }

@@ -31,6 +31,7 @@ class UserPreferencesRepository(private val context: Context) {
     private val SAVE_FOLDER_URI_KEY = stringPreferencesKey("save_folder_uri")
     private val THEME_MODE_KEY = intPreferencesKey("theme_mode")
     private val SERVER_PROFILES_KEY = stringPreferencesKey("server_profiles")
+    private val MAX_SYNC_ITEMS_KEY = intPreferencesKey("max_sync_items")
 
     private val gson = Gson()
 
@@ -59,9 +60,20 @@ class UserPreferencesRepository(private val context: Context) {
             preferences[THEME_MODE_KEY] ?: 0
         }
 
+    val maxSyncItems: Flow<Int> = context.dataStore.data
+        .map { preferences ->
+            preferences[MAX_SYNC_ITEMS_KEY] ?: 100
+        }
+
     suspend fun saveThemeMode(mode: Int) {
         context.dataStore.edit { preferences ->
             preferences[THEME_MODE_KEY] = mode
+        }
+    }
+
+    suspend fun saveMaxSyncItems(items: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[MAX_SYNC_ITEMS_KEY] = items
         }
     }
 

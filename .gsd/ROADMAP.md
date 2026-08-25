@@ -220,6 +220,15 @@
 
 ---
 
+### Phase 78: Clear Gallery and History View to Match Server [DONE]
+
+- [x] Research existing `GalleryScreen` and `HistoryScreen` implementation <!-- id: 0 -->
+- [x] Investigate `MainViewModel` for sync and clear logic <!-- id: 1 -->
+- [x] Define verification criteria for "Clear and Refresh" <!-- id: 2 -->
+- [x] Implement "Clear" functionality in `MainViewModel` <!-- id: 3 -->
+- [x] Add Refresh action to `GalleryScreen` and `HistoryScreen` with confirmation <!-- id: 4 -->
+- [x] Verify functionality via build and manual check <!-- id: 5 -->
+
 ### Phase 50: Normalization Service
 
 **Status**: ✅ Done
@@ -642,14 +651,47 @@
 
 ### Phase 78: Clear Gallery and History View to Match Server
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Done
 **Objective**: Implement functionality to clear local gallery and history data and refresh from the server, ensuring the app's view matches what is currently available on the ComfyUI server.
 **Depends on**: Phase 77
 
 **Tasks**:
 
-- [ ] TBD (run /plan 78 to create)
+- [x] Research existing `GalleryScreen`/`HistoryScreen` implementation
+- [x] Investigate `MainViewModel` for sync and clear logic
+- [x] Implement "Clear" functionality in `MainViewModel`
+- [x] Add Refresh action to `GalleryScreen` and `HistoryScreen` with confirmation
 
 **Verification**:
 
-- TBD
+- [x] Build Success (`assembleDebug`)
+- [x] Manual check of clear/refresh flow
+
+---
+
+### Phase 79: Manual Gallery Sync Filtering with Saved Lists
+
+**Status**: ✅ Done
+**Objective**: Implement manual gallery sync filtering with the ability to save filtered lists on the device. Users can define custom filters (date range, max items, workflow name, media type) and save either the current filtered results as a snapshot or the filter configuration for future re-sync.
+**Depends on**: Phase 78
+
+**Tasks**:
+
+- [x] Create data classes: GallerySyncFilter.kt, SavedGalleryList.kt
+- [x] Add DataStore repository: SavedGalleryListRepository.kt
+- [x] Enhance MainViewModel with filter state and save/apply methods
+- [x] Create GalleryFilterDialog.kt with full filter controls
+- [x] Create SaveListDialog.kt for snapshot vs live filter mode
+- [x] Create SavedListsDrawer.kt for list management UI
+- [x] Integrate filter UI into GalleryScreen.kt
+- [x] Add filter persistence and state restoration
+- [x] Write unit tests for filter logic and repository
+
+**Verification**:
+
+- [x] Users can define custom sync filters via dialog UI
+- [x] Users can save current results as named snapshot lists
+- [x] Users can save filter configurations as named live filter lists
+- [x] Saved lists persist across app restarts
+- [x] Users can view, apply, and delete saved lists via UI
+- [x] Unit tests pass for filter logic and repository operations (25 + 12 tests, all green)

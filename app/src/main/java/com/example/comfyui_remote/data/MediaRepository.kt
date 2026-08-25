@@ -31,6 +31,11 @@ class MediaRepository(private val mediaDao: GeneratedMediaDao) {
         mediaDao.delete(mediaList)
     }
 
+    suspend fun deleteAll() {
+        android.util.Log.d("MEDIA_REPO", "Deleting ALL media items from database")
+        mediaDao.deleteAll()
+    }
+
     suspend fun getAllPromptIds(): List<String> {
         android.util.Log.d("MEDIA_REPO", "Fetching all prompt IDs")
         val result = mediaDao.getAllPromptIds()

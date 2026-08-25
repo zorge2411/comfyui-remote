@@ -2,12 +2,20 @@
 
 ## Current Position
 
-- **Phase**: 77 (Selective Gallery Sync UI)
+- **Phase**: 79 (Manual Gallery Sync Filtering with Saved Lists)
 - **Status**: ✅ Done
-- **Session Goal**: Completed Phase 77
+- **Session Goal**: Verified and committed Phase 79
 
 ## Achievements
 
+- [x] Implemented Phase 79 (Manual Gallery Sync Filtering with Saved Lists)
+  - [x] Added `GallerySyncFilter.kt` and `SavedGalleryList.kt` data classes
+  - [x] Added `SavedGalleryListRepository.kt` (DataStore-backed)
+  - [x] Added `GalleryFilterDialog.kt`, `SaveListDialog.kt`, `SavedListsDrawer.kt`
+  - [x] Wired filter/save/apply/delete/rename/duplicate into `MainViewModel` and `GalleryScreen`
+  - [x] Unit tests: `GallerySyncFilterTest` (25/25), `SavedGalleryListRepositoryTest` (12/12)
+  - [x] Verified `assembleDebug` build success
+- [x] Implemented Phase 78 (Clear Gallery and History View to Match Server)
 - [x] Implemented Phase 77
   - [x] Updated `MainViewModel.syncHistory` to support `maxItemsOverride`.
   - [x] Added `FilterChip` quick-sync row to `GalleryScreen`.
@@ -30,6 +38,7 @@
 
 ## Context & Decisions
 
+- **Phase 79**: Filters (date range, max items, workflow name, media type) are captured in `GallerySyncFilter`; saved lists distinguish between a static `SNAPSHOT` (frozen result set) and a `LIVE_FILTER` (re-applies the filter on sync) via `SavedGalleryList.ListType`.
 - **Phase 77**: Integrated `FilterChip` presets in the Gallery top section. This provides low-friction access to different sync depths and ranges without menu diving.
 - **Phase 76**: User requested configurable sync limit. Implemented as a slider in settings.
 - **Phase 75**: Discovered that video workflows (like AnimateDiff) often output to `gifs` or `videos` keys on the server. Updated sync logic to handle these keys. Refactored sharing to be binary-safe (no more Bitmap-only sharing).
@@ -37,10 +46,15 @@
 
 ## Recent Updates
 
-- **2026-02-08**: Added Phase 78 (Clear Gallery and History View to Match Server) to roadmap.
+- **2026-02-08**: Added### Phase 78: Clear Gallery and History View to Match Server [DONE]
+- [x] Research existing `GalleryScreen` and `HistoryScreen` implementation <!-- id: 0 -->
+- [x] Investigate `MainViewModel` for sync and clear logic <!-- id: 1 -->
+- [x] Define verification criteria for "Clear and Refresh" <!-- id: 2 -->
+- [x] Implement "Clear" functionality in `MainViewModel` <!-- id: 3 -->
+- [x] Add Refresh action to `GalleryScreen` and `HistoryScreen` with confirmation <!-- id: 4 -->
+- [x] Verify functionality via build and manual check <!-- id: 5 -->
 
 ## Next Steps
 
-1. **Phase 78**: Plan and implement functionality to clear local data and sync with server state.
-2. **Verify** all recent completions once more on a physical device (Manual verification of UI layout).
-3. **Project Complete?** Check for any remaining polish or edge cases.
+1. **Verify** all recent completions once more on a physical device (Manual verification of UI layout).
+2. **Project Complete?** Check for any remaining polish or edge cases.

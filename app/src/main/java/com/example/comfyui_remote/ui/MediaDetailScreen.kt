@@ -339,15 +339,16 @@ fun DetailRow(label: String, value: String) {
 fun VideoPlayer(url: String) {
     val context = LocalContext.current
     
-    val exoPlayer = remember {
+    val exoPlayer = remember(url) {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(url))
+            repeatMode = androidx.media3.common.Player.REPEAT_MODE_ALL
             prepare()
             playWhenReady = true
         }
     }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(exoPlayer) {
         onDispose {
             exoPlayer.release()
         }
@@ -357,9 +358,14 @@ fun VideoPlayer(url: String) {
         factory = {
             PlayerView(context).apply {
                 player = exoPlayer
+                useController = true
+                setBackgroundColor(android.graphics.Color.BLACK)
             }
         },
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
+        update = {
+            it.player = exoPlayer
+        }
     )
 }
 

@@ -36,7 +36,8 @@ class MainViewModel(
     private val mediaRepository: com.example.comfyui_remote.data.MediaRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val connectionRepository: ConnectionRepository,
-    private val localQueueRepository: com.example.comfyui_remote.data.LocalQueueRepository
+    private val localQueueRepository: com.example.comfyui_remote.data.LocalQueueRepository,
+    private val savedGalleryListRepository: com.example.comfyui_remote.data.SavedGalleryListRepository
 ) : AndroidViewModel(application) {
 
     private val imageRepository = com.example.comfyui_remote.data.ImageRepository()
@@ -78,6 +79,164 @@ class MainViewModel(
         _historyEndDate.value = null
     }
 
+    // Phase 79: Gallery Sync Filtering with Saved Lists
+    private val _gallerySyncFilter = MutableStateFlow(com.example.comfyui_remote.data.GallerySyncFilter.default())
+    val gallerySyncFilter: StateFlow<com.example.comfyui_remote.data.GallerySyncFilter> = _gallerySyncFilter.asStateFlow()
+
+    val savedGalleryLists = savedGalleryListRepository.allLists
+
+    fun updateGallerySyncFilter(filter: com.example.comfyui_remote.data.GallerySyncFilter) {
+        _gallerySyncFilter.value = filter
+    }
+
+    fun clearGallerySyncFilter() {
+        _gallerySyncFilter.value = com.example.comfyui_remote.data.GallerySyncFilter.default()
+    }
+
+    /**
+     * Sync gallery with the specified filter.
+     * This extends the existing syncHistory() to support all filter parameters.
+     * Clears existing items first to remove items that don't match the new filter.
+     */
+    fun syncGalleryWithFilter(filter: com.example.comfyui_remote.data.GallerySyncFilter) {
+        viewModelScope.launch {
+            android.util.Log.d("GALLERY_FILTER", "syncGalleryWithFilter() called with filter: ${filter.getSummary()}")
+            
+            // Update the current filter state
+            _gallerySyncFilter.value = filter
+            
+            // Clear existing items to remove items that don't match the new filter
+            mediaRepository.deleteAll()
+            
+            // Sync with date range and max items from filter
+            syncHistory(
+                startDate = filter.startDate,
+                endDate = filter.endDate,
+                maxItemsOverride = filter.maxItems
+            )
+        }
+    }
+
+    /**
+     * Save the current gallery list as a named list.
+     * @param name The name for the saved list
+     * @param listType Whether to save as SNAPSHOT (current items) or LIVE_FILTER (filter config)
+     */
+    suspend fun saveCurrentGalleryList(
+        name: String,
+        listType: com.example.comfyui_remote.data.SavedGalleryList.ListType
+    ): Result<com.example.comfyui_remote.data.SavedGalleryList> {
+        return try {
+            val currentFilter = _gallerySyncFilter.value
+            val currentMediaList = mediaRepository.allMediaListings.first()
+            
+            val savedList = when (listType) {
+                com.example.comfyui_remote.data.SavedGalleryList.ListType.SNAPSHOT -> {
+                    // Save current items as a snapshot
+                    val itemIds = currentMediaList.map { it.id }
+                    com.example.comfyui_remote.data.SavedGalleryList.createSnapshot(
+                        name = name,
+                        filter = currentFilter,
+                        itemIds = itemIds
+                    )
+                }
+                com.example.comfyui_remote.data.SavedGalleryList.ListType.LIVE_FILTER -> {
+                    // Save filter configuration only
+                    com.example.comfyui_remote.data.SavedGalleryList.createLiveFilter(
+                        name = name,
+                        filter = currentFilter,
+                        itemCount = currentMediaList.size
+                    )
+                }
+            }
+            
+            savedGalleryListRepository.saveList(savedList)
+            Result.success(savedList)
+        } catch (e: Exception) {
+            android.util.Log.e("GALLERY_FILTER", "Error saving gallery list", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Apply a saved filter and trigger sync.
+     * @param listId The ID of the saved list to apply
+     */
+    fun applySavedFilter(listId: String) {
+        viewModelScope.launch {
+            try {
+                val savedList = savedGalleryListRepository.getListById(listId)
+                if (savedList != null) {
+                    android.util.Log.d("GALLERY_FILTER", "Applying saved filter: ${savedList.name}")
+                    
+                    when (savedList.listType) {
+                        com.example.comfyui_remote.data.SavedGalleryList.ListType.LIVE_FILTER -> {
+                            // Apply the filter and sync
+                            _gallerySyncFilter.value = savedList.filter
+                            syncGalleryWithFilter(savedList.filter)
+                        }
+                        com.example.comfyui_remote.data.SavedGalleryList.ListType.SNAPSHOT -> {
+                            // For snapshots, we just set the filter but don't sync
+                            // The UI will need to handle displaying the snapshot items
+                            _gallerySyncFilter.value = savedList.filter
+                            android.util.Log.d("GALLERY_FILTER", "Applied snapshot filter: ${savedList.name} with ${savedList.savedItemIds.size} items")
+                        }
+                    }
+                } else {
+                    android.util.Log.e("GALLERY_FILTER", "Saved list not found: $listId")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("GALLERY_FILTER", "Error applying saved filter", e)
+            }
+        }
+    }
+
+    /**
+     * Delete a saved gallery list.
+     * @param listId The ID of the list to delete
+     */
+    fun deleteSavedGalleryList(listId: String) {
+        viewModelScope.launch {
+            try {
+                savedGalleryListRepository.deleteList(listId)
+                android.util.Log.d("GALLERY_FILTER", "Deleted saved list: $listId")
+            } catch (e: Exception) {
+                android.util.Log.e("GALLERY_FILTER", "Error deleting saved list", e)
+            }
+        }
+    }
+
+    /**
+     * Rename a saved gallery list.
+     * @param listId The ID of the list to rename
+     * @param newName The new name for the list
+     */
+    fun renameSavedGalleryList(listId: String, newName: String) {
+        viewModelScope.launch {
+            try {
+                savedGalleryListRepository.renameList(listId, newName)
+                android.util.Log.d("GALLERY_FILTER", "Renamed saved list: $listId to $newName")
+            } catch (e: Exception) {
+                android.util.Log.e("GALLERY_FILTER", "Error renaming saved list", e)
+            }
+        }
+    }
+
+    /**
+     * Duplicate a saved gallery list.
+     * @param listId The ID of the list to duplicate
+     */
+    fun duplicateSavedGalleryList(listId: String) {
+        viewModelScope.launch {
+            try {
+                savedGalleryListRepository.duplicateList(listId)
+                android.util.Log.d("GALLERY_FILTER", "Duplicated saved list: $listId")
+            } catch (e: Exception) {
+                android.util.Log.e("GALLERY_FILTER", "Error duplicating saved list", e)
+            }
+        }
+    }
+
     data class ExecutionProgress(
         val currentNodeId: String? = null,
         val currentNodeTitle: String? = null,
@@ -89,8 +248,8 @@ class MainViewModel(
     private val _executionProgress = MutableStateFlow(ExecutionProgress())
     val executionProgress: StateFlow<ExecutionProgress> = _executionProgress.asStateFlow()
 
-    val themeMode: StateFlow<Int> = userPreferencesRepository.themeMode
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+    val themeMode: StateFlow<Int> = userPreferencesRepository.themeMode.stateIn(viewModelScope, SharingStarted.Lazily, 0)
+    val maxSyncItems: StateFlow<Int> = userPreferencesRepository.maxSyncItems.stateIn(viewModelScope, SharingStarted.Lazily, 100)
 
     val serverProfiles: StateFlow<List<com.example.comfyui_remote.data.ServerProfile>> = userPreferencesRepository.serverProfiles
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -98,6 +257,12 @@ class MainViewModel(
     fun updateThemeMode(mode: Int) {
         viewModelScope.launch {
             userPreferencesRepository.saveThemeMode(mode)
+        }
+    }
+
+    fun updateMaxSyncItems(items: Int) {
+        viewModelScope.launch {
+            userPreferencesRepository.saveMaxSyncItems(items)
         }
     }
     
@@ -652,6 +817,7 @@ class MainViewModel(
         }
     }
 
+
     /**
      * Syncs a single history item from the server.
      * If 'data' is null, it fetches it from the /history/{id} endpoint.
@@ -701,53 +867,56 @@ class MainViewModel(
             outputs.entrySet().forEach { (_, nodeOutput) ->
                     if (nodeOutput.isJsonObject) {
                         val out = nodeOutput.asJsonObject
-                        if (out.has("images")) {
-                            val images = out.getAsJsonArray("images")
-                            images.forEach { imgElement ->
-                                val image = imgElement.asJsonObject
-                                val filename = image.get("filename").asString
-                                val subfolder = if (image.has("subfolder")) image.get("subfolder").asString else null
+                        listOf("images", "gifs", "videos").forEach { key ->
+                            if (out.has(key)) {
+                                val mediaArray = out.getAsJsonArray(key)
+                                mediaArray.forEach { mediaElement ->
+                                    val mediaObj = mediaElement.asJsonObject
+                                    val filename = mediaObj.get("filename").asString
 
-                                val protocol = if (_isSecure.value) "https" else "http"
-                                val url = "$protocol://${_serverAddress.value}/view?filename=$filename&type=output"
-                                _generatedImage.value = url
+                                    
+                                    val subfolder = if (mediaObj.has("subfolder")) mediaObj.get("subfolder").asString else null
 
-                                val hostParts = _serverAddress.value.split(":")
-                                val host = hostParts.getOrNull(0) ?: ""
-                                val port = hostParts.getOrNull(1)?.toIntOrNull() ?: 8188
+                                    val protocol = if (_isSecure.value) "https" else "http"
+                                    val url = "$protocol://${_serverAddress.value}/view?filename=$filename&type=output"
+                                    _generatedImage.value = url
 
-                                val extension = filename.substringAfterLast('.', "").lowercase()
-                                val isVideo = extension in listOf("mp4", "gif", "webm", "mkv")
-                                val mediaType = if (isVideo) "VIDEO" else "IMAGE"
+                                    val hostParts = _serverAddress.value.split(":")
+                                    val host = hostParts.getOrNull(0) ?: ""
+                                    val port = hostParts.getOrNull(1)?.toIntOrNull() ?: 8188
 
-                                android.util.Log.d("SYNC_DEBUG", "Inserting media item: $filename (promptId: $promptId)")
+                                    val extension = filename.substringAfterLast('.', "").lowercase()
+                                    val isVideo = key != "images" || extension in listOf("mp4", "gif", "webm", "mkv")
+                                    val mediaType = if (isVideo) "VIDEO" else "IMAGE"
 
-                                val mediaEntity = com.example.comfyui_remote.data.GeneratedMediaEntity(
-                                    workflowName = _selectedWorkflow.value?.name ?: "Unknown",
-                                    fileName = filename,
-                                    subfolder = subfolder,
-                                    serverHost = host,
-                                    serverPort = port,
-                                    mediaType = mediaType,
-                                    promptJson = promptJson,
-                                    promptId = promptId
-                                )
+                                    android.util.Log.d("SYNC_DEBUG", "Inserting media item: $filename (promptId: $promptId)")
 
-                                val insertedId = mediaRepository.insert(mediaEntity)
+                                    val mediaEntity = com.example.comfyui_remote.data.GeneratedMediaEntity(
+                                        workflowName = _selectedWorkflow.value?.name ?: "Unknown",
+                                        fileName = filename,
+                                        subfolder = subfolder,
+                                        serverHost = host,
+                                        serverPort = port,
+                                        mediaType = mediaType,
+                                        promptJson = promptJson,
+                                        promptId = promptId
+                                    )
 
-                                if (insertedId != -1L) {
-                                    android.util.Log.d("SYNC_DEBUG", "Inserted media item with ID: $insertedId")
-                                    _generatedMediaId.value = insertedId
-                                } else {
-                                    android.util.Log.d("SYNC_DEBUG", "Media item already exists, fetching ID")
-                                    // Already exists, fetch ID
-                                    val existing = mediaRepository.getLatestByFilename(filename)
-                                    _generatedMediaId.value = existing?.id
-                                }
+                                    val insertedId = mediaRepository.insert(mediaEntity)
 
-                                _selectedWorkflow.value?.let { workflow ->
-                                    if (workflow.id != 0L) {
-                                        repository.insert(workflow.copy(lastImageName = filename))
+                                    if (insertedId != -1L) {
+                                        android.util.Log.d("SYNC_DEBUG", "Inserted media item with ID: $insertedId")
+                                        _generatedMediaId.value = insertedId
+                                    } else {
+                                        android.util.Log.d("SYNC_DEBUG", "Media item already exists, fetching ID")
+                                        val existing = mediaRepository.getLatestByFilename(filename)
+                                        _generatedMediaId.value = existing?.id
+                                    }
+
+                                    _selectedWorkflow.value?.let { workflow ->
+                                        if (workflow.id != 0L) {
+                                            repository.insert(workflow.copy(lastImageName = filename))
+                                        }
                                     }
                                 }
                             }
@@ -927,9 +1096,9 @@ class MainViewModel(
         }
     }
 
-    fun syncHistory(startDate: Long? = null, endDate: Long? = null) {
+    fun syncHistory(startDate: Long? = null, endDate: Long? = null, maxItemsOverride: Int? = null) {
         viewModelScope.launch {
-            android.util.Log.d("SYNC_DEBUG", "syncHistory() called with date range: $startDate - $endDate")
+            android.util.Log.d("SYNC_DEBUG", "syncHistory() called with date range: $startDate - $endDate, override: $maxItemsOverride")
             _isSyncing.value = true
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 val startTime = System.currentTimeMillis()
@@ -946,8 +1115,13 @@ class MainViewModel(
                     val gson = getApplication<ComfyApplication>().gson
                     android.util.Log.d("SYNC_DEBUG", "Fetching history from server...")
                     
-                    // Use larger max_items when date filtering is active
-                    val maxItems = if (startDate != null || endDate != null) 1000 else 100
+                    // Priority: 1. Override, 2. Date filtering min-count, 3. User preference
+                    val userMaxItems = userPreferencesRepository.maxSyncItems.first()
+                    val maxItems = when {
+                        maxItemsOverride != null -> maxItemsOverride
+                        startDate != null || endDate != null -> kotlin.math.max(userMaxItems, 1000)
+                        else -> userMaxItems
+                    }
                     val responseBody = buildApiService().getHistory(maxItems = maxItems)
                     
                     responseBody.use { body ->
@@ -960,11 +1134,10 @@ class MainViewModel(
 
                                 if (existingIds.contains(executionId)) {
                                     skippedCount++
-                                    android.util.Log.d("SYNC_DEBUG", "Hit existing item $executionId, stopping stream read")
-                                    android.util.Log.w("SYNC_DEBUG", "**EARLY EXIT** - This stops reading ALL remaining history items!")
-                                    // OPTIMIZATION: Stop reading stream as soon as we hit an existing item
-                                    // We return from the .use block which closes both reader and body
-                                    return@use
+                                    // android.util.Log.d("SYNC_DEBUG", "Skipping existing item $executionId")
+                                    // Skip the value (the JSON object) for this key
+                                    r.skipValue()
+                                    continue
                                 }
 
                                 val element = gson.fromJson<com.google.gson.JsonObject>(r, com.google.gson.JsonObject::class.java)
@@ -994,6 +1167,8 @@ class MainViewModel(
                                     if (item.has("prompt")) {
                                         android.util.Log.d("SYNC_DEBUG", "Item $executionId has 'prompt' field")
                                         val promptElement = item.get("prompt")
+                                        val currentFilter = _gallerySyncFilter.value
+                                        
                                         var workflowJson: String? = null
 
                                         if (promptElement.isJsonArray) {
@@ -1015,6 +1190,14 @@ class MainViewModel(
                                         if (workflowJson != null) {
                                             android.util.Log.d("SYNC_DEBUG", "workflowJson is NOT null for $executionId")
                                             val name = extractNameFromHistoryItem(item, executionId)
+                                            
+                                            // **Filter by Workflow Name**
+                                            if (!com.example.comfyui_remote.data.GallerySyncFilter.matches(name, currentFilter.workflowNameFilter)) {
+                                                android.util.Log.d("SYNC_DEBUG", "Skipping item $executionId: Workflow name '$name' doesn't match filter '${currentFilter.workflowNameFilter}'")
+                                                filteredCount++
+                                                continue
+                                            }
+
                                             val hostParts = _serverAddress.value.split(":")
                                             val host = hostParts.getOrNull(0) ?: ""
                                             val port = hostParts.getOrNull(1)?.toIntOrNull() ?: 8188
@@ -1026,36 +1209,54 @@ class MainViewModel(
                                                 outputs.entrySet().forEach { (_, nodeOutput) ->
                                                     if (nodeOutput.isJsonObject) {
                                                         val out = nodeOutput.asJsonObject
-                                                        if (out.has("images")) {
-                                                            val images = out.getAsJsonArray("images")
-                                                            images.forEach { imgElement ->
-                                                                imageCount++
-                                                                val img = imgElement.asJsonObject
-                                                                val filename = img.get("filename").asString
-                                                                val subfolder = if (img.has("subfolder")) img.get("subfolder").asString else null
-                                                                val serverType = if (img.has("type")) img.get("type").asString else "output"
+                                                        listOf("images", "gifs", "videos").forEach { key ->
+                                                            if (out.has(key)) {
+                                                                val mediaArray = out.getAsJsonArray(key)
+                                                                mediaArray.forEach { mediaElement ->
+                                                                    val mediaObj = mediaElement.asJsonObject
+                                                                    val filename = mediaObj.get("filename").asString
+                                                                    
+                                                                    // **Filter by Filename**
+                                                                    if (!com.example.comfyui_remote.data.GallerySyncFilter.matches(filename, currentFilter.fileNameFilter)) {
+                                                                        android.util.Log.d("SYNC_DEBUG", "Skipping media item $filename: doesn't match filename filter '${currentFilter.fileNameFilter}'")
+                                                                        return@forEach
+                                                                    }
 
-                                                                val extension = filename.substringAfterLast('.', "").lowercase()
-                                                                val isVideo = extension in listOf("mp4", "gif", "webm", "mkv")
-                                                                val mediaType = if (isVideo) "VIDEO" else "IMAGE"
+                                                                    val subfolder = if (mediaObj.has("subfolder")) mediaObj.get("subfolder").asString else null
+                                                                    val serverType = if (mediaObj.has("type")) mediaObj.get("type").asString else "output"
 
-                                                                android.util.Log.d("SYNC_DEBUG", "Adding media item: $filename with promptJson length: ${workflowJson!!.length}")
-                                                                newMediaItems.add(
-                                                                    com.example.comfyui_remote.data.GeneratedMediaEntity(
-                                                                        workflowName = name,
-                                                                        fileName = filename,
-                                                                        subfolder = subfolder,
-                                                                        serverHost = host,
-                                                                        serverPort = port,
-                                                                        mediaType = mediaType,
-                                                                        promptJson = workflowJson,
-                                                                        promptId = executionId,
-                                                                        serverType = serverType,
-                                                                        timestamp = itemTimestamp
+                                                                    val extension = filename.substringAfterLast('.', "").lowercase()
+                                                                    val isVideo = key != "images" || extension in listOf("mp4", "gif", "webm", "mkv")
+                                                                    val mediaType = if (isVideo) "VIDEO" else "IMAGE"
+                                                                    
+                                                                    // **Filter by Media Type**
+                                                                    if (currentFilter.mediaType != null) {
+                                                                        val filterType = if (currentFilter.mediaType == com.example.comfyui_remote.data.GallerySyncFilter.MediaType.IMAGE) "IMAGE" else "VIDEO"
+                                                                        if (mediaType != filterType) {
+                                                                            android.util.Log.d("SYNC_DEBUG", "Skipping media item $filename: type $mediaType doesn't match filter ${currentFilter.mediaType}")
+                                                                            return@forEach
+                                                                        }
+                                                                    }
+
+                                                                    imageCount++
+                                                                    android.util.Log.d("SYNC_DEBUG", "Adding media item: $filename with promptJson length: ${workflowJson!!.length}")
+                                                                    newMediaItems.add(
+                                                                        com.example.comfyui_remote.data.GeneratedMediaEntity(
+                                                                            workflowName = name,
+                                                                            fileName = filename,
+                                                                            subfolder = subfolder,
+                                                                            serverHost = host,
+                                                                            serverPort = port,
+                                                                            mediaType = mediaType,
+                                                                            promptJson = workflowJson,
+                                                                            promptId = executionId,
+                                                                            serverType = serverType,
+                                                                            timestamp = itemTimestamp
+                                                                        )
                                                                     )
-                                                                )
+                                                                }
+                                                                android.util.Log.d("SYNC_DEBUG", "Item $executionId added $imageCount media items to newMediaItems")
                                                             }
-                                                            android.util.Log.d("SYNC_DEBUG", "Item $executionId added $imageCount images to newMediaItems")
                                                         }
                                                     }
                                                 }
@@ -1065,7 +1266,8 @@ class MainViewModel(
                                         } else {
                                             android.util.Log.w("SYNC_DEBUG", "Item $executionId: workflowJson is NULL - skipping")
                                         }
-                                    } else {
+                                    }
+ else {
                                         android.util.Log.w("SYNC_DEBUG", "Item $executionId has no 'prompt' field")
                                     }
                                 }
@@ -1086,6 +1288,32 @@ class MainViewModel(
                 } catch (e: Exception) {
                     android.util.Log.e("SYNC_DEBUG", "Sync error: ${e.message}", e)
                     e.printStackTrace()
+                } finally {
+                    _isSyncing.value = false
+                }
+            }
+        }
+    }
+
+    fun clearAndRefreshHistory() {
+        viewModelScope.launch {
+            _isSyncing.value = true
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    android.util.Log.d("SYNC_DEBUG", "Starting full clear and refresh...")
+                    mediaRepository.deleteAll()
+                    
+                    // Reset UI states related to selection/preview if necessary
+                    // _generatedImage.value = null // This might be jarring if currently viewing an image.
+                    // But for consistency with "Clear", let's clear it.
+                    _generatedImage.value = null
+                    _generatedMediaId.value = null
+                    
+                    android.util.Log.d("SYNC_DEBUG", "Local data cleared. Triggering sync...")
+                    // Trigger sync with high limit to ensure we get a fresh view
+                    syncHistory(maxItemsOverride = 2000)
+                } catch (e: Exception) {
+                    android.util.Log.e("SYNC_DEBUG", "Error during clear and refresh: ${e.message}", e)
                 } finally {
                     _isSyncing.value = false
                 }
@@ -1353,12 +1581,13 @@ class MainViewModelFactory(
     private val mediaRepository: com.example.comfyui_remote.data.MediaRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val connectionRepository: ConnectionRepository,
-    private val localQueueRepository: com.example.comfyui_remote.data.LocalQueueRepository
+    private val localQueueRepository: com.example.comfyui_remote.data.LocalQueueRepository,
+    private val savedGalleryListRepository: com.example.comfyui_remote.data.SavedGalleryListRepository
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return MainViewModel(application, repository, mediaRepository, userPreferencesRepository, connectionRepository, localQueueRepository) as T
+            return MainViewModel(application, repository, mediaRepository, userPreferencesRepository, connectionRepository, localQueueRepository, savedGalleryListRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

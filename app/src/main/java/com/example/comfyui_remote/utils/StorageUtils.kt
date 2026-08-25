@@ -27,16 +27,22 @@ object StorageUtils {
             }
 
             // Mime type detection
+            val extension = fileName.substringAfterLast('.', "").lowercase()
             val mimeType = if (mediaType == "VIDEO") {
-                val extension = fileName.substringAfterLast('.', "").lowercase()
                 when (extension) {
                     "mp4" -> "video/mp4"
                     "gif" -> "image/gif"
                     "webm" -> "video/webm"
+                    "mkv" -> "video/x-matroska"
                     else -> "video/*"
                 }
             } else {
-                "image/png"
+                when (extension) {
+                    "png" -> "image/png"
+                    "jpg", "jpeg" -> "image/jpeg"
+                    "webp" -> "image/webp"
+                    else -> "image/png"
+                }
             }
 
             // Create file in selected directory

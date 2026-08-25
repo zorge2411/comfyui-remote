@@ -70,6 +70,7 @@ dependencies {
 
     // Image Loading
     implementation(libs.coil)
+    implementation(libs.coil.video)
 
     // Video Playback
     implementation("androidx.media3:media3-exoplayer:1.2.1")
