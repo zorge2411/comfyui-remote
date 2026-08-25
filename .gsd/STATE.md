@@ -63,9 +63,16 @@
 ## Roadmap Evolution
 
 - Phase 80 added: Improve android icon
+- Phase 81 added: Image-to-image workflow node support (was open TODO, 2026-01-30)
+- Phase 82 added: Prompt field ordering — positive prompt must be topmost (was open TODO, 2026-01-30)
+- Phase 83 added: Camera capture for gallery add-image (was open TODO, 2026-01-24)
+- Phase 84 added: Real progress indicator (was unchecked Nice-to-Have, never phased)
 
 ## Next Steps
 
 1. **Phase 80 wrap-up**: Themed-icon retinting under Android 13+ Material You wasn't interactively spot-checked in Settings — optional manual confirmation if desired.
-2. **Verify** all recent completions once more on a physical device (Manual verification of UI layout).
-3. **Project Complete?** Check for any remaining polish or edge cases.
+2. **Phase 81**: Plan and implement image-to-image workflow node support.
+3. **Phase 82**: Plan and implement prompt field ordering fix.
+4. **Phase 83**: Plan and implement camera capture for gallery add-image.
+5. **Phase 84**: Plan and implement real progress indicator.
+6. **Verify** all recent completions once more on a physical device (Manual verification of UI layout).

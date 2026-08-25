@@ -9,7 +9,7 @@
 
 ## Nice-to-Haves
 
-- [ ] Real Progress Indicator (Step progress/Unified progress bar)
+- [ ] Real Progress Indicator (Step progress/Unified progress bar) — tracked as Phase 84
 
 ## Phases
 
@@ -717,3 +717,67 @@
 - [x] Installed on physical device (Fairphone 6), app launches cleanly (`am start` confirmed)
 - [x] Foreground/monochrome vector geometry visually verified via rendered SVG preview (blue background, white 6-blade aperture, contained within adaptive-icon safe zone, no clipping) — same pathData as installed on device
 - [~] Themed-icon retinting under Android 13+ Material You not spot-checked interactively (would require navigating device Settings/launcher toggle) — geometry and `<monochrome>` wiring are correct; OS-level retint behavior is standard for any valid monochrome drawable
+
+---
+
+### Phase 81: Image-to-Image Workflow Node Support
+
+**Status**: ⬜ Not Started
+**Objective**: Support image-to-image workflow nodes (loading/supplying an input image into workflows that require one), per the outstanding TODO from 2026-01-30.
+**Depends on**: Phase 80
+
+**Tasks**:
+
+- [ ] TBD (run /gsd:discuss-phase 81 or /gsd:plan-phase 81 to create)
+
+**Verification**:
+
+- TBD
+
+---
+
+### Phase 82: Prompt Field Ordering
+
+**Status**: ⬜ Not Started
+**Objective**: Ensure the positive prompt text input is always the topmost field in the workflow generation form, per the outstanding TODO from 2026-01-30.
+**Depends on**: Phase 81
+
+**Tasks**:
+
+- [ ] TBD (run /gsd:discuss-phase 82 or /gsd:plan-phase 82 to create)
+
+**Verification**:
+
+- TBD
+
+---
+
+### Phase 83: Camera Capture for Gallery Add-Image
+
+**Status**: ⬜ Not Started
+**Objective**: Add a camera-capture option to the existing "add image" function on the gallery page (currently likely file-picker only), per the outstanding TODO from 2026-01-24.
+**Depends on**: Phase 82
+
+**Tasks**:
+
+- [ ] TBD (run /gsd:discuss-phase 83 or /gsd:plan-phase 83 to create)
+
+**Verification**:
+
+- TBD
+
+---
+
+### Phase 84: Real Progress Indicator
+
+**Status**: ⬜ Not Started
+**Objective**: Replace/augment the current progress feedback with a real step-progress or unified progress bar during workflow execution, per the "Nice-to-Haves" item never promoted to a phase.
+**Depends on**: Phase 83
+
+**Tasks**:
+
+- [ ] TBD (run /gsd:discuss-phase 84 or /gsd:plan-phase 84 to create)
+
+**Verification**:
+
+- TBD

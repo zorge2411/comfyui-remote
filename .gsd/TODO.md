@@ -15,13 +15,13 @@
 - [x] fix issue where image to history entry is the latest image no matter which history item theres selected `medium` — 2026-01-24
 - [x] add button to add image to gallery `low` — 2026-01-24
 - [x] progress indicator when running workflows (see API_REFERENCE.md) `medium` — 2026-01-24
-- [ ] add camera option to add image function on gallery page `low` — 2026-01-24
+- [ ] add camera option to add image function on gallery page `low` — 2026-01-24 (tracked as Phase 83)
 - [x] when pressing the 'enter' key on the keyboard on connection screen - connect to server instead of making a new line in ip address field `medium` — 2026-01-25
 - [x] minimize keyboard when hitting enter on connection screen `low` — 2026-01-25
 - [x] when connecting with empty ip/port the app crashes - fix `high` — 2026-01-26
 - [x] add back button on workflow generation page `medium` - 2026-01-30
 - [x] link from resulting image to gallery `medium` - 2026-01-30
 - [x] copy all text button in prompt text box `medium` - 2026-01-30
-- [ ] support for image to image workflow nodes `medium` — 2026-01-30
-- [ ] positive prompt text input must be the most top one in workflow `medium` — 2026-01-30
+- [ ] support for image to image workflow nodes `medium` — 2026-01-30 (tracked as Phase 81)
+- [ ] positive prompt text input must be the most top one in workflow `medium` — 2026-01-30 (tracked as Phase 82)
 - [x] fix revert to old icon caused by pull request `high` - 2026-01-30
