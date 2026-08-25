@@ -790,17 +790,27 @@
 
 ### Phase 85: Fix Subgraph Flattening Output-Link Bug
 
-**Status**: ⬜ Not Started
-**Objective**: Fix `GraphToApiConverter`'s subgraph-flattening logic incorrectly rewiring a downstream node's input to the wrong upstream node's output when bypassing a "phantom" subgraph boundary node — causing type-mismatch validation errors on the server (e.g. a `SaveVideo` node's `video` input getting linked to a `LoadImage` node's `IMAGE` output instead of the actual video-producing node).
+**Status**: 🔄 Planned
+**Objective**: Fix `GraphToApiConverter`'s subgraph-instance detection (`isSubgraph`) to key off `definitions.containsKey(type)` instead of requiring `properties.proxyWidgets`, so subgraph nodes lacking that property are properly expanded instead of falling through to the crude phantom-flattening heuristic.
 **Depends on**: Phase 81
 
 **Discovered**: 2026-08-25, during Phase 81 live testing. Reproduced with `video_minimax_h3_i2v.json` (an image-to-video workflow with one subgraph). Server rejected the queued prompt with `HTTP 400 prompt_outputs_failed_validation`: *"Return type mismatch between linked nodes: video, received_type(IMAGE) mismatch input_type(VIDEO)"* on node 92 (`SaveVideo`), linked to node 114 (`LoadImage`) output 0.
 
-**Root cause (from `CONVERT_DEBUG` trace, not yet fixed):** Node 105 (a subgraph boundary) is treated as "phantom" and bypassed via "Flattening - Node 105 is phantom, bypassing to input link 218" — the bypass picks the wrong link/node when resolving what should actually feed `SaveVideo`'s `video` input inside the subgraph.
+**Root cause (confirmed against the real fixture, fetched from the live server):** node 105's subgraph definition ("Image to Video (MiniMax H3)") correctly contains a `CreateVideo` node producing the declared `VIDEO` output — but node 105's `properties` lacks `proxyWidgets`, so `expandGraphOnce`'s `isSubgraph` check never expands it. It falls through to `convert()`'s phantom-flattening path, which blindly takes input link index 0 (`LoadImage`'s `IMAGE` output) instead of the real internal producer.
 
 **Tasks**:
 
-- [ ] TBD (run /gsd:discuss-phase 85 or /gsd:plan-phase 85 to create — will need `GraphToApiConverter.kt`'s subgraph-flattening code and the actual `video_minimax_h3_i2v.json` workflow JSON to reproduce)
+- [ ] Fix `isSubgraph` check in `expandGraphOnce` (~line 502): `def != null` (drop `proxyWidgets` requirement)
+- [ ] Fix `isSubgraph` check in `convert()`'s pre-scan (~line 78-79): `definitions.containsKey(type)`
+- [ ] Add synthetic unit tests (no real/sensitive fixture data) covering expansion without `proxyWidgets` and full `convert()` pipeline correctness
+- [ ] One-time live proof-of-fix against the real failing workflow + server `/prompt` (not committed)
+
+**Verification**:
+
+- [ ] `testDebugUnitTest` passes, including new subgraph tests
+- [ ] Live `/prompt` POST with the fixed conversion no longer returns `HTTP 400 prompt_outputs_failed_validation`
+- [ ] No real workflow content lands in any commit
+- [ ] `assembleDebug` / `installDebug` succeed
 
 **Verification**:
 

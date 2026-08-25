@@ -78,7 +78,7 @@
 
 1. **Phase 80 wrap-up**: Themed-icon retinting under Android 13+ Material You wasn't interactively spot-checked in Settings — optional manual confirmation if desired.
 2. **Phase 81**: Code done and installed (Fairphone 6) — both bugs fixed (`pendingImageUploads` gate on Generate/Queue; upload failures now revert state + call `viewModel.reportError()`). `assembleDebug`/`testDebugUnitTest` green. Live test only exercised an image-to-video subgraph workflow, which hit the unrelated Phase 85 bug before reaching the img2img upload path. **Still needs**: a plain `LoadImage`-only workflow to actually confirm the button-gating/error-surfacing fixes, if/when one is available.
-3. **Phase 85**: Context gathered (`.gsd/phases/85/85-CONTEXT.md`) — root cause fully diagnosed against the real failing workflow (fetched live, contains sensitive prompt text, kept in scratchpad only, not the repo). Fix: `isSubgraph` detection in `GraphToApiConverter.kt` should key off `definitions.containsKey(type)` instead of requiring `properties.proxyWidgets`, in both `expandGraphOnce` and `convert()`'s pre-scan. Verification will run directly against the live server's `/prompt` endpoint using the real fixture, no device round-trip needed. Ready to plan.
+3. **Phase 85**: Planned (`.gsd/phases/85/85-PLAN.md`) — 2-line fix (`isSubgraph` detection) plus new synthetic unit tests plus a one-time live proof-of-fix against the real server (not committed). Ready to execute.
 4. **Phase 82**: Plan and implement prompt field ordering fix.
 5. **Phase 83**: Plan and implement camera capture for gallery add-image.
 6. **Phase 84**: Plan and implement real progress indicator.
