@@ -722,7 +722,7 @@
 
 ### Phase 81: Image-to-Image Workflow Node Support
 
-**Status**: 🔄 In Progress (code done, live test pending)
+**Status**: 🔄 In Progress (code done, live test inconclusive)
 **Objective**: Verify the existing LoadImage img2img flow (built Phase 64) works end-to-end against a live server; fix the two race-condition/silent-failure bugs found via code review. Broader node-type coverage (ControlNet, inpainting) explicitly deferred.
 **Depends on**: Phase 80
 
@@ -730,12 +730,12 @@
 
 - [x] Block Generate/Queue buttons while an image upload is in flight (`DynamicFormScreen.kt`)
 - [x] Surface upload failures to the user instead of failing silently (`DynamicFormScreen.kt`, `MainViewModel.kt`)
-- [ ] Live end-to-end test on user's ComfyUI server (user-run)
+- [~] Live end-to-end test on user's ComfyUI server — only an image-to-video subgraph workflow (`video_minimax_h3_i2v.json`) was available/tried, which hit an unrelated pre-existing bug (see Phase 85) before the LoadImage upload path itself could be exercised. The Phase 81-specific fixes (button gating, error surfacing) remain unconfirmed by live test — user does not currently have a plain `LoadImage`-only workflow to test with.
 
 **Verification**:
 
 - [x] `assembleDebug` / `installDebug` succeed, `testDebugUnitTest` passes
-- [ ] User confirms img2img actually uses the selected image, not a default/placeholder
+- [~] User confirms img2img actually uses the selected image — not yet confirmed; no suitable plain-image workflow was available to test
 - [ ] Any node-type gaps found are logged as deferred, not built here
 
 ---
@@ -781,6 +781,26 @@
 **Tasks**:
 
 - [ ] TBD (run /gsd:discuss-phase 84 or /gsd:plan-phase 84 to create)
+
+**Verification**:
+
+- TBD
+
+---
+
+### Phase 85: Fix Subgraph Flattening Output-Link Bug
+
+**Status**: ⬜ Not Started
+**Objective**: Fix `GraphToApiConverter`'s subgraph-flattening logic incorrectly rewiring a downstream node's input to the wrong upstream node's output when bypassing a "phantom" subgraph boundary node — causing type-mismatch validation errors on the server (e.g. a `SaveVideo` node's `video` input getting linked to a `LoadImage` node's `IMAGE` output instead of the actual video-producing node).
+**Depends on**: Phase 81
+
+**Discovered**: 2026-08-25, during Phase 81 live testing. Reproduced with `video_minimax_h3_i2v.json` (an image-to-video workflow with one subgraph). Server rejected the queued prompt with `HTTP 400 prompt_outputs_failed_validation`: *"Return type mismatch between linked nodes: video, received_type(IMAGE) mismatch input_type(VIDEO)"* on node 92 (`SaveVideo`), linked to node 114 (`LoadImage`) output 0.
+
+**Root cause (from `CONVERT_DEBUG` trace, not yet fixed):** Node 105 (a subgraph boundary) is treated as "phantom" and bypassed via "Flattening - Node 105 is phantom, bypassing to input link 218" — the bypass picks the wrong link/node when resolving what should actually feed `SaveVideo`'s `video` input inside the subgraph.
+
+**Tasks**:
+
+- [ ] TBD (run /gsd:discuss-phase 85 or /gsd:plan-phase 85 to create — will need `GraphToApiConverter.kt`'s subgraph-flattening code and the actual `video_minimax_h3_i2v.json` workflow JSON to reproduce)
 
 **Verification**:
 

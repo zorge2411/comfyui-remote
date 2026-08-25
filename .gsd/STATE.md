@@ -2,12 +2,17 @@
 
 ## Current Position
 
-- **Phase**: 80 (Improve Android Icon)
-- **Status**: ✅ Done
-- **Session Goal**: Implemented, built, installed, and verified Phase 80
+- **Phase**: 81 (Image-to-Image Workflow Node Support)
+- **Status**: 🔄 In Progress — code done, live verification inconclusive
+- **Session Goal**: Fixed 2 real bugs in img2img upload flow; live test surfaced a different, unrelated bug (now Phase 85) before the target scenario could be confirmed
 
 ## Achievements
 
+- [x] Implemented Phase 81 (Image-to-Image Workflow Node Support) — code portion
+  - [x] Fixed race condition: Generate/Queue now disabled while an image upload is in flight (`DynamicFormScreen.kt`)
+  - [x] Fixed silent upload failure: now reverts state and surfaces an error via new `MainViewModel.reportError()`
+  - [x] `assembleDebug`/`testDebugUnitTest`/`installDebug` all verified
+  - [~] Live test only exercised `video_minimax_h3_i2v.json` (image-to-video, subgraph), which hit a pre-existing unrelated bug — the plain-`LoadImage` scenario this phase actually targets is still unconfirmed
 - [x] Implemented Phase 80 (Improve Android Icon)
   - [x] Replaced `ic_launcher_foreground.xml` node-graph motif with a 6-blade aperture/lens vector, same blue background
   - [x] Added `ic_launcher_monochrome.xml`, wired into `ic_launcher.xml` and `ic_launcher_round.xml` for Android 13+ themed icons
@@ -67,12 +72,14 @@
 - Phase 82 added: Prompt field ordering — positive prompt must be topmost (was open TODO, 2026-01-30)
 - Phase 83 added: Camera capture for gallery add-image (was open TODO, 2026-01-24)
 - Phase 84 added: Real progress indicator (was unchecked Nice-to-Have, never phased)
+- Phase 85 added: Fix subgraph flattening output-link bug (discovered during Phase 81 live testing, 2026-08-25 — HTTP 400 "video/IMAGE mismatch" on `SaveVideo` node when a phantom subgraph node gets bypassed)
 
 ## Next Steps
 
 1. **Phase 80 wrap-up**: Themed-icon retinting under Android 13+ Material You wasn't interactively spot-checked in Settings — optional manual confirmation if desired.
-2. **Phase 81**: Code done and installed (Fairphone 6) — both bugs fixed (`pendingImageUploads` gate on Generate/Queue; upload failures now revert state + call `viewModel.reportError()`). `assembleDebug`/`testDebugUnitTest` green. **Blocked on user's live test**: pick a LoadImage-workflow image, confirm Generate/Queue disable during upload, confirm the executed result actually uses the selected image, try to break it with a failed upload. Report back pass/fail and any node-type gaps (ControlNet etc. — log as new deferred item, don't fix here).
-3. **Phase 82**: Plan and implement prompt field ordering fix.
-4. **Phase 83**: Plan and implement camera capture for gallery add-image.
-5. **Phase 84**: Plan and implement real progress indicator.
+2. **Phase 81**: Code done and installed (Fairphone 6) — both bugs fixed (`pendingImageUploads` gate on Generate/Queue; upload failures now revert state + call `viewModel.reportError()`). `assembleDebug`/`testDebugUnitTest` green. Live test only exercised an image-to-video subgraph workflow, which hit the unrelated Phase 85 bug before reaching the img2img upload path. **Still needs**: a plain `LoadImage`-only workflow to actually confirm the button-gating/error-surfacing fixes, if/when one is available.
+3. **Phase 85**: Plan and fix the subgraph-flattening output-link bug (blocks any subgraph-based workflow with mismatched output types, discovered via `video_minimax_h3_i2v.json`).
+4. **Phase 82**: Plan and implement prompt field ordering fix.
+5. **Phase 83**: Plan and implement camera capture for gallery add-image.
+6. **Phase 84**: Plan and implement real progress indicator.
 6. **Verify** all recent completions once more on a physical device (Manual verification of UI layout).
