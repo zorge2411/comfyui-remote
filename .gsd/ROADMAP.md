@@ -722,20 +722,21 @@
 
 ### Phase 81: Image-to-Image Workflow Node Support
 
-**Status**: 🔄 In Progress (code done, live test inconclusive)
-**Objective**: Verify the existing LoadImage img2img flow (built Phase 64) works end-to-end against a live server; fix the two race-condition/silent-failure bugs found via code review. Broader node-type coverage (ControlNet, inpainting) explicitly deferred.
+**Status**: 🔄 In Progress (3 bugs fixed, installDebug pending device reconnect)
+**Objective**: Verify the existing LoadImage img2img flow (built Phase 64) works end-to-end against a live server; fix bugs found. Broader node-type coverage (ControlNet, inpainting) explicitly deferred.
 **Depends on**: Phase 80
 
 **Tasks**:
 
 - [x] Block Generate/Queue buttons while an image upload is in flight (`DynamicFormScreen.kt`)
 - [x] Surface upload failures to the user instead of failing silently (`DynamicFormScreen.kt`, `MainViewModel.kt`)
-- [~] Live end-to-end test on user's ComfyUI server — only an image-to-video subgraph workflow (`video_minimax_h3_i2v.json`) was available/tried, which hit an unrelated pre-existing bug (see Phase 85) before the LoadImage upload path itself could be exercised. The Phase 81-specific fixes (button gating, error surfacing) remain unconfirmed by live test — user does not currently have a plain `LoadImage`-only workflow to test with.
+- [x] **Fix `WorkflowParser.kt` branch ordering**: `LoadImage`'s `image` field was always caught by the generic combo-options check first (since real servers declare it as a combo of existing files), so the gallery/camera `ImageInput` picker never rendered on any real server. Confirmed via live device screenshot (plain filename+dropdown, no thumbnail). This was likely the actual root cause blocking img2img the whole time — more fundamental than the two bugs above.
+- [~] Live end-to-end test on user's ComfyUI server — confirmed the subgraph-related HTTP 400 is gone (Phase 85) and found + fixed the parser bug above via a live device screenshot, but the picker fix itself hasn't been retested live yet (device disconnected mid-session before `installDebug` could run with this latest fix).
 
 **Verification**:
 
-- [x] `assembleDebug` / `installDebug` succeed, `testDebugUnitTest` passes
-- [~] User confirms img2img actually uses the selected image — not yet confirmed; no suitable plain-image workflow was available to test
+- [x] `assembleDebug` / `testDebugUnitTest` pass; `installDebug` succeeded for the first 2 fixes, **pending re-run** for the 3rd (parser ordering) fix
+- [~] User confirms img2img actually uses the selected image — not yet confirmed with the picker fix in place
 - [ ] Any node-type gaps found are logged as deferred, not built here
 
 ---

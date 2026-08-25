@@ -2,9 +2,9 @@
 
 ## Current Position
 
-- **Phase**: 85 (Fix Subgraph Flattening Output-Link Bug)
-- **Status**: ✅ Done
-- **Session Goal**: Diagnosed and fixed the subgraph isSubgraph-detection bug against real live-server data; surfaced a second, unrelated gap now tracked as Phase 86
+- **Phase**: 81 (Image-to-Image Workflow Node Support)
+- **Status**: 🔄 In Progress — 3rd bug found and fixed, installDebug pending device reconnect
+- **Session Goal**: Live testing found a 3rd, more fundamental img2img bug (LoadImage's image field never showed the picker on real servers); fixed, needs install + retest
 
 ## Achievements
 
@@ -15,6 +15,7 @@
   - [x] Full `testDebugUnitTest` suite green, `assembleDebug` succeeds
   - [x] `installDebug` succeeded (Fairphone 6)
 - [x] Implemented Phase 81 (Image-to-Image Workflow Node Support) — code portion
+  - [x] **Fixed the real blocker**: `WorkflowParser.kt` checked combo/dropdown metadata before checking for `LoadImage`'s own image field — real ComfyUI servers always declare `LoadImage`'s "image" input as a combo of existing server files, so that branch always won, silently disabling the gallery/camera picker entirely. Found via live device screenshot showing a plain filename+dropdown instead of a thumbnail. Fixed by reordering the checks; added a regression test reproducing the real metadata shape. This was very likely the actual reason img2img never worked, more fundamental than the two bugs below.
   - [x] Fixed race condition: Generate/Queue now disabled while an image upload is in flight (`DynamicFormScreen.kt`)
   - [x] Fixed silent upload failure: now reverts state and surfaces an error via new `MainViewModel.reportError()`
   - [x] `assembleDebug`/`testDebugUnitTest`/`installDebug` all verified
@@ -83,10 +84,10 @@
 
 ## Next Steps
 
-1. **Phase 80 wrap-up**: Themed-icon retinting under Android 13+ Material You wasn't interactively spot-checked in Settings — optional manual confirmation if desired.
-2. **Phase 81**: Code done, now installed (Fairphone 6) — both bugs fixed (`pendingImageUploads` gate on Generate/Queue; upload failures now revert state + call `viewModel.reportError()`). `assembleDebug`/`testDebugUnitTest` green. Live test only exercised an image-to-video subgraph workflow, which hit the (now-fixed) Phase 85 bug before reaching the img2img upload path. **Still needs**: retry the MiniMax i2v workflow now that Phase 85 is fixed (it also exercises a `LoadImage` node), or a plain `LoadImage`-only workflow if available, to actually confirm the button-gating/error-surfacing fixes.
+1. **Phase 81**: 3 bugs fixed now (parser branch ordering — the real blocker, upload race condition, silent upload failure). `assembleDebug`/`testDebugUnitTest` green, code committed. **`installDebug` pending** — device disconnected before this last fix could be installed. Once reconnected: install, reopen the `LoadImage` field, confirm it now shows the gallery/camera picker (not a dropdown), pick a real image, confirm Generate gates correctly during upload, confirm the executed result uses the picked image.
+2. **Phase 80 wrap-up**: Themed-icon retinting under Android 13+ Material You wasn't interactively spot-checked in Settings — optional manual confirmation if desired.
 3. **Phase 86**: Study `COMFY_AUTOGROW_V3`'s schema shape (ideally across more than one example node) before planning a parsing approach.
 4. **Phase 82**: Plan and implement prompt field ordering fix.
 5. **Phase 83**: Plan and implement camera capture for gallery add-image.
 6. **Phase 84**: Plan and implement real progress indicator.
-8. **Verify** all recent completions once more on a physical device (Manual verification of UI layout).
+7. **Verify** all recent completions once more on a physical device (Manual verification of UI layout).
