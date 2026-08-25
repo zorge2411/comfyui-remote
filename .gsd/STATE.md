@@ -54,7 +54,12 @@
 - [x] Add Refresh action to `GalleryScreen` and `HistoryScreen` with confirmation <!-- id: 4 -->
 - [x] Verify functionality via build and manual check <!-- id: 5 -->
 
+## Roadmap Evolution
+
+- Phase 80 added: Improve android icon
+
 ## Next Steps
 
-1. **Verify** all recent completions once more on a physical device (Manual verification of UI layout).
-2. **Project Complete?** Check for any remaining polish or edge cases.
+1. **Phase 80**: Context gathered (`.gsd/phases/80/80-CONTEXT.md`) — aperture/lens icon on the existing blue background, plus a new themed/monochrome variant. Ready to plan.
+2. **Verify** all recent completions once more on a physical device (Manual verification of UI layout).
+3. **Project Complete?** Check for any remaining polish or edge cases.
