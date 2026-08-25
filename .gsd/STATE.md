@@ -60,6 +60,6 @@
 
 ## Next Steps
 
-1. **Phase 80**: Planned (`.gsd/phases/80/80-PLAN.md`) — aperture/lens icon on the existing blue background, themed/monochrome variant, and removal of dead legacy PNG mipmaps (minSdk 26 makes them unused). Ready to execute.
+1. **Phase 80**: Code done (aperture/lens `ic_launcher_foreground.xml`, new `ic_launcher_monochrome.xml` wired into both adaptive-icon XMLs, legacy PNG mipmaps removed). `assembleDebug` succeeds. Device (Fairphone 6) disconnected before visual verification could run — reconnect and re-run `installDebug` to finish verifying, then commit.
 2. **Verify** all recent completions once more on a physical device (Manual verification of UI layout).
 3. **Project Complete?** Check for any remaining polish or edge cases.

@@ -700,19 +700,19 @@
 
 ### Phase 80: Improve Android Icon
 
-**Status**: 🔄 Planned
+**Status**: 🔄 In Progress (code done, device verification pending)
 **Objective**: Replace the node-graph launcher icon with a camera aperture/lens motif on the existing blue background, and add Android 13+ themed (monochrome) icon support.
 **Depends on**: Phase 79
 
 **Tasks**:
 
-- [ ] Replace `ic_launcher_foreground.xml` node-graph motif with aperture/lens vector
-- [ ] Create `ic_launcher_monochrome.xml` themed-icon variant
-- [ ] Wire `<monochrome>` into `ic_launcher.xml` and `ic_launcher_round.xml`
-- [ ] Remove unused legacy per-density PNG mipmaps (dead weight on minSdk 26+)
+- [x] Replace `ic_launcher_foreground.xml` node-graph motif with aperture/lens vector
+- [x] Create `ic_launcher_monochrome.xml` themed-icon variant
+- [x] Wire `<monochrome>` into `ic_launcher.xml` and `ic_launcher_round.xml`
+- [x] Remove unused legacy per-density PNG mipmaps (dead weight on minSdk 26+)
 
 **Verification**:
 
-- [ ] `assembleDebug` build success
-- [ ] Icon visually confirmed on physical device, no clipping under adaptive-icon masking
+- [x] `assembleDebug` build success
+- [ ] Icon visually confirmed on physical device, no clipping under adaptive-icon masking (device disconnected — pending reconnect)
 - [ ] Themed icon retints correctly under Android 13+ Material You theming (if device/launcher supports it)
