@@ -8,6 +8,12 @@
 
 ## Achievements
 
+- [x] Implemented Phase 82 (Prompt Field Ordering)
+  - [x] Added `WorkflowParser.findPositivePromptNodeId()` — finds a sampler-shaped node (has both `positive`/`negative` link inputs) and traces the `positive` link to its source node
+  - [x] `WorkflowParser.parse()` hoists the positive-source node's fields to the absolute front of the returned list; falls back to unchanged order when detection is ambiguous (no sampler found, multiple sampler nodes disagree, or the source node has no primitive fields of its own)
+  - [x] 4 new unit tests added to `WorkflowParserTest.kt` (topology match, no sampler, ambiguous multi-sampler, source node with no primitive fields) — all passing, full `testDebugUnitTest` suite green
+  - [x] `assembleDebug` succeeds
+  - [~] Not verified live on device — pure data-transformation logic, fully unit-tested; no device UI check performed
 - [x] Implemented Phase 85 (Fix Subgraph Flattening Output-Link Bug)
   - [x] Fixed `isSubgraph` detection in both `expandGraphOnce` and `convert()`'s pre-scan to key off `definitions.containsKey(type)` instead of requiring `properties.proxyWidgets`
   - [x] Added 2 permanent synthetic regression tests to `GraphToApiConverterSubgraphTest.kt` (now tracked in git for the first time)
@@ -74,7 +80,7 @@
 
 ## Roadmap Evolution
 
-- **2026-08-31**: Phase 82 planned (see `.gsd/phases/82/82-PLAN.md`) — sampler-topology detection (positive/negative link keys), hoist positive-source node's fields to front, no-op fallback on ambiguity. Ready for execution.
+- **2026-08-31**: Phase 82 implemented and verified via unit tests — sampler-topology detection (positive/negative link keys), hoist positive-source node's fields to front, no-op fallback on ambiguity. `testDebugUnitTest`/`assembleDebug` green.
 - Phase 80 added: Improve android icon
 - Phase 81 added: Image-to-image workflow node support (was open TODO, 2026-01-30)
 - Phase 82 added: Prompt field ordering — positive prompt must be topmost (was open TODO, 2026-01-30)
@@ -88,7 +94,7 @@
 1. **Phase 81**: 3 bugs fixed now (parser branch ordering — the real blocker, upload race condition, silent upload failure). `assembleDebug`/`testDebugUnitTest` green, code committed. **`installDebug` pending** — device disconnected before this last fix could be installed. Once reconnected: install, reopen the `LoadImage` field, confirm it now shows the gallery/camera picker (not a dropdown), pick a real image, confirm Generate gates correctly during upload, confirm the executed result uses the picked image.
 2. **Phase 80 wrap-up**: Themed-icon retinting under Android 13+ Material You wasn't interactively spot-checked in Settings — optional manual confirmation if desired.
 3. **Phase 86**: Study `COMFY_AUTOGROW_V3`'s schema shape (ideally across more than one example node) before planning a parsing approach.
-4. **Phase 82**: Plan and implement prompt field ordering fix.
+4. **Phase 82 device check**: Once the Fairphone 6 is reconnected for Phase 81, also spot-check that the positive prompt now renders topmost on a real multi-prompt workflow.
 5. **Phase 83**: Plan and implement camera capture for gallery add-image.
 6. **Phase 84**: Plan and implement real progress indicator.
 7. **Verify** all recent completions once more on a physical device (Manual verification of UI layout).

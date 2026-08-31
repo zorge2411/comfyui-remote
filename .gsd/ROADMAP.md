@@ -743,7 +743,7 @@
 
 ### Phase 82: Prompt Field Ordering
 
-**Status**: 🔄 Planned
+**Status**: ✅ Done
 **Objective**: Ensure the positive prompt text input is always the topmost field in the workflow generation form, per the outstanding TODO from 2026-01-30.
 **Depends on**: Phase 81
 
@@ -751,15 +751,16 @@
 
 **Tasks**:
 
-- [ ] Add `findPositivePromptNodeId` topology-scan pass to `WorkflowParser.kt`
-- [ ] Reorder `WorkflowParser.parse()`'s returned list to hoist the positive-source node's fields to the front
-- [ ] Add unit tests: topology match, no sampler found, ambiguous multi-sampler, source node with no primitive fields
-- [ ] `testDebugUnitTest` / `assembleDebug` pass
+- [x] Add `findPositivePromptNodeId` topology-scan pass to `WorkflowParser.kt`
+- [x] Reorder `WorkflowParser.parse()`'s returned list to hoist the positive-source node's fields to the front
+- [x] Add unit tests: topology match, no sampler found, ambiguous multi-sampler, source node with no primitive fields
+- [x] `testDebugUnitTest` / `assembleDebug` pass
 
 **Verification**:
 
-- [ ] Unit tests confirm reorder happens only on unambiguous topology match, no-op otherwise
-- [ ] Full test suite green, no regressions in existing `WorkflowParser`/`GraphToApiConverter` tests
+- [x] Unit tests confirm reorder happens only on unambiguous topology match, no-op otherwise (4 new tests, all passing)
+- [x] Full test suite green, no regressions in existing `WorkflowParser`/`GraphToApiConverter` tests
+- [~] Not verified live on device — pure data-transformation logic, fully covered by unit tests per plan; no device UI check performed
 
 ---
 

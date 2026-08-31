@@ -118,7 +118,46 @@ class WorkflowParser {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+
+        val positiveNodeId = findPositivePromptNodeId(jsonContent)
+        if (positiveNodeId != null) {
+            val (positiveFields, rest) = inputs.partition { it.nodeId == positiveNodeId }
+            if (positiveFields.isNotEmpty()) {
+                return positiveFields + rest
+            }
+        }
         return inputs
+    }
+
+    /**
+     * Finds the node ID producing the positive prompt by graph topology: locates a
+     * sampler-shaped node (one exposing both `positive` and `negative` link inputs,
+     * the standard CONDITIONING-pair convention) and traces its `positive` link back
+     * to the source node. Returns null if no sampler-shaped node is found, or if
+     * multiple sampler-shaped nodes disagree on the positive source (ambiguous) —
+     * callers must leave ordering unchanged in either case.
+     */
+    private fun findPositivePromptNodeId(jsonContent: String): String? {
+        val positiveSourceIds = mutableSetOf<String>()
+        try {
+            val jsonObject = JsonParser.parseString(jsonContent).asJsonObject
+            jsonObject.entrySet().forEach { (_, element) ->
+                if (!element.isJsonObject) return@forEach
+                val node = element.asJsonObject
+                val inputsObj = node.get("inputs")?.asJsonObject ?: return@forEach
+                val positive = inputsObj.get("positive")
+                val negative = inputsObj.get("negative")
+                if (positive != null && positive.isJsonArray && negative != null && negative.isJsonArray) {
+                    val link = positive.asJsonArray
+                    if (link.size() >= 1) {
+                        positiveSourceIds.add(link[0].asString)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            return null
+        }
+        return if (positiveSourceIds.size == 1) positiveSourceIds.first() else null
     }
 
     private fun getOptionsFromMetadata(metadata: JsonObject?, classType: String, fieldName: String): List<String>? {
