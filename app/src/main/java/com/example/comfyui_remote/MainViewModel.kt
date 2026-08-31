@@ -1562,6 +1562,14 @@ class MainViewModel(
                 // Auto-sync history on connection
                 if (state == WebSocketState.CONNECTED) {
                     syncHistory()
+                    // Refresh node metadata/available models on every transition to CONNECTED,
+                    // not just the initial explicit connect() call. Without this, a process
+                    // restart (e.g. after a crash) that reconnects the WebSocket leaves these
+                    // in-memory caches empty/stale — the UI looks connected, but combo-option
+                    // dropdowns (checkpoint/model pickers) silently render with no items until
+                    // the user manually disconnects and reconnects.
+                    fetchNodeMetadata()
+                    fetchAvailableModels()
                 }
             }
         }

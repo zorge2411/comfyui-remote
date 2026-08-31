@@ -64,6 +64,8 @@ fun ImageSelector(
         onResult = { success ->
             if (success && cameraTmpUri != null) {
                 onImageSelected(cameraTmpUri!!)
+            } else {
+                android.widget.Toast.makeText(context, "Camera capture failed or aborted", android.widget.Toast.LENGTH_SHORT).show()
             }
         }
     )
@@ -78,6 +80,24 @@ fun ImageSelector(
         )
         cameraTmpUri = uri
         cameraLauncher.launch(uri)
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (isGranted) {
+                launchCamera()
+            } else {
+                android.widget.Toast.makeText(context, "Camera permission is required to take a photo", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    )
+
+    fun handleCameraAction() {
+        when (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA)) {
+            android.content.pm.PackageManager.PERMISSION_GRANTED -> launchCamera()
+            else -> cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+        }
     }
 
     if (showSelectionDialog) {
@@ -100,7 +120,7 @@ fun ImageSelector(
                     androidx.compose.material3.TextButton(
                         onClick = {
                             showSelectionDialog = false
-                            launchCamera()
+                            handleCameraAction()
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {

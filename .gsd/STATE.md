@@ -3,8 +3,8 @@
 ## Current Position
 
 - **Phase**: 81 (Image-to-Image Workflow Node Support)
-- **Status**: 🔄 In Progress — 3rd bug found and fixed, installDebug pending device reconnect
-- **Session Goal**: Live testing found a 3rd, more fundamental img2img bug (LoadImage's image field never showed the picker on real servers); fixed, needs install + retest
+- **Status**: ✅ Done — full UAT complete, 2 gaps found live and fixed, both user-confirmed on device
+- **Session Goal**: Completed
 
 ## Achievements
 
@@ -20,12 +20,14 @@
   - [x] Verified against the real failing workflow via a throwaway test + live `/prompt` POST — original `video`/`IMAGE` type-mismatch error confirmed gone (resolves to `CreateVideo`, not `LoadImage`); throwaway test and scratch files deleted before commit, nothing sensitive touched the repo
   - [x] Full `testDebugUnitTest` suite green, `assembleDebug` succeeds
   - [x] `installDebug` succeeded (Fairphone 6)
-- [x] Implemented Phase 81 (Image-to-Image Workflow Node Support) — code portion
-  - [x] **Fixed the real blocker**: `WorkflowParser.kt` checked combo/dropdown metadata before checking for `LoadImage`'s own image field — real ComfyUI servers always declare `LoadImage`'s "image" input as a combo of existing server files, so that branch always won, silently disabling the gallery/camera picker entirely. Found via live device screenshot showing a plain filename+dropdown instead of a thumbnail. Fixed by reordering the checks; added a regression test reproducing the real metadata shape. This was very likely the actual reason img2img never worked, more fundamental than the two bugs below.
+- [x] Implemented Phase 81 (Image-to-Image Workflow Node Support) — complete, including full live UAT
+  - [x] **Fixed the real blocker**: `WorkflowParser.kt` checked combo/dropdown metadata before checking for `LoadImage`'s own image field — real ComfyUI servers always declare `LoadImage`'s "image" input as a combo of existing server files, so that branch always won, silently disabling the gallery/camera picker entirely. Found via live device screenshot showing a plain filename+dropdown instead of a thumbnail. Fixed by reordering the checks; added a regression test reproducing the real metadata shape.
   - [x] Fixed race condition: Generate/Queue now disabled while an image upload is in flight (`DynamicFormScreen.kt`)
   - [x] Fixed silent upload failure: now reverts state and surfaces an error via new `MainViewModel.reportError()`
-  - [x] `assembleDebug`/`testDebugUnitTest`/`installDebug` all verified
-  - [~] Live test only exercised `video_minimax_h3_i2v.json` (image-to-video, subgraph), which hit a pre-existing unrelated bug — the plain-`LoadImage` scenario this phase actually targets is still unconfirmed
+  - [x] `/gsd:verify-work 81` — 4 planned tests + 1 organically-discovered check (see `81-UAT.md`): 3/4 planned tests passed outright (upload gating, upload-failure error surfacing, picked image reaches server/executes correctly); 2 gaps found and fixed:
+    - [x] **Camera crash**: tapping Camera in the LoadImage picker threw `SecurityException` (runtime `CAMERA` permission never requested, despite being manifest-declared). Fixed in `ImageSelector.kt` by mirroring the existing correct permission-request pattern from `GalleryScreen.kt` (`ContextCompat.checkSelfPermission` → `RequestPermission()` launcher → `launchCamera()`). User-confirmed fixed on device.
+    - [x] **Stale metadata cache after process restart**: the camera crash killed the app process; on restart the checkpoint/model dropdown came back empty because `MainViewModel`'s `_nodeMetadata`/`_availableModels` StateFlows were only populated inside the explicit `connect()` call, with no re-fetch on restart. Root-caused by directly querying the live server (`/object_info`, `/models/checkpoints` via curl) to rule out a server-side cause, then confirmed by reproducing via force-stop + reopen. Fixed by moving the fetch calls into the existing `connectionState` collector (already reacting to every `CONNECTED` transition for `syncHistory()`) so any reconnect — automatic or manual — self-heals the cache. User-confirmed fixed on device (force-stop + reopen, no manual reconnect needed).
+  - [x] `assembleDebug`/`testDebugUnitTest`/`installDebug` all verified after every fix, including the two post-UAT fixes
 - [x] Implemented Phase 80 (Improve Android Icon)
   - [x] Replaced `ic_launcher_foreground.xml` node-graph motif with a 6-blade aperture/lens vector, same blue background
   - [x] Added `ic_launcher_monochrome.xml`, wired into `ic_launcher.xml` and `ic_launcher_round.xml` for Android 13+ themed icons
@@ -91,10 +93,7 @@
 
 ## Next Steps
 
-1. **Phase 81**: 3 bugs fixed now (parser branch ordering — the real blocker, upload race condition, silent upload failure). `assembleDebug`/`testDebugUnitTest` green, code committed. **`installDebug` pending** — device disconnected before this last fix could be installed. Once reconnected: install, reopen the `LoadImage` field, confirm it now shows the gallery/camera picker (not a dropdown), pick a real image, confirm Generate gates correctly during upload, confirm the executed result uses the picked image.
-2. **Phase 80 wrap-up**: Themed-icon retinting under Android 13+ Material You wasn't interactively spot-checked in Settings — optional manual confirmation if desired.
-3. **Phase 86**: Study `COMFY_AUTOGROW_V3`'s schema shape (ideally across more than one example node) before planning a parsing approach.
-4. **Phase 82 device check**: Once the Fairphone 6 is reconnected for Phase 81, also spot-check that the positive prompt now renders topmost on a real multi-prompt workflow.
-5. **Phase 83**: Plan and implement camera capture for gallery add-image.
-6. **Phase 84**: Plan and implement real progress indicator.
-7. **Verify** all recent completions once more on a physical device (Manual verification of UI layout).
+1. **Phase 80 wrap-up**: Themed-icon retinting under Android 13+ Material You wasn't interactively spot-checked in Settings — optional manual confirmation if desired.
+2. **Phase 86**: Study `COMFY_AUTOGROW_V3`'s schema shape (ideally across more than one example node) before planning a parsing approach.
+3. **Phase 83**: Plan and implement camera capture for gallery add-image.
+4. **Phase 84**: Plan and implement real progress indicator.

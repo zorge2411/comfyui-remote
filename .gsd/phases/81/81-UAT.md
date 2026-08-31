@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: complete
 phase: 81-image-to-image-workflow-node-support
 source: [81-PLAN.md, 81-CONTEXT.md, ROADMAP.md]
 started: 2026-08-31T00:00:00Z
@@ -56,21 +56,23 @@ blocked: 0
 ## Gaps
 
 - truth: "Tapping the Camera option in the LoadImage picker opens the device camera without crashing."
-  status: failed
+  status: fixed
   reason: "User reported: 'i also tried the camera option and the app crashed'. Logcat confirms: java.lang.SecurityException: Permission Denial ... revoked permission android.permission.CAMERA, thrown from ImageSelector.kt's launchCamera() (ImageSelectorKt.ImageSelector$launchCamera(ImageSelector.kt:80)) via cameraLauncher.launch(uri)."
   severity: blocker
   test: 1
   root_cause: "ImageSelector.kt's launchCamera() (app/src/main/java/com/example/comfyui_remote/ui/components/ImageSelector.kt, lines 71-81) launches the TakePicture ActivityResultContract directly without ever checking or requesting the runtime android.permission.CAMERA permission first. The manifest already declares <uses-permission android:name=\"android.permission.CAMERA\" /> (AndroidManifest.xml:12), but no runtime request flow exists — Android 6.0+ requires an explicit runtime grant for dangerous permissions regardless of the manifest declaration."
   artifacts: ["app/src/main/java/com/example/comfyui_remote/ui/components/ImageSelector.kt"]
-  missing: ["A rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) flow that requests CAMERA before calling launchCamera(), with a graceful denied-permission UX (e.g. a message or fallback to Gallery) instead of proceeding to launch the camera intent unconditionally."]
+  missing: []
   debug_session: ""
+  fix: "Added a RequestPermission() launcher + handleCameraAction() (mirrors the existing correct pattern already in GalleryScreen.kt) that checks ContextCompat.checkSelfPermission first and only calls launchCamera() when granted, requesting it otherwise. Denied permission and failed/aborted capture now show a Toast instead of crashing or failing silently. User-confirmed fixed on device."
 
 - truth: "After the app process restarts (e.g. following a crash) while the server connection appears active, the checkpoint/model dropdown in the workflow form is populated from the server, not empty."
-  status: failed
+  status: fixed
   reason: "User reported an empty checkpoint dropdown after the Test 1 camera crash killed and restarted the app process. Confirmed the server itself has one valid checkpoint (flux1-dev-fp8.safetensors, verified directly via /object_info and /models/checkpoints). An explicit disconnect/reconnect in the app resolved it, confirming the root cause is a stale/empty in-memory cache, not a server-side or parsing issue."
   severity: minor
   test: 5
   root_cause: "MainViewModel's _nodeMetadata and _availableModels StateFlows are only populated inside connect() (via fetchNodeMetadata() / fetchAvailableModels(), MainViewModel.kt lines 668-688, 744-745), which runs once when the user explicitly connects. There is no re-fetch on app/process restart, and the app's persisted host/port/connected-looking UI state gives no visible signal that these in-memory caches are actually empty until the user opens a form field that depends on them."
   artifacts: ["app/src/main/java/com/example/comfyui_remote/MainViewModel.kt"]
-  missing: ["Either an automatic re-fetch of node metadata/available models on process restart when a server address is already saved (e.g. from init{} once host/port load), or a visible empty/loading state on the SelectionInput/ModelInput dropdowns that prompts the user to reconnect instead of silently rendering as an empty list."]
+  missing: []
   debug_session: ""
+  fix: "MainViewModel's existing connectionState collector (which already ran syncHistory() on every transition to WebSocketState.CONNECTED) now also calls fetchNodeMetadata() and fetchAvailableModels() on every such transition, not just from the explicit connect() call site. This self-heals the cache on any path back to CONNECTED, including a fresh process after a crash/force-stop. User-confirmed fixed on device via force-stop + reopen, no manual reconnect needed."

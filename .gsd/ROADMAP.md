@@ -722,7 +722,7 @@
 
 ### Phase 81: Image-to-Image Workflow Node Support
 
-**Status**: 🔄 In Progress (3 bugs fixed, installDebug pending device reconnect)
+**Status**: ✅ Done
 **Objective**: Verify the existing LoadImage img2img flow (built Phase 64) works end-to-end against a live server; fix bugs found. Broader node-type coverage (ControlNet, inpainting) explicitly deferred.
 **Depends on**: Phase 80
 
@@ -731,13 +731,13 @@
 - [x] Block Generate/Queue buttons while an image upload is in flight (`DynamicFormScreen.kt`)
 - [x] Surface upload failures to the user instead of failing silently (`DynamicFormScreen.kt`, `MainViewModel.kt`)
 - [x] **Fix `WorkflowParser.kt` branch ordering**: `LoadImage`'s `image` field was always caught by the generic combo-options check first (since real servers declare it as a combo of existing files), so the gallery/camera `ImageInput` picker never rendered on any real server. Confirmed via live device screenshot (plain filename+dropdown, no thumbnail). This was likely the actual root cause blocking img2img the whole time — more fundamental than the two bugs above.
-- [~] Live end-to-end test on user's ComfyUI server — confirmed the subgraph-related HTTP 400 is gone (Phase 85) and found + fixed the parser bug above via a live device screenshot, but the picker fix itself hasn't been retested live yet (device disconnected mid-session before `installDebug` could run with this latest fix).
+- [x] Live end-to-end UAT on user's ComfyUI server (see `81-UAT.md`) — 3/4 tests passed outright (upload gating, upload-failure error, picked image reaches server); found and fixed 2 gaps discovered live: (1) tapping Camera in the picker crashed with a missing-runtime-permission `SecurityException` (`ImageSelector.kt`), (2) that crash's process restart left the checkpoint/model dropdown empty until reconnect (`MainViewModel.kt`'s metadata caches only refreshed on explicit `connect()`, not on every `CONNECTED` transition). Both fixed and user-confirmed on device.
 
 **Verification**:
 
-- [x] `assembleDebug` / `testDebugUnitTest` pass; `installDebug` succeeded for the first 2 fixes, **pending re-run** for the 3rd (parser ordering) fix
-- [~] User confirms img2img actually uses the selected image — not yet confirmed with the picker fix in place
-- [ ] Any node-type gaps found are logged as deferred, not built here
+- [x] `assembleDebug` / `testDebugUnitTest` pass; `installDebug` succeeded and both post-UAT fixes verified live on device
+- [x] User confirms img2img actually uses the selected image — confirmed (Test 4, `81-UAT.md`)
+- [x] Any node-type gaps found are logged as deferred, not built here (no new node-type gaps found; the two gaps found were picker/connection bugs, not node-type coverage)
 
 ---
 
