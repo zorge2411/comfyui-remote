@@ -743,17 +743,23 @@
 
 ### Phase 82: Prompt Field Ordering
 
-**Status**: ⬜ Not Started
+**Status**: 🔄 Planned
 **Objective**: Ensure the positive prompt text input is always the topmost field in the workflow generation form, per the outstanding TODO from 2026-01-30.
 **Depends on**: Phase 81
 
+**Approach (see `82-CONTEXT.md` / `82-PLAN.md`):** Identify the positive prompt via graph topology — find a sampler-shaped node (has both `positive` and `negative` link inputs) and trace the `positive` link back to its source node. Hoist that node's fields to the absolute top of the form. If detection is ambiguous (no sampler found, multiple disagreeing samplers, or the source node yields no fields), leave order unchanged.
+
 **Tasks**:
 
-- [ ] TBD (run /gsd:discuss-phase 82 or /gsd:plan-phase 82 to create)
+- [ ] Add `findPositivePromptNodeId` topology-scan pass to `WorkflowParser.kt`
+- [ ] Reorder `WorkflowParser.parse()`'s returned list to hoist the positive-source node's fields to the front
+- [ ] Add unit tests: topology match, no sampler found, ambiguous multi-sampler, source node with no primitive fields
+- [ ] `testDebugUnitTest` / `assembleDebug` pass
 
 **Verification**:
 
-- TBD
+- [ ] Unit tests confirm reorder happens only on unambiguous topology match, no-op otherwise
+- [ ] Full test suite green, no regressions in existing `WorkflowParser`/`GraphToApiConverter` tests
 
 ---
 

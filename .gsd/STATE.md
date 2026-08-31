@@ -74,7 +74,7 @@
 
 ## Roadmap Evolution
 
-- **2026-08-31**: Phase 82 context gathered (see `.gsd/phases/82/82-CONTEXT.md`) — locked topology-based positive-prompt detection, absolute-top-of-form ordering, no-reorder fallback on ambiguity. Ready for `/gsd:plan-phase 82`.
+- **2026-08-31**: Phase 82 planned (see `.gsd/phases/82/82-PLAN.md`) — sampler-topology detection (positive/negative link keys), hoist positive-source node's fields to front, no-op fallback on ambiguity. Ready for execution.
 - Phase 80 added: Improve android icon
 - Phase 81 added: Image-to-image workflow node support (was open TODO, 2026-01-30)
 - Phase 82 added: Prompt field ordering — positive prompt must be topmost (was open TODO, 2026-01-30)
