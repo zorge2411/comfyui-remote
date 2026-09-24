@@ -258,7 +258,30 @@ object GraphToApiConverter {
                     }
                 }
 
+                fun isAutogrow(key: String): Boolean {
+                    val def = (required?.get(key) ?: optional?.get(key)) as? JsonArray ?: return false
+                    return def.size() > 0 && def[0].isJsonPrimitive && def[0].asString == "COMFY_AUTOGROW_V3"
+                }
+
                 for (key in allInputKeys) {
+                    if (isAutogrow(key)) {
+                        // Graph JSON expands autogrow groups into dotted slots ("values.a"); copy linked
+                        // ones verbatim and never let the group key consume a widget value.
+                        graphInputs.forEach { el ->
+                            val slot = el.asJsonObject
+                            val name = slot.get("name").asString
+                            if (name.startsWith("$key.") && slot.has("link") && !slot.get("link").isJsonNull) {
+                                val resolved = resolveRealSource(slot.get("link").asInt)
+                                if (resolved != null) {
+                                    val linkArray = JsonArray()
+                                    linkArray.add(resolved.first.toString())
+                                    linkArray.add(resolved.second)
+                                    inputs.add(name, linkArray)
+                                }
+                            }
+                        }
+                        continue
+                    }
                     if (slotNames.contains(key)) {
                         val slot = graphInputs.firstOrNull { it.asJsonObject.get("name").asString == key }?.asJsonObject
                         val linkId = if (slot?.get("link")?.isJsonNull == false) slot.get("link").asInt else null

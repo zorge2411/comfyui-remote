@@ -825,7 +825,7 @@
 
 ### Phase 86: Support COMFY_AUTOGROW_V3 Dynamic Input Type
 
-**Status**: 🔄 Planned
+**Status**: ✅ Done
 **Objective**: Support ComfyUI's `COMFY_AUTOGROW_V3` dynamic/auto-expanding input type (used by nodes like `ComfyMathExpression` for variable-count named inputs, e.g. `values.a`, `values.b`, ...) in the app's workflow input-mapping logic, so workflows using such nodes can execute instead of failing `required_input_missing` validation.
 **Depends on**: Phase 85
 
@@ -833,9 +833,14 @@
 
 **Tasks**:
 
-- [ ] In `GraphToApiConverter` Mode B, copy dotted `<key>.<slot>` links for `COMFY_AUTOGROW_V3` keys and never route those keys through the widget matcher (see `86-CONTEXT.md` research: 46 autogrow inputs on the live server, two template variants, plus a latent widget-stealing bug)
-- [ ] Synthetic unit tests + full suite
+- [x] In `GraphToApiConverter` Mode B, copy dotted `<key>.<slot>` links for `COMFY_AUTOGROW_V3` keys and never route those keys through the widget matcher (see `86-CONTEXT.md` research: 46 autogrow inputs on the live server, two template variants, plus a latent widget-stealing bug)
+- [x] Synthetic unit tests + full suite
 
 **Verification**:
 
 - TBD
+
+**Verification**:
+
+- [x] 4 new `GraphToApiConverterAutogrowTest` tests and the full suite pass; `assembleDebug` succeeds
+- [~] Not re-verified against the real MiniMax H3 workflow (that workflow also has unrelated combo-label and `bit_depth` validation errors, see Phase 81 UAT)
