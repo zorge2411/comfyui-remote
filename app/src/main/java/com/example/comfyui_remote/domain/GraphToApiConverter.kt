@@ -258,6 +258,38 @@ object GraphToApiConverter {
                     }
                 }
 
+                // Custom frontend extensions can store localized display labels (e.g. "By filename")
+                // in widgets_values for combo inputs; /object_info only knows the real values.
+                fun resolveComboValue(key: String, value: com.google.gson.JsonElement): com.google.gson.JsonElement {
+                    if (!value.isJsonPrimitive || !value.asJsonPrimitive.isString) return value
+                    val def = (required?.get(key) ?: optional?.get(key)) as? JsonArray ?: return value
+                    val optionsEl = if (def.size() > 0) def[0] else return value
+                    if (!optionsEl.isJsonArray) return value
+                    val options = optionsEl.asJsonArray
+                        .filter { it.isJsonPrimitive && it.asJsonPrimitive.isString }
+                        .map { it.asString }
+                    val label = value.asString
+                    if (options.isEmpty() || options.contains(label)) return value
+
+                    fun norm(t: String) = t.lowercase().filter { it.isLetterOrDigit() }
+                    val resolved: String? =
+                        options.firstOrNull { it.equals(label, ignoreCase = true) }
+                            ?: run {
+                                val nl = norm(label)
+                                val hits = options.filter { norm(it).isNotEmpty() && nl.contains(norm(it)) }
+                                val longest = hits.maxOfOrNull { norm(it).length }
+                                hits.filter { norm(it).length == longest }.singleOrNull()
+                            }
+                            ?: run {
+                                val cfg = if (def.size() > 1 && def[1].isJsonObject) def[1].asJsonObject else null
+                                val d = cfg?.get("default")
+                                if (d != null && d.isJsonPrimitive && d.asJsonPrimitive.isString && options.contains(d.asString)) d.asString else null
+                            }
+                    if (resolved == null) return value
+                    println("CONVERT_DEBUG: Node $id: combo '$key' value '$label' resolved to '$resolved'")
+                    return com.google.gson.JsonPrimitive(resolved)
+                }
+
                 fun isAutogrow(key: String): Boolean {
                     val def = (required?.get(key) ?: optional?.get(key)) as? JsonArray ?: return false
                     return def.size() > 0 && def[0].isJsonPrimitive && def[0].asString == "COMFY_AUTOGROW_V3"
@@ -300,13 +332,15 @@ object GraphToApiConverter {
                                 // Could not resolve (maybe link to missing node that has no input?)
                                 println("CONVERT_DEBUG: Warn: Node $id: key '$key' link $linkId resolved to null (broken chain?)")
                             }
+                            // A widget converted to an input keeps its slot in widgets_values even when linked.
+                            if (slot?.has("widget") == true) findNextCompatibleWidget(key)
                         } else {
                             val widget = findNextCompatibleWidget(key)
-                            if (widget != null) inputs.add(key, widget)
+                            if (widget != null) inputs.add(key, resolveComboValue(key, widget))
                         }
                     } else {
                         val widget = findNextCompatibleWidget(key)
-                        if (widget != null) inputs.add(key, widget)
+                        if (widget != null) inputs.add(key, resolveComboValue(key, widget))
                     }
                 }
             } else {

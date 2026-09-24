@@ -845,7 +845,7 @@
 
 ### Phase 87: Fix Widget Value Mapping for MiniMax H3 Workflow
 
-**Status**: 🔄 Planned
+**Status**: ✅ Done
 **Objective**: Find and fix why the real `video_minimax_h3_i2v.json` workflow still fails server validation after Phases 85 and 86, so it can execute end to end.
 **Depends on**: Phase 86
 
@@ -858,10 +858,12 @@
 
 **Tasks**:
 
-- [ ] Linked widget-inputs consume their widgets_values slot
-- [ ] Resolve invalid combo values (case-insensitive, substring, default fallback)
-- [ ] Synthetic tests + live proof
+- [x] Linked widget-inputs consume their widgets_values slot
+- [x] Resolve invalid combo values (case-insensitive, substring, default fallback)
+- [x] Synthetic tests + live proof
 
 **Verification**:
 
 - TBD
+
+**Outcome**: Linked widget-inputs now consume their `widgets_values` slot, and invalid combo values are resolved (case-insensitive, substring, default). 5 new `GraphToApiConverterWidgetMappingTest` tests + full suite pass. Live proof: the real "Minimax h3 easy i2v.json" converted and POSTed to `/prompt` returned `node_errors: {}` (the job it started was interrupted immediately; scratch files and throwaway test deleted, nothing sensitive committed).
