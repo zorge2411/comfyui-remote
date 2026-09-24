@@ -776,17 +776,18 @@
 
 ### Phase 84: Real Progress Indicator
 
-**Status**: ⬜ Not Started
-**Objective**: Replace/augment the current progress feedback with a real step-progress or unified progress bar during workflow execution, per the "Nice-to-Haves" item never promoted to a phase.
+**Status**: 🔄 Planned
+**Objective**: Replace the per-node progress bar with one overall progress bar for the whole execution, per the "Nice-to-Haves" item never promoted to a phase.
 **Depends on**: Phase 83
+
+**Approach (see `84-CONTEXT.md` / `84-PLAN.md`):** overall = (nodes completed + current step fraction) / nodes that will run (workflow nodes minus `execution_cached`). One bar plus a node/step label, form screen only. Logic lives in a new unit-tested `ExecutionProgressTracker`.
 
 **Tasks**:
 
-- [ ] TBD (run /gsd:discuss-phase 84 or /gsd:plan-phase 84 to create)
-
-**Verification**:
-
-- TBD
+- [ ] Add `ExecutionProgressTracker` with unit tests
+- [ ] Wire it into `MainViewModel.handleMessage()` (incl. new `execution_cached` case)
+- [ ] Update `DynamicFormScreen.kt` bar and label
+- [ ] `testDebugUnitTest` / `assembleDebug` / live device check
 
 ---
 
