@@ -8,6 +8,7 @@
 
 ## Achievements
 
+- [x] Implemented Phase 88 (bypassed/muted node modes) — found testing the real MiniMax workflow on the phone: bypassed node 18 (SageAttention patch) was sent to the server and failed. Converter now drops muted nodes and rewires bypassed ones to their type-matched upstream input. 5 tests; live phone run pending.
 - [x] Implemented Phase 87 (MiniMax widget mapping) — `GraphToApiConverter` Mode B: linked widget-inputs consume their `widgets_values` slot (fixed CreateVideo `bit_depth`=24), and invalid combo values from custom-frontend localized labels resolve to valid options (fixed MiniMaxH3Easy). 5 tests; real workflow now passes server validation (`node_errors: {}`).
 - [x] Implemented Phase 86 (COMFY_AUTOGROW_V3 support) — `GraphToApiConverter` Mode B now copies linked dotted autogrow slots (`values.a`, `images.image0`) and keeps autogrow keys out of the widget matcher (also fixes a latent bug where `values` stole the next input's widget value, e.g. `StringFormat.f_string`). 4 synthetic tests. Not re-run against the real workflow.
 - [x] Implemented Phase 84 (Real Progress Indicator) — new `ExecutionProgressTracker` (nodes completed + step fraction over nodes that will run, excluding `execution_cached`), wired into `MainViewModel.handleMessage()`, single bar + node/step label in `DynamicFormScreen.kt`. 5 unit tests, verified live on Fairphone 6.

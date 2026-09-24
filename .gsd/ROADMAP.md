@@ -867,3 +867,26 @@
 - TBD
 
 **Outcome**: Linked widget-inputs now consume their `widgets_values` slot, and invalid combo values are resolved (case-insensitive, substring, default). 5 new `GraphToApiConverterWidgetMappingTest` tests + full suite pass. Live proof: the real "Minimax h3 easy i2v.json" converted and POSTed to `/prompt` returned `node_errors: {}` (the job it started was interrupted immediately; scratch files and throwaway test deleted, nothing sensitive committed).
+
+---
+
+### Phase 88: Honor Bypassed and Muted Node Modes in Graph Conversion
+
+**Status**: ✅ Done
+**Objective**: Make `GraphToApiConverter` treat LiteGraph node modes like the ComfyUI editor: muted (mode 2) nodes are dropped, bypassed (mode 4) nodes are removed and their consumers rewired to the type-matching upstream input.
+**Depends on**: Phase 87
+
+**Discovered**: 2026-09-24, testing the real "Minimax h3 easy i2v.json" on the phone after Phase 87. The server failed the run at node 18 `MiniMaxH3MemoryEfficientSageAttentionPatch` ("sageattention is not new enough..."). In the workflow that node is bypassed (mode 4), but the converter ignored `mode` and sent it as an active node.
+
+**Tasks**:
+
+- [x] Pre-scan node modes; skip generating muted/bypassed nodes
+- [x] In `resolveRealSource`: muted source returns null (input dropped); bypassed source resolves through the first linked input whose type equals the output type (fallback: same index), recursively
+- [x] 5 synthetic tests (`GraphToApiConverterModeTest`): bypass rewire, type-matched input choice, chained bypass, muted, mode 0 unaffected
+
+**Verification**:
+
+- [x] Full suite and `assembleDebug` pass
+- [x] Real workflow converted offline: node 18 absent, no dangling references to it
+- [ ] Live run on the phone (user)
+

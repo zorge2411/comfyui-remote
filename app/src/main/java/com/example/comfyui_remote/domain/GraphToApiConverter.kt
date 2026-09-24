@@ -119,6 +119,40 @@ object GraphToApiConverter {
             }
         }
 
+        // Node modes (LiteGraph): 2 = muted (never executes), 4 = bypassed (outputs are replaced by a
+        // type-matching input). The editor excludes both from the API prompt; do the same.
+        val mutedNodes = mutableSetOf<Int>()
+        val bypassedNodes = mutableMapOf<Int, JsonObject>()
+        nodesArray.forEach { nodeElement ->
+            val node = nodeElement.asJsonObject
+            val nodeId = node.get("id").asString.toIntOrNull() ?: return@forEach
+            when (if (node.has("mode") && node.get("mode").isJsonPrimitive) node.get("mode").asInt else 0) {
+                2 -> mutedNodes.add(nodeId)
+                4 -> bypassedNodes[nodeId] = node
+            }
+        }
+
+        // For a bypassed node, find the input link that replaces output [outputSlot]:
+        // first linked input whose type equals the output type, else the input at the same index.
+        fun bypassInputLink(node: JsonObject, outputSlot: Int): Int? {
+            val inputsArr = node.get("inputs")?.takeIf { it.isJsonArray }?.asJsonArray ?: return null
+            val outputsArr = node.get("outputs")?.takeIf { it.isJsonArray }?.asJsonArray
+            val outType = if (outputsArr != null && outputSlot < outputsArr.size()) {
+                outputsArr[outputSlot].asJsonObject.get("type")?.takeIf { it.isJsonPrimitive }?.asString
+            } else null
+            fun linkOf(el: com.google.gson.JsonElement): Int? {
+                val l = el.asJsonObject.get("link")
+                return if (l != null && !l.isJsonNull) l.asInt else null
+            }
+            if (outType != null) {
+                inputsArr.firstOrNull {
+                    val t = it.asJsonObject.get("type")
+                    linkOf(it) != null && t != null && t.isJsonPrimitive && t.asString == outType
+                }?.let { return linkOf(it) }
+            }
+            return if (outputSlot < inputsArr.size()) linkOf(inputsArr[outputSlot]) else null
+        }
+
         // Helper function to resolve real source recursively
         fun resolveRealSource(initialLinkId: Int, visited: MutableSet<Int> = mutableSetOf()): Pair<Int, Int>? {
             if (visited.contains(initialLinkId)) return null // Cycle detected
@@ -126,6 +160,16 @@ object GraphToApiConverter {
 
             if (!linkMap.containsKey(initialLinkId)) return null
             val (sourceId, sourceSlot) = linkMap[initialLinkId]!!
+
+            if (mutedNodes.contains(sourceId)) {
+                println("CONVERT_DEBUG: Link $initialLinkId comes from muted node $sourceId; dropping")
+                return null
+            }
+            bypassedNodes[sourceId]?.let { bypassed ->
+                val replacement = bypassInputLink(bypassed, sourceSlot)
+                println("CONVERT_DEBUG: Node $sourceId is bypassed; output $sourceSlot -> input link $replacement")
+                return if (replacement != null) resolveRealSource(replacement, visited) else null
+            }
 
             // Is the source a phantom node?
             if (phantomNodeInputs.containsKey(sourceId)) {
@@ -151,6 +195,11 @@ object GraphToApiConverter {
             val id = idStr.toIntOrNull() ?: 0
             val type = node.get("type").asString
             
+            if (mutedNodes.contains(id) || bypassedNodes.containsKey(id)) {
+                println("CONVERT_DEBUG: Node $id ($type): skipping generation (muted/bypassed)")
+                return@forEach
+            }
+
             // Skip processing if this is a Phantom Node (it's being flattened)
             // UNLESS we are preserving manual fallback nodes (LoadImage)
             val isManualLoadImage = type == "LoadImage" || type == "ETN_LoadImageBase64"
