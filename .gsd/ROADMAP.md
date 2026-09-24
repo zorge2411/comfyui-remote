@@ -845,7 +845,7 @@
 
 ### Phase 87: Fix Widget Value Mapping for MiniMax H3 Workflow
 
-**Status**: ⬜ Not Started
+**Status**: 🔄 Planned
 **Objective**: Find and fix why the real `video_minimax_h3_i2v.json` workflow still fails server validation after Phases 85 and 86, so it can execute end to end.
 **Depends on**: Phase 86
 
@@ -854,11 +854,13 @@
 1. Node 2 (`MiniMaxH3Easy`): five combo inputs received human-readable display labels instead of API enum values, e.g. `mode` = "I2V or First/Last Frame" (expected `image`/`reference`), `ref_image_size` = "1K area (~1MP)" (expected `match/1k/1.5k/2k/original`), `keyframe_role` = "First frame priority" (expected `first/last`), `reference_mention_mode` = "By filename" (expected `filename/index`), `prompt_optimizer_scene_guide` = "General only" (expected `none/...`).
 2. Node 11 (`CreateVideo`): `bit_depth` = 24, above the max of 10 (allowed 8 to 10, step 2).
 
-**Hypothesis (unverified):** both look like `widgets_values` being matched to the wrong inputs (24 is a plausible fps value; the label strings may be a different widget's value, or the workflow stores labels), most likely in the Mode B widget matcher (`findNextCompatibleWidget` accepts any primitive for combos) or in subgraph expansion. First step is to diff the real workflow's `widgets_values` against the live `/object_info` input order for these two nodes, then decide the fix. The workflow contains sensitive prompt text; use a throwaway test and do not commit it.
+**Root causes (confirmed, see 87-CONTEXT.md; the failing workflow is "Minimax h3 easy i2v.json", not video_minimax_h3_i2v.json):** (A) a linked widget-input (fps) still occupies a widgets_values slot, so the converter shifted bit_depth onto fps value 24; (B) the MiniMaxH3-Easy custom frontend extension stores localized combo labels in widgets_values, absent from /object_info. Original hypothesis: both look like `widgets_values` being matched to the wrong inputs (24 is a plausible fps value; the label strings may be a different widget's value, or the workflow stores labels), most likely in the Mode B widget matcher (`findNextCompatibleWidget` accepts any primitive for combos) or in subgraph expansion. First step is to diff the real workflow's `widgets_values` against the live `/object_info` input order for these two nodes, then decide the fix. The workflow contains sensitive prompt text; use a throwaway test and do not commit it.
 
 **Tasks**:
 
-- [ ] TBD (run /gsd:discuss-phase 87 or /gsd:plan-phase 87 to create)
+- [ ] Linked widget-inputs consume their widgets_values slot
+- [ ] Resolve invalid combo values (case-insensitive, substring, default fallback)
+- [ ] Synthetic tests + live proof
 
 **Verification**:
 
