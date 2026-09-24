@@ -838,9 +838,28 @@
 
 **Verification**:
 
-- TBD
+- [x] 4 new `GraphToApiConverterAutogrowTest` tests and the full suite pass; `assembleDebug` succeeds
+- [~] Not re-verified against the real MiniMax H3 workflow (that workflow also has unrelated combo-label and `bit_depth` validation errors, see Phase 81 UAT)
+
+---
+
+### Phase 87: Fix Widget Value Mapping for MiniMax H3 Workflow
+
+**Status**: ⬜ Not Started
+**Objective**: Find and fix why the real `video_minimax_h3_i2v.json` workflow still fails server validation after Phases 85 and 86, so it can execute end to end.
+**Depends on**: Phase 86
+
+**Discovered**: 2026-08-31, during Phase 81 UAT (`81-UAT.md`). The server (HTTP 400 `prompt_outputs_failed_validation`) rejected two nodes:
+
+1. Node 2 (`MiniMaxH3Easy`): five combo inputs received human-readable display labels instead of API enum values, e.g. `mode` = "I2V or First/Last Frame" (expected `image`/`reference`), `ref_image_size` = "1K area (~1MP)" (expected `match/1k/1.5k/2k/original`), `keyframe_role` = "First frame priority" (expected `first/last`), `reference_mention_mode` = "By filename" (expected `filename/index`), `prompt_optimizer_scene_guide` = "General only" (expected `none/...`).
+2. Node 11 (`CreateVideo`): `bit_depth` = 24, above the max of 10 (allowed 8 to 10, step 2).
+
+**Hypothesis (unverified):** both look like `widgets_values` being matched to the wrong inputs (24 is a plausible fps value; the label strings may be a different widget's value, or the workflow stores labels), most likely in the Mode B widget matcher (`findNextCompatibleWidget` accepts any primitive for combos) or in subgraph expansion. First step is to diff the real workflow's `widgets_values` against the live `/object_info` input order for these two nodes, then decide the fix. The workflow contains sensitive prompt text; use a throwaway test and do not commit it.
+
+**Tasks**:
+
+- [ ] TBD (run /gsd:discuss-phase 87 or /gsd:plan-phase 87 to create)
 
 **Verification**:
 
-- [x] 4 new `GraphToApiConverterAutogrowTest` tests and the full suite pass; `assembleDebug` succeeds
-- [~] Not re-verified against the real MiniMax H3 workflow (that workflow also has unrelated combo-label and `bit_depth` validation errors, see Phase 81 UAT)
+- TBD
