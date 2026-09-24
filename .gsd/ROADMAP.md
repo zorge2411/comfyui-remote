@@ -888,5 +888,5 @@
 
 - [x] Full suite and `assembleDebug` pass
 - [x] Real workflow converted offline: node 18 absent, no dangling references to it
-- [ ] Live run on the phone (user)
+- [x] Live run on the phone: real "Minimax h3 easy i2v" ran end to end (server run success, MiniMaxH3_Easy_00002_.mp4, node 18 absent from prompt) and the video appeared in the app gallery
 
