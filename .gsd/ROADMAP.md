@@ -825,7 +825,7 @@
 
 ### Phase 86: Support COMFY_AUTOGROW_V3 Dynamic Input Type
 
-**Status**: ⬜ Not Started
+**Status**: 🔄 Planned
 **Objective**: Support ComfyUI's `COMFY_AUTOGROW_V3` dynamic/auto-expanding input type (used by nodes like `ComfyMathExpression` for variable-count named inputs, e.g. `values.a`, `values.b`, ...) in the app's workflow input-mapping logic, so workflows using such nodes can execute instead of failing `required_input_missing` validation.
 **Depends on**: Phase 85
 
@@ -833,7 +833,8 @@
 
 **Tasks**:
 
-- [ ] TBD (run /gsd:discuss-phase 86 or /gsd:plan-phase 86 to create — will need to study `COMFY_AUTOGROW_V3`'s schema shape more broadly, ideally across more than one example node, before committing to a parsing approach)
+- [ ] In `GraphToApiConverter` Mode B, copy dotted `<key>.<slot>` links for `COMFY_AUTOGROW_V3` keys and never route those keys through the widget matcher (see `86-CONTEXT.md` research: 46 autogrow inputs on the live server, two template variants, plus a latent widget-stealing bug)
+- [ ] Synthetic unit tests + full suite
 
 **Verification**:
 
