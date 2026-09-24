@@ -380,25 +380,27 @@ fun DynamicFormScreen(
             
             if (executionStatus == ExecutionStatus.EXECUTING || executionStatus == ExecutionStatus.QUEUED) {
                 Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+                    val hasOverall = executionProgress.overallProgress > 0f
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = if (executionStatus == ExecutionStatus.QUEUED) "Queued..." 
-                                   else "Executing: ${executionProgress.currentNodeTitle ?: "Node #${executionProgress.currentNodeId ?: "?"}"}",
+                            text = if (executionStatus == ExecutionStatus.QUEUED) "Queued..."
+                                   else "Executing: ${executionProgress.currentNodeTitle ?: "Node #${executionProgress.currentNodeId ?: "?"}"}" +
+                                        (if (executionProgress.maxSteps > 0) " (${executionProgress.currentStep}/${executionProgress.maxSteps})" else ""),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f)
                         )
-                        if (executionProgress.maxSteps > 0) {
+                        if (hasOverall) {
                             Text(
-                                text = "${(executionProgress.progress * 100).toInt()}%",
+                                text = "${(executionProgress.overallProgress * 100).toInt()}%",
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                    if (executionProgress.maxSteps > 0) {
+                    if (hasOverall) {
                         LinearProgressIndicator(
-                            progress = { executionProgress.progress },
+                            progress = { executionProgress.overallProgress },
                             modifier = Modifier.fillMaxWidth(),
                         )
                     } else {

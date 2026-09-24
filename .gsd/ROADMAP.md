@@ -776,7 +776,7 @@
 
 ### Phase 84: Real Progress Indicator
 
-**Status**: 🔄 Planned
+**Status**: ✅ Done
 **Objective**: Replace the per-node progress bar with one overall progress bar for the whole execution, per the "Nice-to-Haves" item never promoted to a phase.
 **Depends on**: Phase 83
 
@@ -784,10 +784,15 @@
 
 **Tasks**:
 
-- [ ] Add `ExecutionProgressTracker` with unit tests
-- [ ] Wire it into `MainViewModel.handleMessage()` (incl. new `execution_cached` case)
-- [ ] Update `DynamicFormScreen.kt` bar and label
-- [ ] `testDebugUnitTest` / `assembleDebug` / live device check
+- [x] Add `ExecutionProgressTracker` with unit tests
+- [x] Wire it into `MainViewModel.handleMessage()` (incl. new `execution_cached` case)
+- [x] Update `DynamicFormScreen.kt` bar and label
+- [x] `testDebugUnitTest` / `assembleDebug` / live device check
+
+**Verification**:
+
+- [x] 5 new `ExecutionProgressTrackerTest` tests and the full suite pass; `assembleDebug`/`installDebug` succeed
+- [x] Verified live on Fairphone 6 (bar monotonic, node/step label, cached rerun finishes)
 
 ---
 

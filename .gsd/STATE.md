@@ -8,6 +8,7 @@
 
 ## Achievements
 
+- [x] Implemented Phase 84 (Real Progress Indicator) — new `ExecutionProgressTracker` (nodes completed + step fraction over nodes that will run, excluding `execution_cached`), wired into `MainViewModel.handleMessage()`, single bar + node/step label in `DynamicFormScreen.kt`. 5 unit tests, verified live on Fairphone 6.
 - [x] Closed Phase 83 (Camera Capture for Gallery Add-Image) — no code needed: `GalleryScreen.kt` already had a "Take Photo" option with runtime permission handling (built 2026-01-24, roadmap entry never closed). Verified live on Fairphone 6.
 - [x] Implemented Phase 82 (Prompt Field Ordering)
   - [x] Added `WorkflowParser.findPositivePromptNodeId()` — finds a sampler-shaped node (has both `positive`/`negative` link inputs) and traces the `positive` link to its source node
@@ -96,4 +97,3 @@
 
 1. **Phase 80 wrap-up**: Themed-icon retinting under Android 13+ Material You wasn't interactively spot-checked in Settings — optional manual confirmation if desired.
 2. **Phase 86**: Study `COMFY_AUTOGROW_V3`'s schema shape (ideally across more than one example node) before planning a parsing approach.
-3. **Phase 84**: Plan and implement real progress indicator.

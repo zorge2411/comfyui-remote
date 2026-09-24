@@ -242,7 +242,8 @@ class MainViewModel(
         val currentNodeTitle: String? = null,
         val currentStep: Int = 0,
         val maxSteps: Int = 0,
-        val progress: Float = 0f
+        val progress: Float = 0f,
+        val overallProgress: Float = 0f
     )
 
     private val _executionProgress = MutableStateFlow(ExecutionProgress())
@@ -460,6 +461,11 @@ class MainViewModel(
     private var cachedWorkflowForTitles: WorkflowEntity? = null
 
     private fun resolveNodeTitle(workflow: WorkflowEntity, nodeId: String): String? {
+        ensureNodeTitles(workflow)
+        return cachedNodeTitles?.get(nodeId)
+    }
+
+    private fun ensureNodeTitles(workflow: WorkflowEntity) {
         if (workflow !== cachedWorkflowForTitles) {
             // This happens on the main thread (from handleMessage), but only ONCE per workflow selection.
             // Subsequent lookups are O(1).
@@ -467,7 +473,18 @@ class MainViewModel(
             cachedNodeTitles = nodes.associate { it.id to it.title }
             cachedWorkflowForTitles = workflow
         }
-        return cachedNodeTitles?.get(nodeId)
+    }
+
+    private val progressTracker = com.example.comfyui_remote.domain.ExecutionProgressTracker()
+
+    private fun publishProgress() {
+        val snap = progressTracker.snapshot()
+        _executionProgress.value = _executionProgress.value.copy(
+            currentStep = snap.currentStep,
+            maxSteps = snap.maxSteps,
+            progress = if (snap.maxSteps > 0) snap.currentStep.toFloat() / snap.maxSteps else 0f,
+            overallProgress = snap.overall
+        )
     }
 
     fun loadHistory(listing: com.example.comfyui_remote.data.GeneratedMediaListing) {
@@ -765,11 +782,23 @@ class MainViewModel(
                     // Confirm execution has begun
                     _executionStatus.value = ExecutionStatus.EXECUTING
                     _executionProgress.value = ExecutionProgress()
+                    val wf = _selectedWorkflow.value
+                    if (wf != null) ensureNodeTitles(wf)
+                    progressTracker.start(if (wf != null) cachedNodeTitles?.size ?: 0 else 0)
+                }
+                "execution_cached" -> {
+                    val data = obj.getAsJsonObject("data")
+                    val nodes = data?.getAsJsonArray("nodes")
+                    if (nodes != null) {
+                        progressTracker.markCached(nodes.map { it.asString })
+                        publishProgress()
+                    }
                 }
                 "executing" -> {
                     val data = obj.getAsJsonObject("data")
                     // When node is null, the prompt execution is complete
                     if (data.has("node") && data.get("node").isJsonNull) {
+                        progressTracker.finish()
                         _executionStatus.value = ExecutionStatus.FINISHED
                         _executionProgress.value = ExecutionProgress()
                         
@@ -786,24 +815,20 @@ class MainViewModel(
                         val title = _selectedWorkflow.value?.let { wf ->
                              resolveNodeTitle(wf, nodeId)
                         }
+                        progressTracker.onExecuting(nodeId)
                         _executionProgress.value = _executionProgress.value.copy(
                             currentNodeId = nodeId,
-                            currentNodeTitle = title,
-                            currentStep = 0,
-                            maxSteps = 0,
-                            progress = 0f
+                            currentNodeTitle = title
                         )
+                        publishProgress()
                     }
                 }
                 "progress" -> {
                     val data = obj.getAsJsonObject("data")
                     val value = data.get("value").asInt
                     val max = data.get("max").asInt
-                    _executionProgress.value = _executionProgress.value.copy(
-                        currentStep = value,
-                        maxSteps = max,
-                        progress = if (max > 0) value.toFloat() / max.toFloat() else 0f
-                    )
+                    progressTracker.onStep(value, max)
+                    publishProgress()
                 }
                 "executed" -> {
                     val data = obj.getAsJsonObject("data")
