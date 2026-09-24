@@ -8,6 +8,7 @@
 
 ## Achievements
 
+- [x] Closed Phase 83 (Camera Capture for Gallery Add-Image) — no code needed: `GalleryScreen.kt` already had a "Take Photo" option with runtime permission handling (built 2026-01-24, roadmap entry never closed). Verified live on Fairphone 6.
 - [x] Implemented Phase 82 (Prompt Field Ordering)
   - [x] Added `WorkflowParser.findPositivePromptNodeId()` — finds a sampler-shaped node (has both `positive`/`negative` link inputs) and traces the `positive` link to its source node
   - [x] `WorkflowParser.parse()` hoists the positive-source node's fields to the absolute front of the returned list; falls back to unchanged order when detection is ambiguous (no sampler found, multiple sampler nodes disagree, or the source node has no primitive fields of its own)
@@ -95,5 +96,4 @@
 
 1. **Phase 80 wrap-up**: Themed-icon retinting under Android 13+ Material You wasn't interactively spot-checked in Settings — optional manual confirmation if desired.
 2. **Phase 86**: Study `COMFY_AUTOGROW_V3`'s schema shape (ideally across more than one example node) before planning a parsing approach.
-3. **Phase 83**: Plan and implement camera capture for gallery add-image.
-4. **Phase 84**: Plan and implement real progress indicator.
+3. **Phase 84**: Plan and implement real progress indicator.

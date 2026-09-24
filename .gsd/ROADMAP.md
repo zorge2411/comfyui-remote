@@ -766,17 +766,11 @@
 
 ### Phase 83: Camera Capture for Gallery Add-Image
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Done
 **Objective**: Add a camera-capture option to the existing "add image" function on the gallery page (currently likely file-picker only), per the outstanding TODO from 2026-01-24.
 **Depends on**: Phase 82
 
-**Tasks**:
-
-- [ ] TBD (run /gsd:discuss-phase 83 or /gsd:plan-phase 83 to create)
-
-**Verification**:
-
-- TBD
+**Outcome**: No code changes needed. `GalleryScreen.kt` already had a "Take Photo" option with runtime CAMERA permission handling, built on 2026-01-24 (the same day the TODO was logged); the roadmap entry was simply never closed. Verified live on the Fairphone 6 on 2026-09-24 (camera opens, photo is added to the gallery).
 
 ---
 
