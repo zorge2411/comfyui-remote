@@ -28,24 +28,6 @@
    95
   ]
  },
- "template_image_speech_to_video.json": {
-  "checks": [
-   "C5"
-  ],
-  "reason": "The control_after_generate value ('fixed') after a seed is consumed by the next widget when that widget is a V3 COMBO (ElevenLabsTextToSpeech.output_format).",
-  "phase": [
-   95
-  ]
- },
- "templates-character_sheet.json": {
-  "checks": [
-   "C5"
-  ],
-  "reason": "control_after_generate value after seed is consumed by the next V3 COMBO widget (GeminiImage2Node.aspect_ratio = 'fixed'), shifting every later widget.",
-  "phase": [
-   95
-  ]
- },
  "utility_depth_anything3_image_depth_estimation.json": {
   "checks": [
    "C4"

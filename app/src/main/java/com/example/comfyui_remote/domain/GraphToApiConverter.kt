@@ -299,6 +299,40 @@ object GraphToApiConverter {
                     return null
                 }
 
+                /**
+                 * Extra widgets_values slots the frontend stores after this input's widget: a
+                 * control_after_generate combo (1 for INT/FLOAT; 2 for COMBO, plus control_filter_list).
+                 * INT inputs named seed/noise_seed get one unless the spec says otherwise (useIntWidget.ts).
+                 */
+                fun controlSlots(path: String, spec: JsonArray?): Int {
+                    val config = spec?.takeIf { it.size() > 1 }?.get(1)?.takeIf { it.isJsonObject }?.asJsonObject
+                    val flag = config?.get("control_after_generate")
+                    val enabled = when {
+                        flag == null || flag.isJsonNull -> null
+                        flag.isJsonPrimitive && flag.asJsonPrimitive.isBoolean -> flag.asBoolean
+                        flag.isJsonPrimitive && flag.asJsonPrimitive.isString -> flag.asString.isNotEmpty()
+                        else -> true
+                    }
+                    return when (kindOf(spec)) {
+                        "INT" -> if (enabled ?: (path.substringAfterLast('.') in SEED_NAMES)) 1 else 0
+                        "FLOAT" -> if (enabled == true) 1 else 0
+                        "COMBO" -> if (enabled == true) 2 else 0
+                        else -> 0
+                    }
+                }
+
+                // Only skip what really is a control value: older saves may lack the control widget.
+                fun skipControlWidgets(count: Int) {
+                    if (count == 0 || graphWidgets == null || widgetIndex >= graphWidgets.size()) return
+                    val control = graphWidgets[widgetIndex]
+                    if (!control.isJsonPrimitive || control.asString !in CONTROL_VALUES) return
+                    widgetIndex++
+                    if (count == 2 && widgetIndex < graphWidgets.size()) {
+                        val filter = graphWidgets[widgetIndex]
+                        if (filter.isJsonPrimitive && filter.asJsonPrimitive.isString) widgetIndex++
+                    }
+                }
+
                 // Values promoted from an enclosing subgraph instance replace this node's own widget values
                 val promoted = node.getAsJsonObject(PROMOTED_WIDGETS)
 
@@ -376,14 +410,19 @@ object GraphToApiConverter {
                     if (linkId != null) {
                         addLink(path, linkId)
                         // A widget converted to an input keeps its slot in widgets_values even when linked.
-                        if (slot?.has("widget") == true) findNextCompatibleWidget(spec)
+                        if (slot?.has("widget") == true) {
+                            findNextCompatibleWidget(spec)
+                            skipControlWidgets(controlSlots(path, spec))
+                        }
                         return
                     }
-                    // In the frontend only widget-type sub-inputs get a widget; sockets have no widgets_values slot.
-                    if (isSubInput && kind !in WIDGET_KINDS) return
+                    // In the frontend only widget-type inputs get a widget; sockets have no widgets_values slot.
+                    if (kind !in WIDGET_KINDS && (isSubInput || (slot != null && !slot.has("widget")))) return
 
                     // Always consume the widgets_values slot so later widgets stay aligned
-                    val widget = findNextCompatibleWidget(spec).let { promoted?.get(path) ?: it } ?: return
+                    val saved = findNextCompatibleWidget(spec)
+                    if (saved != null) skipControlWidgets(controlSlots(path, spec))
+                    val widget = promoted?.get(path) ?: saved ?: return
                     val value = resolveComboValue(path, spec, widget)
                     inputs.add(path, value)
 
@@ -858,6 +897,9 @@ object GraphToApiConverter {
     }
 
     private const val DYNAMIC_COMBO = "COMFY_DYNAMICCOMBO_V3"
+
+    private val SEED_NAMES = setOf("seed", "noise_seed")
+    private val CONTROL_VALUES = setOf("fixed", "increment", "decrement", "randomize", "increment-wrap")
 
     /** Input kinds the frontend renders as widgets (and so store a widgets_values entry). */
     private val WIDGET_KINDS = setOf("INT", "FLOAT", "STRING", "BOOLEAN", "COMBO", DYNAMIC_COMBO)
