@@ -8,6 +8,51 @@
    90
   ]
  },
+ "api_anthropic_claude_sonnet5.json": {
+  "checks": [
+   "C4"
+  ],
+  "reason": "COMFY_DYNAMICCOMBO_V3 sub-inputs of the selected option are never emitted (ClaudeNode.model).",
+  "phase": [
+   94
+  ]
+ },
+ "api_google_gemini.json": {
+  "checks": [
+   "C4"
+  ],
+  "reason": "COMFY_DYNAMICCOMBO_V3 sub-inputs of the selected option are never emitted (GeminiNodeV3.model).",
+  "phase": [
+   94
+  ]
+ },
+ "api_kling_o3_i2v.json": {
+  "checks": [
+   "C4"
+  ],
+  "reason": "COMFY_DYNAMICCOMBO_V3 sub-inputs of the selected option are never emitted (SaveVideo.format).",
+  "phase": [
+   94
+  ]
+ },
+ "api_luma_ray3_3_i2v.json": {
+  "checks": [
+   "C4"
+  ],
+  "reason": "COMFY_DYNAMICCOMBO_V3 sub-inputs of the selected option are never emitted (SaveVideo.format).",
+  "phase": [
+   94
+  ]
+ },
+ "api_openai_gpt_image_2_image_edit.json": {
+  "checks": [
+   "C4"
+  ],
+  "reason": "COMFY_DYNAMICCOMBO_V3 sub-inputs of the selected option are never emitted (OpenAIGPTImageNodeV2.model).",
+  "phase": [
+   94
+  ]
+ },
  "audio_ace_step_1_5_checkpoint.json": {
   "checks": [
    "C7"
@@ -28,20 +73,49 @@
    95
   ]
  },
+ "hunyuan_video_text_to_video.json": {
+  "checks": [
+   "C4"
+  ],
+  "reason": "COMFY_DYNAMICCOMBO_V3 sub-inputs of the selected option are never emitted (SaveVideo.format).",
+  "phase": [
+   94
+  ]
+ },
+ "image_mage_flow_t2i_int8.json": {
+  "checks": [
+   "C4"
+  ],
+  "reason": "COMFY_DYNAMICCOMBO_V3 sub-inputs of the selected option are never emitted (SaveImageAdvanced.format).",
+  "phase": [
+   94
+  ]
+ },
  "image_qwen_Image_2512_controlnet.json": {
   "checks": [
+   "C4",
    "C5"
   ],
-  "reason": "ResizeImageMaskNode.resize_type is COMFY_DYNAMICCOMBO_V3; its sub-widget values ('scale total pixels' then 1.6) are not expanded, so scale_method gets 1.6.",
+  "reason": "ResizeImageMaskNode.resize_type is COMFY_DYNAMICCOMBO_V3; its sub-widget values ('scale total pixels' then 1.6) are not expanded, so scale_method gets 1.6. Dynamic-combo sub-inputs are also not emitted (C4).",
+  "phase": [
+   94
+  ]
+ },
+ "image_to_video_wan.json": {
+  "checks": [
+   "C4"
+  ],
+  "reason": "COMFY_DYNAMICCOMBO_V3 sub-inputs of the selected option are never emitted (SaveVideo.format).",
   "phase": [
    94
   ]
  },
  "template_image_speech_to_video.json": {
   "checks": [
+   "C4",
    "C5"
   ],
-  "reason": "The control_after_generate value ('fixed') after a seed is consumed by the next widget when that widget is a V3 COMBO (ElevenLabsTextToSpeech.output_format). ResizeImageMaskNode dynamic combo not expanded.",
+  "reason": "The control_after_generate value ('fixed') after a seed is consumed by the next widget when that widget is a V3 COMBO (ElevenLabsTextToSpeech.output_format). ResizeImageMaskNode dynamic combo not expanded. Dynamic-combo sub-inputs are also not emitted (C4).",
   "phase": [
    94,
    95
@@ -56,6 +130,24 @@
    95
   ]
  },
+ "text_to_video_wan.json": {
+  "checks": [
+   "C4"
+  ],
+  "reason": "COMFY_DYNAMICCOMBO_V3 sub-inputs of the selected option are never emitted (SaveVideo.format).",
+  "phase": [
+   94
+  ]
+ },
+ "utility-gan_upscaler.json": {
+  "checks": [
+   "C4"
+  ],
+  "reason": "COMFY_DYNAMICCOMBO_V3 sub-inputs of the selected option are never emitted (SaveVideo.format).",
+  "phase": [
+   94
+  ]
+ },
  "utility_depth_anything3_image_depth_estimation.json": {
   "checks": [
    "C4"
@@ -65,11 +157,21 @@
    95
   ]
  },
+ "utility_depth_anything3_video_depth_estimation.json": {
+  "checks": [
+   "C4"
+  ],
+  "reason": "COMFY_DYNAMICCOMBO_V3 sub-inputs of the selected option are never emitted (DA3Render.output, SaveVideo.format).",
+  "phase": [
+   94
+  ]
+ },
  "utility_image_stitch.json": {
   "checks": [
+   "C4",
    "C5"
   ],
-  "reason": "ResizeImageMaskNode.resize_type COMFY_DYNAMICCOMBO_V3 sub-widgets not expanded; scale_method gets 2048.",
+  "reason": "ResizeImageMaskNode.resize_type COMFY_DYNAMICCOMBO_V3 sub-widgets not expanded; scale_method gets 2048. Dynamic-combo sub-inputs are also not emitted (C4).",
   "phase": [
    94
   ]
@@ -83,11 +185,39 @@
    90
   ]
  },
+ "video_kandinsky5_t2v.json": {
+  "checks": [
+   "C4"
+  ],
+  "reason": "COMFY_DYNAMICCOMBO_V3 sub-inputs of the selected option are never emitted (SaveVideo.format).",
+  "phase": [
+   94
+  ]
+ },
  "video_ltx2_depth_to_video.json": {
   "checks": [
+   "C4",
    "C5"
   ],
-  "reason": "ResizeImageMaskNode.resize_type COMFY_DYNAMICCOMBO_V3 sub-widgets not expanded; scale_method gets 1280.",
+  "reason": "ResizeImageMaskNode.resize_type COMFY_DYNAMICCOMBO_V3 sub-widgets not expanded; scale_method gets 1280. Dynamic-combo sub-inputs are also not emitted (C4).",
+  "phase": [
+   94
+  ]
+ },
+ "video_wan2.1_fun_camera_v1.1_1.3B.json": {
+  "checks": [
+   "C4"
+  ],
+  "reason": "COMFY_DYNAMICCOMBO_V3 sub-inputs of the selected option are never emitted (SaveVideo.format).",
+  "phase": [
+   94
+  ]
+ },
+ "video_wan2_2_5B_ti2v.json": {
+  "checks": [
+   "C4"
+  ],
+  "reason": "COMFY_DYNAMICCOMBO_V3 sub-inputs of the selected option are never emitted (SaveVideo.format).",
   "phase": [
    94
   ]

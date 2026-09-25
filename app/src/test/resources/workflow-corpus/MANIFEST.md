@@ -9,7 +9,7 @@ by `ApiPromptValidator` (checks C1–C7 are described in `ApiPromptValidator.kt`
 | Item | Source |
 |---|---|
 | `workflows/*.json` | `comfyui-workflow-templates-json` **0.1.95** (PyPI, via `comfyui-workflow-templates` 0.11.69), copied unchanged. MIT, see `LICENSE-workflow-templates.txt`. |
-| `object_info.json` | Stock ComfyUI **v0.37.2** (commit `830232b856045ca2892833212d7771078a13edd5`), no custom nodes, run with `--cpu`; trimmed to the 130 node types the fixtures use. |
+| `object_info.json` | Stock ComfyUI **v0.37.2** (commit `830232b856045ca2892833212d7771078a13edd5`), no custom nodes, run with `--cpu`; trimmed to the 132 node types the fixtures use. |
 | Captured | 2026-09-25 |
 
 `object_info.json` keeps the server's input order inside each node: the converter maps
@@ -23,6 +23,8 @@ No user workflows or prompts are ever added here.
 | File | Nodes | Features |
 |---|---|---|
 | `3d_hunyuan3d_multiview_to_model.json` | 18 nodes | bypass,load_image,note |
+| `api_google_gemini.json` | 3 nodes | api_node,autogrow,dynamic_combo,linked_sub_input,load_image (added Phase 94) |
+| `api_openai_gpt_image_2_image_edit.json` | 3 nodes | api_node,autogrow,dynamic_combo,linked_sub_input,load_image (added Phase 94) |
 | `api_anthropic_claude_sonnet5.json` | 9 nodes | api_node,autogrow,linked_widget,load_image,subgraph |
 | `api_bfl_flux1_expand_image.json` | 3 nodes | api_node,load_image |
 | `api_kling_o3_i2v.json` | 5 nodes | api_node,autogrow,bypass,load_image,note,video_out |
@@ -53,8 +55,9 @@ No user workflows or prompts are ever added here.
 | `video_wan2.1_fun_camera_v1.1_1.3B.json` | 17 nodes | bypass,linked_widget,load_image,note,video_out |
 | `video_wan2_2_5B_ti2v.json` | 13 nodes | bypass,load_image,note,video_out |
 
-Coverage: 10 subgraph, 15 linked widget, 8 autogrow, 8 bypass, 2 mute, 6 Reroute, 3 PrimitiveNode,
-18 LoadImage, 12 video output, 7 API node; plain text-to-image: `image_sdxl_simple`, `flux_schnell`,
+Coverage: 10 subgraph, 15 linked widget, 10 autogrow, 8 bypass, 2 mute, 6 Reroute, 3 PrimitiveNode,
+20 LoadImage, 12 video output, 9 API node; dynamic combos (incl. nested SaveVideo `format`, sub-inputs
+linked or autogrow inside an option) in most fixtures; plain text-to-image: `image_sdxl_simple`, `flux_schnell`,
 `sd3.5_simple_example`; large graph: `video_ltx2_depth_to_video` (107 nodes).
 
 ## Known failures

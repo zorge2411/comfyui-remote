@@ -17,7 +17,19 @@ class ApiPromptValidatorTest {
             "output": ["LATENT"] },
           "Grow": { "input": { "required": { "values": ["COMFY_AUTOGROW_V3", {}] } }, "output": ["STRING"] },
           "Refs": { "input": { "required": { "images": ["COMFY_AUTOGROW_V3", {"template": {"min": 0}}] } }, "output": ["IMAGE"] },
-          "Reroute": { "input": { "required": {} }, "output": ["*"] }
+          "Reroute": { "input": { "required": {} }, "output": ["*"] },
+          "SaveVid": { "input": {
+              "required": { "video": ["VIDEO", {}],
+                "format": ["COMFY_DYNAMICCOMBO_V3", {"options": [
+                  {"key": "auto", "inputs": {"required": {}}},
+                  {"key": "mp4", "inputs": {"required": {
+                    "codec": ["COMFY_DYNAMICCOMBO_V3", {"options": [
+                      {"key": "auto", "inputs": {"required": {}}},
+                      {"key": "h264", "inputs": {"required": {"crf": ["FLOAT", {}], "preset": ["COMBO", {"options": ["fast", "slow"]}]},
+                                                 "optional": {"mask": ["MASK", {}]}}}]}]}}}]}] },
+              "optional": { "codec": [["auto", "h264"], {}] } },
+            "output": [] },
+          "Vid": { "input": { "required": {} }, "output": ["VIDEO", "IMAGE"] }
         }
     """)
 
@@ -47,6 +59,38 @@ class ApiPromptValidatorTest {
     fun `empty autogrow group with min 0 is not missing but min 1 is`() {
         assertEquals(emptyList<String>(), checks("""{ "3": {"class_type": "Refs", "inputs": {}} }"""))
         assertEquals(listOf("C4"), checks("""{ "3": {"class_type": "Grow", "inputs": {}} }"""))
+    }
+
+    private val vid = """"7": {"class_type": "Vid", "inputs": {}}"""
+
+    private fun saveVid(extra: String) =
+        """{ $vid, "8": {"class_type": "SaveVid", "inputs": {"video": ["7", 0], $extra}} }"""
+
+    @Test
+    fun `complete nested dynamic combo prompt is clean`() {
+        assertEquals(emptyList<String>(), checks(saveVid(
+            """"format": "mp4", "format.codec": "h264", "format.codec.crf": 23, "format.codec.preset": "slow"""")))
+        assertEquals(emptyList<String>(), checks(saveVid(""""format": "auto"""")))
+    }
+
+    @Test
+    fun `C4 missing required sub-input of the selected option`() {
+        assertEquals(listOf("C4"), checks(saveVid(""""format": "mp4"""")))
+        assertEquals(listOf("C4"), checks(saveVid(""""format": "mp4", "format.codec": "h264", "format.codec.crf": 23""")))
+    }
+
+    @Test
+    fun `C5 invalid sub-combo and unknown option key`() {
+        assertEquals(listOf("C5"), checks(saveVid(
+            """"format": "mp4", "format.codec": "h264", "format.codec.crf": 23, "format.codec.preset": "medium"""")))
+        assertEquals(listOf("C5"), checks(saveVid(""""format": "mkv"""")))
+    }
+
+    @Test
+    fun `C3 linked sub-input with the wrong type`() {
+        assertEquals(listOf("C3"), checks(saveVid(
+            """"format": "mp4", "format.codec": "h264", "format.codec.crf": 23, "format.codec.preset": "fast",
+               "format.codec.mask": ["7", 1]""")))
     }
 
     @Test

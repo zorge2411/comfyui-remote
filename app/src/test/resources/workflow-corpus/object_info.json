@@ -3530,6 +3530,885 @@
   "essentials_category": null,
   "has_intermediate_output": false
  },
+ "GeminiNodeV3": {
+  "input": {
+   "required": {
+    "model": [
+     "COMFY_DYNAMICCOMBO_V3",
+     {
+      "tooltip": "The Gemini model used to generate the response.",
+      "options": [
+       {
+        "key": "Gemini 3.8 Flash",
+        "inputs": {
+         "required": {
+          "prompt": [
+           "STRING",
+           {
+            "tooltip": "Text input to the model. Include detailed instructions, questions, or context.",
+            "default": "",
+            "multiline": true
+           }
+          ],
+          "images": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "tooltip": "Optional image(s) to use as context for the model. Up to 16 images.",
+            "template": {
+             "input": {
+              "required": {
+               "image": [
+                "IMAGE",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "image_1",
+              "image_2",
+              "image_3",
+              "image_4",
+              "image_5",
+              "image_6",
+              "image_7",
+              "image_8",
+              "image_9",
+              "image_10",
+              "image_11",
+              "image_12",
+              "image_13",
+              "image_14",
+              "image_15",
+              "image_16"
+             ],
+             "min": 0
+            }
+           }
+          ],
+          "audio": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "tooltip": "Optional audio clip to use as context for the model.",
+            "template": {
+             "input": {
+              "required": {
+               "audio": [
+                "AUDIO",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "audio_1"
+             ],
+             "min": 0
+            }
+           }
+          ],
+          "video": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "tooltip": "Optional video clip to use as context for the model.",
+            "template": {
+             "input": {
+              "required": {
+               "video": [
+                "VIDEO",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "video_1"
+             ],
+             "min": 0
+            }
+           }
+          ],
+          "video_processing": [
+           "COMBO",
+           {
+            "tooltip": "How the model reads the attached video. `static` samples frames at a fixed rate and sends all of them as context; `agentic` lets the model navigate the timeline itself and load only the frames, audio or transcript it needs, which costs far fewer input tokens on long videos.",
+            "default": "static",
+            "multiselect": false,
+            "options": [
+             "static",
+             "agentic"
+            ]
+           }
+          ],
+          "thinking_level": [
+           "COMBO",
+           {
+            "tooltip": "How hard the model reasons internally before answering. HIGH improves quality on difficult tasks but costs more (thinking) tokens and is slower.",
+            "default": "MEDIUM",
+            "multiselect": false,
+            "options": [
+             "LOW",
+             "MEDIUM",
+             "HIGH"
+            ]
+           }
+          ],
+          "max_output_tokens": [
+           "INT",
+           {
+            "tooltip": "Maximum tokens to generate, including the model's internal thinking. With thinking_level HIGH, a low value can leave no room for the answer; raise this if responses come back empty or truncated. The model stops early when finished, so a higher cap costs nothing extra for short replies.",
+            "advanced": true,
+            "default": 32768,
+            "min": 16,
+            "max": 65536
+           }
+          ],
+          "seed": [
+           "INT",
+           {
+            "tooltip": "Seed for sampling. Set to 0 for a random seed. Deterministic output isn't guaranteed.",
+            "default": 42,
+            "min": 0,
+            "max": 2147483647,
+            "control_after_generate": true
+           }
+          ],
+          "system_prompt": [
+           "STRING",
+           {
+            "tooltip": "Foundational instructions that dictate the model's behavior.",
+            "advanced": true,
+            "default": "",
+            "multiline": true
+           }
+          ]
+         },
+         "optional": {
+          "files": [
+           "GEMINI_INPUT_FILES",
+           {
+            "tooltip": "Optional file(s) to use as context for the model. Accepts inputs from the Gemini Input Files node."
+           }
+          ]
+         }
+        }
+       },
+       {
+        "key": "Gemini 3.7 Flash",
+        "inputs": {
+         "required": {
+          "prompt": [
+           "STRING",
+           {
+            "tooltip": "Text input to the model. Include detailed instructions, questions, or context.",
+            "default": "",
+            "multiline": true
+           }
+          ],
+          "images": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "tooltip": "Optional image(s) to use as context for the model. Up to 16 images.",
+            "template": {
+             "input": {
+              "required": {
+               "image": [
+                "IMAGE",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "image_1",
+              "image_2",
+              "image_3",
+              "image_4",
+              "image_5",
+              "image_6",
+              "image_7",
+              "image_8",
+              "image_9",
+              "image_10",
+              "image_11",
+              "image_12",
+              "image_13",
+              "image_14",
+              "image_15",
+              "image_16"
+             ],
+             "min": 0
+            }
+           }
+          ],
+          "audio": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "tooltip": "Optional audio clip to use as context for the model.",
+            "template": {
+             "input": {
+              "required": {
+               "audio": [
+                "AUDIO",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "audio_1"
+             ],
+             "min": 0
+            }
+           }
+          ],
+          "video": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "tooltip": "Optional video clip to use as context for the model.",
+            "template": {
+             "input": {
+              "required": {
+               "video": [
+                "VIDEO",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "video_1"
+             ],
+             "min": 0
+            }
+           }
+          ],
+          "thinking_level": [
+           "COMBO",
+           {
+            "tooltip": "How hard the model reasons internally before answering. HIGH improves quality on difficult tasks but costs more (thinking) tokens and is slower.",
+            "default": "MEDIUM",
+            "multiselect": false,
+            "options": [
+             "LOW",
+             "MEDIUM",
+             "HIGH"
+            ]
+           }
+          ],
+          "temperature": [
+           "FLOAT",
+           {
+            "tooltip": "Controls randomness. Lower is more focused/deterministic, higher is more creative.",
+            "advanced": true,
+            "default": 1.0,
+            "min": 0.0,
+            "max": 2.0,
+            "step": 0.01
+           }
+          ],
+          "top_p": [
+           "FLOAT",
+           {
+            "tooltip": "Nucleus sampling: sample from the smallest token set whose cumulative probability reaches top_p.",
+            "advanced": true,
+            "default": 0.95,
+            "min": 0.0,
+            "max": 1.0,
+            "step": 0.01
+           }
+          ],
+          "max_output_tokens": [
+           "INT",
+           {
+            "tooltip": "Maximum tokens to generate, including the model's internal thinking. With thinking_level HIGH, a low value can leave no room for the answer; raise this if responses come back empty or truncated. The model stops early when finished, so a higher cap costs nothing extra for short replies.",
+            "advanced": true,
+            "default": 32768,
+            "min": 16,
+            "max": 65536
+           }
+          ],
+          "seed": [
+           "INT",
+           {
+            "tooltip": "Seed for sampling. Set to 0 for a random seed. Deterministic output isn't guaranteed.",
+            "default": 42,
+            "min": 0,
+            "max": 2147483647,
+            "control_after_generate": true
+           }
+          ],
+          "system_prompt": [
+           "STRING",
+           {
+            "tooltip": "Foundational instructions that dictate the model's behavior.",
+            "advanced": true,
+            "default": "",
+            "multiline": true
+           }
+          ]
+         },
+         "optional": {
+          "files": [
+           "GEMINI_INPUT_FILES",
+           {
+            "tooltip": "Optional file(s) to use as context for the model. Accepts inputs from the Gemini Input Files node."
+           }
+          ]
+         }
+        }
+       },
+       {
+        "key": "Gemini 3.5 Flash",
+        "inputs": {
+         "required": {
+          "prompt": [
+           "STRING",
+           {
+            "tooltip": "Text input to the model. Include detailed instructions, questions, or context.",
+            "default": "",
+            "multiline": true
+           }
+          ],
+          "images": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "tooltip": "Optional image(s) to use as context for the model. Up to 16 images.",
+            "template": {
+             "input": {
+              "required": {
+               "image": [
+                "IMAGE",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "image_1",
+              "image_2",
+              "image_3",
+              "image_4",
+              "image_5",
+              "image_6",
+              "image_7",
+              "image_8",
+              "image_9",
+              "image_10",
+              "image_11",
+              "image_12",
+              "image_13",
+              "image_14",
+              "image_15",
+              "image_16"
+             ],
+             "min": 0
+            }
+           }
+          ],
+          "audio": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "tooltip": "Optional audio clip to use as context for the model.",
+            "template": {
+             "input": {
+              "required": {
+               "audio": [
+                "AUDIO",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "audio_1"
+             ],
+             "min": 0
+            }
+           }
+          ],
+          "video": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "tooltip": "Optional video clip to use as context for the model.",
+            "template": {
+             "input": {
+              "required": {
+               "video": [
+                "VIDEO",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "video_1"
+             ],
+             "min": 0
+            }
+           }
+          ],
+          "thinking_level": [
+           "COMBO",
+           {
+            "tooltip": "How hard the model reasons internally before answering. HIGH improves quality on difficult tasks but costs more (thinking) tokens and is slower.",
+            "default": "MEDIUM",
+            "multiselect": false,
+            "options": [
+             "MINIMAL",
+             "LOW",
+             "MEDIUM",
+             "HIGH"
+            ]
+           }
+          ],
+          "temperature": [
+           "FLOAT",
+           {
+            "tooltip": "Controls randomness. Lower is more focused/deterministic, higher is more creative.",
+            "advanced": true,
+            "default": 1.0,
+            "min": 0.0,
+            "max": 2.0,
+            "step": 0.01
+           }
+          ],
+          "top_p": [
+           "FLOAT",
+           {
+            "tooltip": "Nucleus sampling: sample from the smallest token set whose cumulative probability reaches top_p.",
+            "advanced": true,
+            "default": 0.95,
+            "min": 0.0,
+            "max": 1.0,
+            "step": 0.01
+           }
+          ],
+          "max_output_tokens": [
+           "INT",
+           {
+            "tooltip": "Maximum tokens to generate, including the model's internal thinking. With thinking_level HIGH, a low value can leave no room for the answer; raise this if responses come back empty or truncated. The model stops early when finished, so a higher cap costs nothing extra for short replies.",
+            "advanced": true,
+            "default": 32768,
+            "min": 16,
+            "max": 65536
+           }
+          ],
+          "seed": [
+           "INT",
+           {
+            "tooltip": "Seed for sampling. Set to 0 for a random seed. Deterministic output isn't guaranteed.",
+            "default": 42,
+            "min": 0,
+            "max": 2147483647,
+            "control_after_generate": true
+           }
+          ],
+          "system_prompt": [
+           "STRING",
+           {
+            "tooltip": "Foundational instructions that dictate the model's behavior.",
+            "advanced": true,
+            "default": "",
+            "multiline": true
+           }
+          ]
+         },
+         "optional": {
+          "files": [
+           "GEMINI_INPUT_FILES",
+           {
+            "tooltip": "Optional file(s) to use as context for the model. Accepts inputs from the Gemini Input Files node."
+           }
+          ]
+         }
+        }
+       },
+       {
+        "key": "Gemini 3.1 Pro",
+        "inputs": {
+         "required": {
+          "prompt": [
+           "STRING",
+           {
+            "tooltip": "Text input to the model. Include detailed instructions, questions, or context.",
+            "default": "",
+            "multiline": true
+           }
+          ],
+          "images": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "tooltip": "Optional image(s) to use as context for the model. Up to 16 images.",
+            "template": {
+             "input": {
+              "required": {
+               "image": [
+                "IMAGE",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "image_1",
+              "image_2",
+              "image_3",
+              "image_4",
+              "image_5",
+              "image_6",
+              "image_7",
+              "image_8",
+              "image_9",
+              "image_10",
+              "image_11",
+              "image_12",
+              "image_13",
+              "image_14",
+              "image_15",
+              "image_16"
+             ],
+             "min": 0
+            }
+           }
+          ],
+          "audio": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "tooltip": "Optional audio clip to use as context for the model.",
+            "template": {
+             "input": {
+              "required": {
+               "audio": [
+                "AUDIO",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "audio_1"
+             ],
+             "min": 0
+            }
+           }
+          ],
+          "video": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "tooltip": "Optional video clip to use as context for the model.",
+            "template": {
+             "input": {
+              "required": {
+               "video": [
+                "VIDEO",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "video_1"
+             ],
+             "min": 0
+            }
+           }
+          ],
+          "thinking_level": [
+           "COMBO",
+           {
+            "tooltip": "How hard the model reasons internally before answering. HIGH improves quality on difficult tasks but costs more (thinking) tokens and is slower.",
+            "default": "HIGH",
+            "multiselect": false,
+            "options": [
+             "LOW",
+             "HIGH"
+            ]
+           }
+          ],
+          "temperature": [
+           "FLOAT",
+           {
+            "tooltip": "Controls randomness. Lower is more focused/deterministic, higher is more creative.",
+            "advanced": true,
+            "default": 1.0,
+            "min": 0.0,
+            "max": 2.0,
+            "step": 0.01
+           }
+          ],
+          "top_p": [
+           "FLOAT",
+           {
+            "tooltip": "Nucleus sampling: sample from the smallest token set whose cumulative probability reaches top_p.",
+            "advanced": true,
+            "default": 0.95,
+            "min": 0.0,
+            "max": 1.0,
+            "step": 0.01
+           }
+          ],
+          "max_output_tokens": [
+           "INT",
+           {
+            "tooltip": "Maximum tokens to generate, including the model's internal thinking. With thinking_level HIGH, a low value can leave no room for the answer; raise this if responses come back empty or truncated. The model stops early when finished, so a higher cap costs nothing extra for short replies.",
+            "advanced": true,
+            "default": 32768,
+            "min": 16,
+            "max": 65536
+           }
+          ],
+          "seed": [
+           "INT",
+           {
+            "tooltip": "Seed for sampling. Set to 0 for a random seed. Deterministic output isn't guaranteed.",
+            "default": 42,
+            "min": 0,
+            "max": 2147483647,
+            "control_after_generate": true
+           }
+          ],
+          "system_prompt": [
+           "STRING",
+           {
+            "tooltip": "Foundational instructions that dictate the model's behavior.",
+            "advanced": true,
+            "default": "",
+            "multiline": true
+           }
+          ]
+         },
+         "optional": {
+          "files": [
+           "GEMINI_INPUT_FILES",
+           {
+            "tooltip": "Optional file(s) to use as context for the model. Accepts inputs from the Gemini Input Files node."
+           }
+          ]
+         }
+        }
+       },
+       {
+        "key": "Gemini 3.1 Flash-Lite",
+        "inputs": {
+         "required": {
+          "prompt": [
+           "STRING",
+           {
+            "tooltip": "Text input to the model. Include detailed instructions, questions, or context.",
+            "default": "",
+            "multiline": true
+           }
+          ],
+          "images": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "tooltip": "Optional image(s) to use as context for the model. Up to 16 images.",
+            "template": {
+             "input": {
+              "required": {
+               "image": [
+                "IMAGE",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "image_1",
+              "image_2",
+              "image_3",
+              "image_4",
+              "image_5",
+              "image_6",
+              "image_7",
+              "image_8",
+              "image_9",
+              "image_10",
+              "image_11",
+              "image_12",
+              "image_13",
+              "image_14",
+              "image_15",
+              "image_16"
+             ],
+             "min": 0
+            }
+           }
+          ],
+          "audio": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "tooltip": "Optional audio clip to use as context for the model.",
+            "template": {
+             "input": {
+              "required": {
+               "audio": [
+                "AUDIO",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "audio_1"
+             ],
+             "min": 0
+            }
+           }
+          ],
+          "video": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "tooltip": "Optional video clip to use as context for the model.",
+            "template": {
+             "input": {
+              "required": {
+               "video": [
+                "VIDEO",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "video_1"
+             ],
+             "min": 0
+            }
+           }
+          ],
+          "thinking_level": [
+           "COMBO",
+           {
+            "tooltip": "How hard the model reasons internally before answering. HIGH improves quality on difficult tasks but costs more (thinking) tokens and is slower.",
+            "default": "LOW",
+            "multiselect": false,
+            "options": [
+             "LOW",
+             "HIGH"
+            ]
+           }
+          ],
+          "temperature": [
+           "FLOAT",
+           {
+            "tooltip": "Controls randomness. Lower is more focused/deterministic, higher is more creative.",
+            "advanced": true,
+            "default": 1.0,
+            "min": 0.0,
+            "max": 2.0,
+            "step": 0.01
+           }
+          ],
+          "top_p": [
+           "FLOAT",
+           {
+            "tooltip": "Nucleus sampling: sample from the smallest token set whose cumulative probability reaches top_p.",
+            "advanced": true,
+            "default": 0.95,
+            "min": 0.0,
+            "max": 1.0,
+            "step": 0.01
+           }
+          ],
+          "max_output_tokens": [
+           "INT",
+           {
+            "tooltip": "Maximum tokens to generate, including the model's internal thinking. With thinking_level HIGH, a low value can leave no room for the answer; raise this if responses come back empty or truncated. The model stops early when finished, so a higher cap costs nothing extra for short replies.",
+            "advanced": true,
+            "default": 32768,
+            "min": 16,
+            "max": 65536
+           }
+          ],
+          "seed": [
+           "INT",
+           {
+            "tooltip": "Seed for sampling. Set to 0 for a random seed. Deterministic output isn't guaranteed.",
+            "default": 42,
+            "min": 0,
+            "max": 2147483647,
+            "control_after_generate": true
+           }
+          ],
+          "system_prompt": [
+           "STRING",
+           {
+            "tooltip": "Foundational instructions that dictate the model's behavior.",
+            "advanced": true,
+            "default": "",
+            "multiline": true
+           }
+          ]
+         },
+         "optional": {
+          "files": [
+           "GEMINI_INPUT_FILES",
+           {
+            "tooltip": "Optional file(s) to use as context for the model. Accepts inputs from the Gemini Input Files node."
+           }
+          ]
+         }
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "hidden": {
+    "auth_token_comfy_org": [
+     "AUTH_TOKEN_COMFY_ORG"
+    ],
+    "api_key_comfy_org": [
+     "API_KEY_COMFY_ORG"
+    ],
+    "unique_id": [
+     "UNIQUE_ID"
+    ],
+    "comfy_usage_source": [
+     "COMFY_USAGE_SOURCE"
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "model"
+   ],
+   "hidden": [
+    "auth_token_comfy_org",
+    "api_key_comfy_org",
+    "unique_id",
+    "comfy_usage_source"
+   ]
+  },
+  "is_input_list": false,
+  "output": [
+   "STRING"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_name": [
+   "STRING"
+  ],
+  "output_tooltips": [
+   null
+  ],
+  "output_matchtypes": null,
+  "name": "GeminiNodeV3",
+  "display_name": "Google Gemini",
+  "description": "Generate text responses with Google's Gemini models. Provide a text prompt and, optionally, one or more images, audio clips, videos, or files as multimodal context.",
+  "python_module": "comfy_api_nodes.nodes_gemini",
+  "category": "partner/text/Gemini",
+  "output_node": false,
+  "deprecated": false,
+  "experimental": false,
+  "dev_only": false,
+  "api_node": true,
+  "price_badge": {
+   "engine": "jsonata",
+   "depends_on": {
+    "widgets": [
+     {
+      "name": "model",
+      "type": "COMFY_DYNAMICCOMBO_V3"
+     }
+    ],
+    "inputs": [],
+    "input_groups": []
+   },
+   "expr": "\n    (\n      $m := widgets.model;\n      $contains($m, \"lite\") ? {\n        \"type\": \"list_usd\",\n        \"usd\": [0.00025, 0.0015],\n        \"format\": { \"approximate\": true, \"separator\": \"-\", \"suffix\": \" per 1K tokens\" }\n      }\n      : ($contains($m, \"3.7 flash\") or $contains($m, \"3.8 flash\")) ? {\n        \"type\": \"list_usd\",\n        \"usd\": [0.002145, 0.010725],\n        \"format\": { \"approximate\": true, \"separator\": \"-\", \"suffix\": \" per 1K tokens\" }\n      }\n      : $contains($m, \"3.5 flash\") ? {\n        \"type\": \"list_usd\",\n        \"usd\": [0.0015, 0.009],\n        \"format\": { \"approximate\": true, \"separator\": \"-\", \"suffix\": \" per 1K tokens\" }\n      }\n      : {\n        \"type\": \"list_usd\",\n        \"usd\": [0.002, 0.012],\n        \"format\": { \"approximate\": true, \"separator\": \"-\", \"suffix\": \" per 1K tokens\" }\n      }\n    )\n    "
+  },
+  "search_aliases": null,
+  "essentials_category": "Text Generation",
+  "has_intermediate_output": false
+ },
  "GetImageSize": {
   "input": {
    "required": {
@@ -7321,6 +8200,665 @@
   "output_node": false,
   "has_intermediate_output": false,
   "search_aliases": []
+ },
+ "OpenAIGPTImageNodeV2": {
+  "input": {
+   "required": {
+    "prompt": [
+     "STRING",
+     {
+      "tooltip": "Text prompt for GPT Image",
+      "default": "",
+      "multiline": true
+     }
+    ],
+    "model": [
+     "COMFY_DYNAMICCOMBO_V3",
+     {
+      "options": [
+       {
+        "key": "gpt-image-2.5-flare",
+        "inputs": {
+         "required": {
+          "size": [
+           "COMBO",
+           {
+            "tooltip": "Image size. Select 'Custom' to use the custom width and height.",
+            "default": "auto",
+            "multiselect": false,
+            "options": [
+             "auto",
+             "1024x1024",
+             "1024x1536",
+             "1536x1024",
+             "2048x2048",
+             "2048x1152",
+             "1152x2048",
+             "3840x2160",
+             "2160x3840",
+             "Custom"
+            ]
+           }
+          ],
+          "custom_width": [
+           "INT",
+           {
+            "tooltip": "Used only when `size` is 'Custom'. Must be a multiple of 16.",
+            "default": 1024,
+            "min": 480,
+            "max": 3840,
+            "step": 16
+           }
+          ],
+          "custom_height": [
+           "INT",
+           {
+            "tooltip": "Used only when `size` is 'Custom'. Must be a multiple of 16.",
+            "default": 1024,
+            "min": 480,
+            "max": 3840,
+            "step": 16
+           }
+          ],
+          "background": [
+           "COMBO",
+           {
+            "tooltip": "Return image with or without background.",
+            "default": "auto",
+            "multiselect": false,
+            "options": [
+             "auto",
+             "opaque",
+             "transparent"
+            ]
+           }
+          ],
+          "quality": [
+           "COMBO",
+           {
+            "tooltip": "Image quality, affects cost and generation time.",
+            "default": "low",
+            "multiselect": false,
+            "options": [
+             "low",
+             "medium",
+             "high",
+             "xhigh",
+             "max"
+            ]
+           }
+          ],
+          "images": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "tooltip": "Optional reference image(s) for image editing. Up to 16 images.",
+            "template": {
+             "input": {
+              "required": {
+               "image": [
+                "IMAGE",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "image_1",
+              "image_2",
+              "image_3",
+              "image_4",
+              "image_5",
+              "image_6",
+              "image_7",
+              "image_8",
+              "image_9",
+              "image_10",
+              "image_11",
+              "image_12",
+              "image_13",
+              "image_14",
+              "image_15",
+              "image_16"
+             ],
+             "min": 0
+            }
+           }
+          ]
+         },
+         "optional": {
+          "mask": [
+           "MASK",
+           {
+            "tooltip": "Optional mask for inpainting (white areas will be replaced). Requires exactly one reference image."
+           }
+          ]
+         }
+        }
+       },
+       {
+        "key": "gpt-image-2.5-sunburst",
+        "inputs": {
+         "required": {
+          "size": [
+           "COMBO",
+           {
+            "tooltip": "Image size. Select 'Custom' to use the custom width and height.",
+            "default": "auto",
+            "multiselect": false,
+            "options": [
+             "auto",
+             "1024x1024",
+             "1024x1536",
+             "1536x1024",
+             "2048x2048",
+             "2048x1152",
+             "1152x2048",
+             "3840x2160",
+             "2160x3840",
+             "Custom"
+            ]
+           }
+          ],
+          "custom_width": [
+           "INT",
+           {
+            "tooltip": "Used only when `size` is 'Custom'. Must be a multiple of 16.",
+            "default": 1024,
+            "min": 480,
+            "max": 3840,
+            "step": 16
+           }
+          ],
+          "custom_height": [
+           "INT",
+           {
+            "tooltip": "Used only when `size` is 'Custom'. Must be a multiple of 16.",
+            "default": 1024,
+            "min": 480,
+            "max": 3840,
+            "step": 16
+           }
+          ],
+          "background": [
+           "COMBO",
+           {
+            "tooltip": "Return image with or without background.",
+            "default": "auto",
+            "multiselect": false,
+            "options": [
+             "auto",
+             "opaque",
+             "transparent"
+            ]
+           }
+          ],
+          "quality": [
+           "COMBO",
+           {
+            "tooltip": "Image quality, affects cost and generation time.",
+            "default": "low",
+            "multiselect": false,
+            "options": [
+             "low",
+             "medium",
+             "high",
+             "xhigh",
+             "max"
+            ]
+           }
+          ],
+          "images": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "tooltip": "Optional reference image(s) for image editing. Up to 16 images.",
+            "template": {
+             "input": {
+              "required": {
+               "image": [
+                "IMAGE",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "image_1",
+              "image_2",
+              "image_3",
+              "image_4",
+              "image_5",
+              "image_6",
+              "image_7",
+              "image_8",
+              "image_9",
+              "image_10",
+              "image_11",
+              "image_12",
+              "image_13",
+              "image_14",
+              "image_15",
+              "image_16"
+             ],
+             "min": 0
+            }
+           }
+          ]
+         },
+         "optional": {
+          "mask": [
+           "MASK",
+           {
+            "tooltip": "Optional mask for inpainting (white areas will be replaced). Requires exactly one reference image."
+           }
+          ]
+         }
+        }
+       },
+       {
+        "key": "gpt-image-2",
+        "inputs": {
+         "required": {
+          "size": [
+           "COMBO",
+           {
+            "tooltip": "Image size. Select 'Custom' to use the custom width and height.",
+            "default": "auto",
+            "multiselect": false,
+            "options": [
+             "auto",
+             "1024x1024",
+             "1024x1536",
+             "1536x1024",
+             "2048x2048",
+             "2048x1152",
+             "1152x2048",
+             "3840x2160",
+             "2160x3840",
+             "Custom"
+            ]
+           }
+          ],
+          "custom_width": [
+           "INT",
+           {
+            "tooltip": "Used only when `size` is 'Custom'. Must be a multiple of 16.",
+            "default": 1024,
+            "min": 480,
+            "max": 3840,
+            "step": 16
+           }
+          ],
+          "custom_height": [
+           "INT",
+           {
+            "tooltip": "Used only when `size` is 'Custom'. Must be a multiple of 16.",
+            "default": 1024,
+            "min": 480,
+            "max": 3840,
+            "step": 16
+           }
+          ],
+          "background": [
+           "COMBO",
+           {
+            "tooltip": "Return image with or without background.",
+            "default": "auto",
+            "multiselect": false,
+            "options": [
+             "auto",
+             "opaque",
+             "transparent"
+            ]
+           }
+          ],
+          "quality": [
+           "COMBO",
+           {
+            "tooltip": "Image quality, affects cost and generation time.",
+            "default": "low",
+            "multiselect": false,
+            "options": [
+             "low",
+             "medium",
+             "high"
+            ]
+           }
+          ],
+          "images": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "tooltip": "Optional reference image(s) for image editing. Up to 16 images.",
+            "template": {
+             "input": {
+              "required": {
+               "image": [
+                "IMAGE",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "image_1",
+              "image_2",
+              "image_3",
+              "image_4",
+              "image_5",
+              "image_6",
+              "image_7",
+              "image_8",
+              "image_9",
+              "image_10",
+              "image_11",
+              "image_12",
+              "image_13",
+              "image_14",
+              "image_15",
+              "image_16"
+             ],
+             "min": 0
+            }
+           }
+          ]
+         },
+         "optional": {
+          "mask": [
+           "MASK",
+           {
+            "tooltip": "Optional mask for inpainting (white areas will be replaced). Requires exactly one reference image."
+           }
+          ]
+         }
+        }
+       },
+       {
+        "key": "gpt-image-1.5",
+        "inputs": {
+         "required": {
+          "size": [
+           "COMBO",
+           {
+            "tooltip": "Image size.",
+            "default": "auto",
+            "multiselect": false,
+            "options": [
+             "auto",
+             "1024x1024",
+             "1024x1536",
+             "1536x1024"
+            ]
+           }
+          ],
+          "background": [
+           "COMBO",
+           {
+            "tooltip": "Return image with or without background.",
+            "default": "auto",
+            "multiselect": false,
+            "options": [
+             "auto",
+             "opaque",
+             "transparent"
+            ]
+           }
+          ],
+          "quality": [
+           "COMBO",
+           {
+            "tooltip": "Image quality, affects cost and generation time.",
+            "default": "low",
+            "multiselect": false,
+            "options": [
+             "low",
+             "medium",
+             "high"
+            ]
+           }
+          ],
+          "images": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "tooltip": "Optional reference image(s) for image editing. Up to 16 images.",
+            "template": {
+             "input": {
+              "required": {
+               "image": [
+                "IMAGE",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "image_1",
+              "image_2",
+              "image_3",
+              "image_4",
+              "image_5",
+              "image_6",
+              "image_7",
+              "image_8",
+              "image_9",
+              "image_10",
+              "image_11",
+              "image_12",
+              "image_13",
+              "image_14",
+              "image_15",
+              "image_16"
+             ],
+             "min": 0
+            }
+           }
+          ]
+         },
+         "optional": {
+          "mask": [
+           "MASK",
+           {
+            "tooltip": "Optional mask for inpainting (white areas will be replaced). Requires exactly one reference image."
+           }
+          ]
+         }
+        }
+       },
+       {
+        "key": "gpt-image-1",
+        "inputs": {
+         "required": {
+          "size": [
+           "COMBO",
+           {
+            "tooltip": "Image size.",
+            "default": "auto",
+            "multiselect": false,
+            "options": [
+             "auto",
+             "1024x1024",
+             "1024x1536",
+             "1536x1024"
+            ]
+           }
+          ],
+          "background": [
+           "COMBO",
+           {
+            "tooltip": "Return image with or without background.",
+            "default": "auto",
+            "multiselect": false,
+            "options": [
+             "auto",
+             "opaque",
+             "transparent"
+            ]
+           }
+          ],
+          "quality": [
+           "COMBO",
+           {
+            "tooltip": "Image quality, affects cost and generation time.",
+            "default": "low",
+            "multiselect": false,
+            "options": [
+             "low",
+             "medium",
+             "high"
+            ]
+           }
+          ],
+          "images": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "tooltip": "Optional reference image(s) for image editing. Up to 16 images.",
+            "template": {
+             "input": {
+              "required": {
+               "image": [
+                "IMAGE",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "image_1",
+              "image_2",
+              "image_3",
+              "image_4",
+              "image_5",
+              "image_6",
+              "image_7",
+              "image_8",
+              "image_9",
+              "image_10",
+              "image_11",
+              "image_12",
+              "image_13",
+              "image_14",
+              "image_15",
+              "image_16"
+             ],
+             "min": 0
+            }
+           }
+          ]
+         },
+         "optional": {
+          "mask": [
+           "MASK",
+           {
+            "tooltip": "Optional mask for inpainting (white areas will be replaced). Requires exactly one reference image."
+           }
+          ]
+         }
+        }
+       }
+      ]
+     }
+    ],
+    "n": [
+     "INT",
+     {
+      "tooltip": "How many images to generate",
+      "default": 1,
+      "min": 1,
+      "max": 8,
+      "step": 1,
+      "display": "number"
+     }
+    ],
+    "seed": [
+     "INT",
+     {
+      "tooltip": "not implemented yet in backend",
+      "default": 0,
+      "min": 0,
+      "max": 2147483647,
+      "step": 1,
+      "control_after_generate": true,
+      "display": "number"
+     }
+    ]
+   },
+   "hidden": {
+    "auth_token_comfy_org": [
+     "AUTH_TOKEN_COMFY_ORG"
+    ],
+    "api_key_comfy_org": [
+     "API_KEY_COMFY_ORG"
+    ],
+    "unique_id": [
+     "UNIQUE_ID"
+    ],
+    "comfy_usage_source": [
+     "COMFY_USAGE_SOURCE"
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "prompt",
+    "model",
+    "n",
+    "seed"
+   ],
+   "hidden": [
+    "auth_token_comfy_org",
+    "api_key_comfy_org",
+    "unique_id",
+    "comfy_usage_source"
+   ]
+  },
+  "is_input_list": false,
+  "output": [
+   "IMAGE"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_name": [
+   "IMAGE"
+  ],
+  "output_tooltips": [
+   null
+  ],
+  "output_matchtypes": null,
+  "name": "OpenAIGPTImageNodeV2",
+  "display_name": "OpenAI GPT Image 2.5",
+  "description": "Generates images via OpenAI's GPT Image endpoint.",
+  "python_module": "comfy_api_nodes.nodes_openai",
+  "category": "partner/image/OpenAI",
+  "output_node": false,
+  "deprecated": false,
+  "experimental": false,
+  "dev_only": false,
+  "api_node": true,
+  "price_badge": {
+   "engine": "jsonata",
+   "depends_on": {
+    "widgets": [
+     {
+      "name": "model",
+      "type": "COMFY_DYNAMICCOMBO_V3"
+     },
+     {
+      "name": "model.quality",
+      "type": "COMBO"
+     },
+     {
+      "name": "model.size",
+      "type": "COMBO"
+     },
+     {
+      "name": "n",
+      "type": "INT"
+     }
+    ],
+    "inputs": [],
+    "input_groups": [
+     "model.images"
+    ]
+   },
+   "expr": "\n                (\n                  $ranges := {\n                    \"gpt-image-1\": {\n                      \"low\":    [0.011, 0.02],\n                      \"medium\": [0.042, 0.07],\n                      \"high\":   [0.167, 0.25]\n                    },\n                    \"gpt-image-1.5\": {\n                      \"low\":    [0.009, 0.02],\n                      \"medium\": [0.034, 0.062],\n                      \"high\":   [0.133, 0.22]\n                    },\n                    \"gpt-image-2\": {\n                      \"low\":    [0.0019, 0.0237],\n                      \"medium\": [0.0186, 0.2135],\n                      \"high\":   [0.0744, 0.8539]\n                    },\n                    \"gpt-image-2.5-flare\": {\n                      \"low\":    [0.0023, 0.0283],\n                      \"medium\": [0.0056, 0.0636],\n                      \"high\":   [0.0222, 0.2544],\n                      \"xhigh\":  [0.0388, 0.4523],\n                      \"max\":    [0.0887, 1.0175]\n                    },\n                    \"gpt-image-2.5-sunburst\": {\n                      \"low\":    [0.0023, 0.0283],\n                      \"medium\": [0.0056, 0.0636],\n                      \"high\":   [0.0222, 0.2544],\n                      \"xhigh\":  [0.0388, 0.4523],\n                      \"max\":    [0.0887, 1.0175]\n                    }\n                  };\n                  $presets := {\n                    \"gpt-image-2\": {\n                      \"low\": {\"1024x1024\": 0.0071, \"1024x1536\": 0.0057, \"1536x1024\": 0.0057, \"2048x2048\": 0.0143, \"2048x1152\": 0.0057, \"1152x2048\": 0.0057, \"3840x2160\": 0.0134, \"2160x3840\": 0.0134},\n                      \"medium\": {\"1024x1024\": 0.0632, \"1024x1536\": 0.0494, \"1536x1024\": 0.0494, \"2048x2048\": 0.1284, \"2048x1152\": 0.0509, \"1152x2048\": 0.0509, \"3840x2160\": 0.1201, \"2160x3840\": 0.1201},\n                      \"high\": {\"1024x1024\": 0.2529, \"1024x1536\": 0.1976, \"1536x1024\": 0.1976, \"2048x2048\": 0.5138, \"2048x1152\": 0.2034, \"1152x2048\": 0.2034, \"3840x2160\": 0.4803, \"2160x3840\": 0.4803}\n                    },\n                    \"gpt-image-2.5\": {\n                      \"low\": {\"1024x1024\": 0.0084, \"1024x1536\": 0.0068, \"1536x1024\": 0.0068, \"2048x2048\": 0.0170, \"2048x1152\": 0.0067, \"1152x2048\": 0.0067, \"3840x2160\": 0.0159, \"2160x3840\": 0.0159},\n                      \"medium\": {\"1024x1024\": 0.0188, \"1024x1536\": 0.0147, \"1536x1024\": 0.0147, \"2048x2048\": 0.0383, \"2048x1152\": 0.0157, \"1152x2048\": 0.0157, \"3840x2160\": 0.0371, \"2160x3840\": 0.0371},\n                      \"high\": {\"1024x1024\": 0.0753, \"1024x1536\": 0.0589, \"1536x1024\": 0.0589, \"2048x2048\": 0.1531, \"2048x1152\": 0.0606, \"1152x2048\": 0.0606, \"3840x2160\": 0.1431, \"2160x3840\": 0.1431},\n                      \"xhigh\": {\"1024x1024\": 0.1339, \"1024x1536\": 0.1055, \"1536x1024\": 0.1055, \"2048x2048\": 0.2721, \"2048x1152\": 0.1077, \"1152x2048\": 0.1077, \"3840x2160\": 0.2544, \"2160x3840\": 0.2544},\n                      \"max\": {\"1024x1024\": 0.3013, \"1024x1536\": 0.2354, \"1536x1024\": 0.2354, \"2048x2048\": 0.6123, \"2048x1152\": 0.2424, \"1152x2048\": 0.2424, \"3840x2160\": 0.5724, \"2160x3840\": 0.5724}\n                    }\n                  };\n                  $perImage := {\n                    \"gpt-image-1\": [0.0019, 0.0019],\n                    \"gpt-image-1.5\": [0.0016, 0.0016],\n                    \"gpt-image-2\": [0.0098, 0.0147],\n                    \"gpt-image-2.5-flare\": [0.0117, 0.0176],\n                    \"gpt-image-2.5-sunburst\": [0.0117, 0.0176]\n                  };\n                  $model := widgets.model;\n                  $family := ($model = \"gpt-image-2.5-flare\" or $model = \"gpt-image-2.5-sunburst\") ? \"gpt-image-2.5\" : $model;\n                  $qualityRaw := $lookup(widgets, \"model.quality\");\n                  $quality := ($qualityRaw != null) ? $qualityRaw : \"\";\n                  $sizeRaw := $lookup(widgets, \"model.size\");\n                  $size := ($sizeRaw != null) ? $sizeRaw : \"\";\n                  $range := $lookup($lookup($ranges, $model), $quality);\n                  $preset := $lookup($lookup($lookup($presets, $family), $quality), $size);\n                  $out := ($preset != null) ? [$preset, $preset] : $range;\n                  $image := $lookup($perImage, $model);\n                  $refsRaw := $lookup(inputGroups, \"model.images\");\n                  $refs := ($refsRaw != null) ? $refsRaw : 0;\n                  $nRaw := widgets.n;\n                  $n := ($nRaw != null and $nRaw != 0) ? $nRaw : 1;\n                  $min := ($out[0] + $refs * $image[0]) * $n;\n                  $max := ($out[1] + $refs * $image[1]) * $n;\n                  $format := ($n = 1) ? {\"approximate\": true} : {\"suffix\": \"/Run\", \"approximate\": true};\n                  ($min = $max)\n                    ? {\"type\": \"usd\", \"usd\": $min, \"format\": $format}\n                    : {\"type\": \"range_usd\", \"min_usd\": $min, \"max_usd\": $max, \"format\": $format}\n                )\n                "
+  },
+  "search_aliases": null,
+  "essentials_category": null,
+  "has_intermediate_output": false
  },
  "PreviewAny": {
   "input": {

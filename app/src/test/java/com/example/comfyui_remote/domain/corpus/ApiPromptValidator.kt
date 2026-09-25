@@ -49,7 +49,7 @@ object ApiPromptValidator {
                 out += Violation("C1", id, "unknown class_type $classType")
                 continue
             }
-            val specs = inputSpecs(def)
+            val (specs, required) = effectiveSpecs(def, inputs)
 
             for ((key, value) in inputs.entrySet()) {
                 val link = asLink(value)
@@ -82,7 +82,7 @@ object ApiPromptValidator {
                 }
             }
 
-            for (key in requiredKeys(def)) {
+            for (key in required) {
                 if (specs[key]?.let { isOptionalAutogrow(it) } == true) continue
                 if (!inputs.has(key) && inputs.keySet().none { it.startsWith("$key.") }) {
                     out += Violation("C4", id, "$classType is missing required input $key")
@@ -92,18 +92,36 @@ object ApiPromptValidator {
         return out
     }
 
-    private fun inputSpecs(def: JsonObject): Map<String, JsonArray> {
-        val result = mutableMapOf<String, JsonArray>()
-        for (section in listOf("required", "optional")) {
-            def.getAsJsonObject("input")?.getAsJsonObject(section)?.entrySet()?.forEach { (k, v) ->
-                if (v.isJsonArray) result[k] = v.asJsonArray
+    /**
+     * Input specs in effect for this node, keyed by API input name, plus the required names. A
+     * COMFY_DYNAMICCOMBO_V3 input adds its selected option's inputs as "key.sub", recursively, like the
+     * server (comfy_api _io.py DynamicCombo). An unknown option adds nothing; C5 reports the key.
+     */
+    private fun effectiveSpecs(def: JsonObject, inputs: JsonObject): Pair<Map<String, JsonArray>, Set<String>> {
+        val specs = linkedMapOf<String, JsonArray>()
+        val required = linkedSetOf<String>()
+
+        fun add(prefix: String?, group: JsonObject?) {
+            for (section in listOf("required", "optional")) {
+                group?.getAsJsonObject(section)?.entrySet()?.forEach { (name, v) ->
+                    if (!v.isJsonArray) return@forEach
+                    val path = if (prefix == null) name else "$prefix.$name"
+                    val spec = v.asJsonArray
+                    specs[path] = spec
+                    if (section == "required") required += path
+                    if (spec[0].isJsonPrimitive && spec[0].asString == "COMFY_DYNAMICCOMBO_V3") {
+                        val selected = inputs.get(path)?.takeIf { it.isJsonPrimitive }?.asString ?: return@forEach
+                        val option = spec.takeIf { it.size() > 1 }?.get(1)?.asJsonObject?.getAsJsonArray("options")
+                            ?.map { it.asJsonObject }?.firstOrNull { it.get("key")?.asString == selected }
+                            ?: return@forEach
+                        add(path, option.getAsJsonObject("inputs"))
+                    }
+                }
             }
         }
-        return result
+        add(null, def.getAsJsonObject("input"))
+        return specs to required
     }
-
-    private fun requiredKeys(def: JsonObject): Set<String> =
-        def.getAsJsonObject("input")?.getAsJsonObject("required")?.keySet().orEmpty()
 
     /** An autogrow group with template.min == 0 may have no entries at all. */
     private fun isOptionalAutogrow(spec: JsonArray): Boolean {
