@@ -34,3 +34,9 @@ Implemented a persistent local queue and significant improvements to graph-to-AP
 
 - Closed Milestone 3 (Phases 29–88). Archived phase folders and the full roadmap to `.gsd/milestones/Milestone 3/`; summary in `Milestone 3-SUMMARY.md`.
 - Created Milestone 4 — Workflow compatibility: regression corpus (89), frontend-only/virtual nodes (90), pre-flight check against `/object_info` (91), full `node_errors` reporting (92).
+
+## 2026-09-25: Phase 89 Complete
+
+- Built the workflow compatibility corpus from the official ComfyUI templates (MIT), plus an `/object_info` snapshot from stock ComfyUI v0.37.2 running headless on CPU in the cloud session.
+- Lesson: `/object_info` input order is load-bearing. The converter maps `widgets_values` by that order, so a snapshot saved with sorted keys breaks every node.
+- The baseline exposed 4 converter gap groups in real templates, filed as Phases 90 and 93–95.

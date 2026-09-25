@@ -4,9 +4,12 @@
 
 - **Milestone**: 4 — Workflow compatibility (planned)
 - **Phase**: 89 (Workflow Compatibility Regression Corpus)
-- **Task**: Planning complete: 2 plans in 2 waves (`.gsd/phases/89/`)
-- **Status**: Ready for execution
+- **Status**: ✅ Done: 30-fixture corpus + `WorkflowCorpusTest`; baseline 18 pass, 12 known failures assigned to Phases 90, 93, 94 and 95. Android `testDebugUnitTest`/`assembleDebug` still to run locally (no Android SDK in the cloud session).
 - **Previous**: Milestone 3 ended at Phase 88 (bypassed/muted node modes, verified live)
+
+## Achievements (Milestone 4)
+
+- [x] Implemented Phase 89 (Workflow Compatibility Regression Corpus): 30 official ComfyUI templates (MIT) + stock ComfyUI v0.37.2 `object_info` snapshot, `ApiPromptValidator` (C1–C7) and `WorkflowCorpusTest` with enforced `known-failures.json`. The baseline found 4 converter gap groups, filed as Phase 90 scope plus new Phases 93–95. See `.gsd/phases/89/89-SUMMARY.md`.
 
 ## Achievements (Milestone 3)
 
@@ -89,6 +92,8 @@
 
 ## Roadmap Evolution
 
+- **2026-09-25**: Phases 93–95 added from the Phase 89 corpus baseline (subgraph input mapping by name, `COMFY_DYNAMICCOMBO_V3`, V3 widget-mapping gaps); Phase 90 scope extended (PrimitiveNode, bypass fallback).
+
 - **2026-09-25**: Milestone 3 completed and archived (`.gsd/milestones/Milestone 3/`, `Milestone 3-SUMMARY.md`). Milestone 4 created: workflow compatibility, Phases 89–92.
 
 - **2026-08-31**: Phase 82 implemented and verified via unit tests — sampler-topology detection (positive/negative link keys), hoist positive-source node's fields to front, no-op fallback on ambiguity. `testDebugUnitTest`/`assembleDebug` green.
@@ -104,7 +109,8 @@
 
 ## Next Steps
 
-1. **Execute Phase 89** (`/execute 89`): Plan 89.1 (fixtures and object_info snapshot), then Plan 89.2 (test harness and known-failures baseline). Plan 89.1 may need the user to export `/object_info` from their server if headless ComfyUI can't be installed in the session.
-2. **Optional device checks carried over from Milestone 3**:
+1. **Run locally**: `gradlew.bat testDebugUnitTest` and `gradlew.bat assembleDebug` to confirm Phase 89 under the Android toolchain.
+2. **Next phase**: Phase 90 (frontend-only nodes), or one of the new corpus-driven Phases 93–95. Each fix should delete its `known-failures.json` entries.
+3. **Optional device checks carried over from Milestone 3**:
    - Phase 82: confirm the positive prompt field appears first in a real workflow (unit-tested only).
    - Phase 80: confirm themed-icon retinting under Android 13+ Material You.

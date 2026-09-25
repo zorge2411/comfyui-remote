@@ -1,0 +1,106 @@
+package com.example.comfyui_remote.domain.corpus
+
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+class ApiPromptValidatorTest {
+
+    private val objectInfo = obj("""
+        {
+          "Loader": { "input": { "required": { "ckpt": [[], {}] } }, "output": ["MODEL", "CLIP"] },
+          "Sampler": { "input": {
+              "required": { "model": ["MODEL", {}], "sampler": [["euler", "dpmpp_2m"], {}],
+                            "scheduler": ["COMBO", {"options": ["normal", "karras"]}] },
+              "optional": { "steps": ["INT,FLOAT", {}] } },
+            "output": ["LATENT"] },
+          "Grow": { "input": { "required": { "values": ["COMFY_AUTOGROW_V3", {}] } }, "output": ["STRING"] },
+          "Reroute": { "input": { "required": {} }, "output": ["*"] }
+        }
+    """)
+
+    private val graph = obj("""{"nodes": [{"id": 1, "mode": 0}, {"id": 2, "mode": 0}, {"id": 9, "mode": 4}]}""")
+
+    private fun obj(s: String): JsonObject = JsonParser.parseString(s.trimIndent()).asJsonObject
+
+    private fun checks(api: String) =
+        ApiPromptValidator.validate(obj(api), objectInfo, graph).map { it.check }
+
+    private val loader = """"1": {"class_type": "Loader", "inputs": {"ckpt": "x.safetensors"}}"""
+
+    private fun sampler(model: String = """["1", 0]""", sampler: String = "\"euler\"", scheduler: String = "\"karras\"") =
+        """"2": {"class_type": "Sampler", "inputs": {"model": $model, "sampler": $sampler, "scheduler": $scheduler}}"""
+
+    @Test
+    fun `clean prompt has no violations`() {
+        assertEquals(emptyList<String>(), checks("{ $loader, ${sampler()} }"))
+    }
+
+    @Test
+    fun `dotted autogrow keys satisfy the required group input`() {
+        assertEquals(emptyList<String>(), checks("""{ "3": {"class_type": "Grow", "inputs": {"values.a": "x", "values.b": "y"}} }"""))
+    }
+
+    @Test
+    fun `C1 unknown class type`() {
+        assertEquals(listOf("C1"), checks("""{ "5": {"class_type": "Nope", "inputs": {}} }"""))
+    }
+
+    @Test
+    fun `C2 link to missing node`() {
+        assertEquals(listOf("C2"), checks("{ ${sampler(model = """["7", 0]""")} }"))
+    }
+
+    @Test
+    fun `C2 link to nonexistent output slot`() {
+        assertEquals(listOf("C2"), checks("{ $loader, ${sampler(model = """["1", 5]""")} }"))
+    }
+
+    @Test
+    fun `C3 link type mismatch`() {
+        assertEquals(listOf("C3"), checks("{ $loader, ${sampler(model = """["1", 1]""")} }"))
+    }
+
+    @Test
+    fun `C3 comma separated types overlap`() {
+        val api = """{ $loader, "2": {"class_type": "Sampler", "inputs": {"model": ["1", 0], "sampler": "euler",
+            "scheduler": "normal", "steps": ["3", 0]}}, "3": {"class_type": "Grow", "inputs": {"values.a": "1"}} }"""
+        assertEquals(listOf("C3"), checks(api)) // STRING does not overlap INT,FLOAT
+    }
+
+    @Test
+    fun `file-valued combo values are not checked`() {
+        assertEquals(emptyList<String>(), checks("{ $loader, ${sampler(sampler = "\"model.safetensors\"")} }"))
+    }
+
+    @Test
+    fun `match-type outputs link to any input`() {
+        val info = objectInfo.deepCopy().apply {
+            add("Switch", JsonParser.parseString("""{"input": {"required": {}}, "output": ["COMFY_MATCHTYPE_V3"]}"""))
+        }
+        val api = obj("""{ "5": {"class_type": "Switch", "inputs": {}}, ${sampler(model = """["5", 0]""")} }""")
+        assertEquals(emptyList<ApiPromptValidator.Violation>(), ApiPromptValidator.validate(api, info, graph))
+    }
+
+    @Test
+    fun `C4 missing required input`() {
+        assertEquals(listOf("C4"), checks("""{ $loader, "2": {"class_type": "Sampler", "inputs": {"model": ["1", 0], "scheduler": "normal"}} }"""))
+    }
+
+    @Test
+    fun `C5 invalid legacy and V3 combo values`() {
+        assertEquals(listOf("C5"), checks("{ $loader, ${sampler(sampler = "\"Euler A\"")} }"))
+        assertEquals(listOf("C5"), checks("{ $loader, ${sampler(scheduler = "\"Karras\"")} }"))
+    }
+
+    @Test
+    fun `C6 bypassed node sent`() {
+        assertEquals(listOf("C6"), checks("""{ "9": {"class_type": "Loader", "inputs": {"ckpt": "x"}} }"""))
+    }
+
+    @Test
+    fun `C7 frontend-only node sent`() {
+        assertEquals(listOf("C7"), checks("""{ "4": {"class_type": "Reroute", "inputs": {}} }"""))
+    }
+}

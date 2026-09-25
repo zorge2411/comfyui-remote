@@ -74,3 +74,6 @@ build_log*.txt
 
 # Misc
 .cpx
+
+# Python
+__pycache__/

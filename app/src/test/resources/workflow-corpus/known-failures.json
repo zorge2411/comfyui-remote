@@ -1,0 +1,62 @@
+{
+ "3d_hunyuan3d_multiview_to_model.json": {
+  "checks": ["C3"],
+  "reason": "Bypassed CLIPVisionEncode (output CLIP_VISION_OUTPUT) has no input of that type; the same-index fallback wires CLIP_VISION into an optional CLIP_VISION_OUTPUT input. The frontend drops the link instead.",
+  "phase": [90]
+ },
+ "audio_ace_step_1_5_checkpoint.json": {
+  "checks": ["C7"],
+  "reason": "PrimitiveNode is sent to the server instead of being resolved into its targets' widget values.",
+  "phase": [90]
+ },
+ "hidream_e1_1.json": {
+  "checks": ["C4", "C7"],
+  "reason": "PrimitiveNode sent (C7). ImageScaleToTotalPixels.resolution_steps is newer than the workflow, so widgets_values has no entry for it; the converter omits it instead of using the object_info default (C4).",
+  "phase": [90, 95]
+ },
+ "image_boogu_image_0_1_turbo_t2i.json": {
+  "checks": ["C3"],
+  "reason": "Subgraph instance inputs are mapped to subgraph inputs by position, not by name: the linked width input lands on the subgraph's 'text' input (CLIPTextEncode.text gets INT).",
+  "phase": [93]
+ },
+ "image_mage_flow_t2i_int8.json": {
+  "checks": ["C3", "C4"],
+  "reason": "Subgraph instance inputs mapped by position, not by name (prompt gets INT; images input lost).",
+  "phase": [93]
+ },
+ "image_qwen_Image_2512_controlnet.json": {
+  "checks": ["C4", "C5"],
+  "reason": "ResizeImageMaskNode.resize_type is COMFY_DYNAMICCOMBO_V3; its sub-widget values ('scale total pixels' then 1.6) are not expanded, so scale_method gets 1.6 (C5). ControlNetApplyAdvanced inside a subgraph loses end_percent when its linked strength widget is promoted (C4).",
+  "phase": [93, 94]
+ },
+ "template_image_speech_to_video.json": {
+  "checks": ["C5"],
+  "reason": "The control_after_generate value ('fixed') after a seed is consumed by the next widget when that widget is a V3 COMBO (ElevenLabsTextToSpeech.output_format). ResizeImageMaskNode dynamic combo not expanded.",
+  "phase": [94, 95]
+ },
+ "templates-character_sheet.json": {
+  "checks": ["C5"],
+  "reason": "control_after_generate value after seed is consumed by the next V3 COMBO widget (GeminiImage2Node.aspect_ratio = 'fixed'), shifting every later widget.",
+  "phase": [95]
+ },
+ "utility_depth_anything3_image_depth_estimation.json": {
+  "checks": ["C4"],
+  "reason": "ImageCompare.compare_view is newer than the workflow (empty widgets_values); the object_info default is not used.",
+  "phase": [95]
+ },
+ "utility_image_stitch.json": {
+  "checks": ["C5"],
+  "reason": "ResizeImageMaskNode.resize_type COMFY_DYNAMICCOMBO_V3 sub-widgets not expanded; scale_method gets 2048.",
+  "phase": [94]
+ },
+ "utility_topaz_illustration_upscale.json": {
+  "checks": ["C7"],
+  "reason": "PrimitiveNode is sent to the server.",
+  "phase": [90]
+ },
+ "video_ltx2_depth_to_video.json": {
+  "checks": ["C3", "C4", "C5"],
+  "reason": "Subgraph input mapping by position (CLIPTextEncode.text gets IMAGE, strength gets BOOLEAN, LTXVAddGuide loses strength) plus ResizeImageMaskNode dynamic combo not expanded.",
+  "phase": [93, 94]
+ }
+}
