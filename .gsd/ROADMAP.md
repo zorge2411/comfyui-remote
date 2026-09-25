@@ -7,8 +7,8 @@
 ## Must-Haves
 
 - [x] Regression corpus of representative graph workflows that the converter test suite runs on every build (Phase 89)
-- [ ] Frontend-only / virtual nodes (Reroute, PrimitiveNode, SetNode/GetNode, Note) convert correctly, with type-aware passthrough
-- [ ] Every corpus fixture passes: `known-failures.json` is empty (Phases 90, 93–95); 4 entries left after Phase 95, all for Phase 90
+- [x] Frontend-only / virtual nodes (Reroute, PrimitiveNode, SetNode/GetNode, Note) convert correctly, with type-aware passthrough (Phase 90)
+- [x] Every corpus fixture passes: `known-failures.json` is empty (Phases 90, 93–95)
 - [ ] Pre-flight check against `/object_info` before queueing (missing node types, missing required inputs, invalid combo values), with no false "missing node" warnings for nodes the converter removes
 - [ ] All server `node_errors` shown to the user, per node, not just the first one
 
@@ -26,7 +26,7 @@
 
 ### Phase 90: Frontend-Only and Virtual Node Support
 
-**Status**: 🔵 Planned (`.gsd/phases/90/`: context, research, 3 plans)
+**Status**: ✅ Done (code); device check pending (`.gsd/phases/90/90-SUMMARY.md`)
 **Objective**: Handle nodes that exist only in the editor. Phantom-node passthrough currently takes the first input link without checking its type (`GraphToApiConverter.resolveRealSource`); make it type-aware like the Phase 88 bypass logic, and resolve SetNode/GetNode pairs, which are linked by name rather than by a graph link. Resolve PrimitiveNode into its targets' widget values. Also fix the Phase 88 bypass fallback: when no input matches the output type, drop the link instead of wiring the same-index input (corpus: `3d_hunyuan3d_multiview_to_model`).
 **Corpus fixtures to fix**: `3d_hunyuan3d_multiview_to_model`, `audio_ace_step_1_5_checkpoint`, `hidream_e1_1`, `utility_topaz_illustration_upscale`
 **Also investigate (from the Phase 95 all-template run)**: unresolved link sources around bypassed/muted groups: `video_wan2_2_14B_s2v` (23 missing inputs), `flux1_dev_uso_reference_image_gen`, `image_ernie_image(_turbo)` (`PreviewAny.source`), `image_qwen_image_instantx_inpainting_controlnet`; 29 C7 PrimitiveNode across templates.
@@ -35,7 +35,7 @@
 ### Phase 91: Pre-flight Compatibility Check
 
 **Status**: ⬜ Not Started
-**Objective**: Before queueing, validate the converted prompt against the server's `/object_info`: report missing node types, missing required inputs and invalid combo values in the app. Replace the current missing-node list, which can include nodes the converter already removed (e.g. Reroute).
+**Objective**: Before queueing, validate the converted prompt against the server's `/object_info`: report missing node types, missing required inputs and invalid combo values in the app. Replace the current missing-node list. Since Phase 90 the converter no longer reports frontend-only nodes (Reroute, PrimitiveNode, notes, Set/Get) or muted/bypassed subgraph instances as missing.
 **Depends on**: Phase 90
 
 ### Phase 92: Full Server Validation Error Reporting
@@ -69,6 +69,14 @@
 **Scale**: the main causes of the 162 C5 and 109 C4 violations still left across the 572 templates after Phase 94.
 **Discovered**: Phase 89 corpus baseline (2026-09-25); scope widened by the Phase 94 all-template measurement
 **Corpus fixtures to fix**: `templates-character_sheet`, `template_image_speech_to_video`, `utility_depth_anything3_image_depth_estimation`, `hidream_e1_1` (C4 part)
+
+### Phase 97: Unlinked Subgraph Inputs Feeding Sockets
+
+**Status**: ⬜ Not Started
+**Objective**: When a subgraph instance input isn't linked but is backed by a promoted widget, the frontend sends that widget's value to **every** interior target of the input, sockets included (`ExecutableNodeDTO.resolveInput`: `widgetInfo` from `subgraphNodeInput.widgetId`). Phase 93 applies promoted values only to interior widget inputs, so a socket such as `PreviewAny.source` fed from the same subgraph input gets nothing and the server rejects the missing required input.
+**Evidence**: `image_ernie_image` and `image_ernie_image_turbo`: subgraph inputs `width`/`height` feed `71.width`/`71.height` (promoted via `proxyWidgets`) and `PreviewAny.source` (nodes 92/93, `*` sockets). These are the only remaining C4 not caused by the template itself, in the Phase 90 all-template run (2 templates, 4 inputs).
+**Discovered**: Phase 90 investigation (2026-09-25)
+**Depends on**: Phase 93
 
 ### Phase 96: In-App Template Browser
 
