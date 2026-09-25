@@ -24,7 +24,11 @@ class GraphToApiConverterVirtualNodeTest {
           "Sink": { "input": { "required": { "model": ["MODEL", {}] } } },
           "IntSrc": { "input": { "required": {} } },
           "Sampler": { "input": { "required": { "model": ["MODEL", {}], "steps": ["INT", {"default": 20}],
-                                                "cfg": ["FLOAT", {"default": 8.0}] } } }
+                                                "cfg": ["FLOAT", {"default": 8.0}] } } },
+          "Seeded": { "input": { "required": { "seed": ["INT", {}], "steps": ["INT", {}] } } },
+          "Picker": { "input": { "required": { "mode": [["Alpha", "Beta"], {}] } } },
+          "TextEnc": { "input": { "required": { "text": ["STRING", {}] } } },
+          "Latent": { "input": { "required": { "width": ["INT", {}], "height": ["INT", {}] } } }
         }
     """.trimIndent()
 
@@ -153,6 +157,175 @@ class GraphToApiConverterVirtualNodeTest {
         """.trimIndent())
         assertFalse(inputsOf(api, 3).has("model"))
         assertEquals(30, inputsOf(api, 3).get("steps").asInt)
+    }
+
+    // --- PrimitiveNode (widgetInputs.ts applyToGraph) ---
+
+    private fun primitive(id: Int, value: String, type: String, widget: String, links: String, mode: Int = 0) =
+        """{"id": $id, "type": "PrimitiveNode", "mode": $mode, "inputs": [],
+            "outputs": [{"name": "$type", "type": "$type", "widget": {"name": "$widget"}, "links": [$links]}],
+            "widgets_values": [$value, "fixed"]}"""
+
+    private fun sampler(id: Int, stepsLink: Int, values: String) =
+        """{"id": $id, "type": "Sampler", "mode": 0,
+            "inputs": [{"name": "model", "type": "MODEL", "link": null},
+                       {"name": "steps", "type": "INT", "widget": {"name": "steps"}, "link": $stepsLink}],
+            "widgets_values": [$values]}"""
+
+    @Test
+    fun `primitive value replaces the target's saved value and the primitive is not sent`() {
+        val result = result("""
+            {"nodes": [ ${primitive(7, "42", "INT", "steps", "20")}, ${sampler(3, 20, "30, 6.5")} ],
+             "links": [ [20, 7, 0, 3, 1, "INT"] ]}
+        """.trimIndent())
+        val api = JsonParser.parseString(result.json).asJsonObject
+        assertFalse(api.has("7"))
+        assertEquals(42, inputsOf(api, 3).get("steps").asInt)
+        assertEquals(6.5, inputsOf(api, 3).get("cfg").asDouble, 0.0)
+        assertTrue(result.missingNodes.isEmpty())
+    }
+
+    @Test
+    fun `one primitive sets every target`() {
+        val api = convert("""
+            {"nodes": [ ${primitive(7, "42", "INT", "steps", "20, 21")},
+              ${sampler(3, 20, "30, 6.5")}, ${sampler(4, 21, "25, 5.0")} ],
+             "links": [ [20, 7, 0, 3, 1, "INT"], [21, 7, 0, 4, 1, "INT"] ]}
+        """.trimIndent())
+        assertEquals(42, inputsOf(api, 3).get("steps").asInt)
+        assertEquals(42, inputsOf(api, 4).get("steps").asInt)
+    }
+
+    @Test
+    fun `seed primitive keeps later widgets aligned past the target's control value`() {
+        val api = convert("""
+            {"nodes": [ ${primitive(7, "31", "INT", "seed", "20")},
+              {"id": 3, "type": "Seeded", "mode": 0,
+               "inputs": [{"name": "seed", "type": "INT", "widget": {"name": "seed"}, "link": 20}],
+               "widgets_values": [31, "fixed", 8]} ],
+             "links": [ [20, 7, 0, 3, 0, "INT"] ]}
+        """.trimIndent())
+        assertEquals(31, inputsOf(api, 3).get("seed").asInt)
+        assertEquals(8, inputsOf(api, 3).get("steps").asInt)
+    }
+
+    @Test
+    fun `primitive combo value is resolved against the options`() {
+        val api = convert("""
+            {"nodes": [ ${primitive(7, "\"beta\"", "COMBO", "mode", "20")},
+              {"id": 3, "type": "Picker", "mode": 0,
+               "inputs": [{"name": "mode", "type": "COMBO", "widget": {"name": "mode"}, "link": 20}],
+               "widgets_values": ["Alpha"]} ],
+             "links": [ [20, 7, 0, 3, 0, "COMBO"] ]}
+        """.trimIndent())
+        assertEquals("Beta", inputsOf(api, 3).get("mode").asString)
+    }
+
+    @Test
+    fun `primitive through a reroute leaves the target's saved value`() {
+        val api = convert("""
+            {"nodes": [ ${primitive(7, "42", "INT", "steps", "20")},
+              {"id": 2, "type": "Reroute", "mode": 0, "inputs": [{"name": "", "type": "*", "link": 20}],
+               "outputs": [{"name": "", "type": "INT", "links": [21]}]},
+              ${sampler(3, 21, "30, 6.5")} ],
+             "links": [ [20, 7, 0, 2, 0, "*"], [21, 2, 0, 3, 1, "INT"] ]}
+        """.trimIndent())
+        assertFalse(api.has("2"))
+        assertEquals(30, inputsOf(api, 3).get("steps").asInt)
+    }
+
+    @Test
+    fun `muted primitive still applies its value`() {
+        val api = convert("""
+            {"nodes": [ ${primitive(7, "42", "INT", "steps", "20", mode = 2)}, ${sampler(3, 20, "30, 6.5")} ],
+             "links": [ [20, 7, 0, 3, 1, "INT"] ]}
+        """.trimIndent())
+        assertFalse(api.has("7"))
+        assertEquals(42, inputsOf(api, 3).get("steps").asInt)
+    }
+
+    @Test
+    fun `primitive feeding a subgraph instance input reaches the interior node`() {
+        val subgraph = """
+            {"id": "SG", "name": "SG",
+             "inputs": [{"id": "i0", "name": "width", "type": "INT", "linkIds": [902]}],
+             "outputs": [],
+             "nodes": [
+               {"id": 11, "type": "Latent", "inputs": [
+                  {"name": "width", "type": "INT", "widget": {"name": "width"}, "link": 902},
+                  {"name": "height", "type": "INT", "widget": {"name": "height"}, "link": null}], "widgets_values": [512, 768]}],
+             "links": [{"id": 902, "origin_id": -10, "origin_slot": 0, "target_id": 11, "target_slot": 0, "type": "INT"}]}
+        """
+        val api = convert("""
+            {"definitions": {"subgraphs": [$subgraph]},
+             "nodes": [ ${primitive(7, "1024", "INT", "width", "50")},
+               {"id": 2, "type": "SG", "inputs": [{"name": "width", "type": "INT", "widget": {"name": "width"}, "link": 50}],
+                "widgets_values": []} ],
+             "links": [[50, 7, 0, 2, 0, "INT"]]}
+        """.trimIndent())
+        val latent = api.entrySet().single { it.value.asJsonObject.get("class_type").asString == "Latent" }
+            .value.asJsonObject.getAsJsonObject("inputs")
+        assertEquals(1024, latent.get("width").asInt)
+        assertEquals(768, latent.get("height").asInt)
+        assertFalse(api.entrySet().any { it.value.asJsonObject.get("class_type").asString == "PrimitiveNode" })
+    }
+
+    // --- KJNodes SetNode / GetNode (setgetnodes.js) ---
+
+    private fun setNode(id: Int, name: String, link: Int?, type: String = "MODEL") =
+        """{"id": $id, "type": "SetNode", "mode": 0, "inputs": [{"name": "$type", "type": "$type", "link": $link}],
+            "outputs": [{"name": "*", "type": "*", "links": []}], "widgets_values": ["$name"]}"""
+
+    private fun getNode(id: Int, name: String, links: String, type: String = "MODEL") =
+        """{"id": $id, "type": "GetNode", "mode": 0, "inputs": [],
+            "outputs": [{"name": "$type", "type": "$type", "links": [$links]}], "widgets_values": ["$name"]}"""
+
+    @Test
+    fun `get node resolves to its set node's source`() {
+        val result = result("""
+            {"nodes": [ ${src(1, "ModelSrc", "MODEL")}, ${setNode(5, "model", 10)}, ${getNode(6, "model", "11")}, ${sink(3, 11)} ],
+             "links": [ [10, 1, 0, 5, 0, "MODEL"], [11, 6, 0, 3, 0, "MODEL"] ]}
+        """.trimIndent())
+        val api = JsonParser.parseString(result.json).asJsonObject
+        assertFalse(api.has("5"))
+        assertFalse(api.has("6"))
+        assertEquals("1", inputsOf(api, 3).getAsJsonArray("model")[0].asString)
+        assertTrue(result.missingNodes.isEmpty())
+    }
+
+    @Test
+    fun `set node fed through a reroute and a bypassed node resolves upstream`() {
+        val api = convert("""
+            {"nodes": [ ${src(1, "ModelSrc", "MODEL")},
+              {"id": 2, "type": "Sink", "mode": 4, "inputs": [{"name": "model", "type": "MODEL", "link": 10}],
+               "outputs": [{"name": "model", "type": "MODEL"}], "widgets_values": []},
+              {"id": 4, "type": "Reroute", "mode": 0, "inputs": [{"name": "", "type": "*", "link": 12}],
+               "outputs": [{"name": "", "type": "MODEL", "links": [13]}]},
+              ${setNode(5, "model", 13)}, ${getNode(6, "model", "11")}, ${sink(3, 11)} ],
+             "links": [ [10, 1, 0, 2, 0, "MODEL"], [12, 2, 0, 4, 0, "MODEL"], [13, 4, 0, 5, 0, "MODEL"], [11, 6, 0, 3, 0, "MODEL"] ]}
+        """.trimIndent())
+        assertEquals("1", inputsOf(api, 3).getAsJsonArray("model")[0].asString)
+    }
+
+    @Test
+    fun `get node without a set node drops the link and a widget input keeps its value`() {
+        val api = convert("""
+            {"nodes": [ ${getNode(6, "missing", "11")}, ${getNode(7, "missing", "12", type = "INT")},
+              ${sink(3, 11)}, ${sampler(4, 12, "30, 6.5")} ],
+             "links": [ [11, 6, 0, 3, 0, "MODEL"], [12, 7, 0, 4, 1, "INT"] ]}
+        """.trimIndent())
+        assertFalse(inputsOf(api, 3).has("model"))
+        assertEquals(30, inputsOf(api, 4).get("steps").asInt)
+    }
+
+    @Test
+    fun `duplicate set node names use the first in node order`() {
+        val api = convert("""
+            {"nodes": [ ${src(1, "ModelSrc", "MODEL")}, ${src(2, "ModelSrc", "MODEL")},
+              ${setNode(9, "model", 10)}, ${setNode(5, "model", 12)}, ${getNode(6, "model", "11")}, ${sink(3, 11)} ],
+             "links": [ [10, 1, 0, 9, 0, "MODEL"], [12, 2, 0, 5, 0, "MODEL"], [11, 6, 0, 3, 0, "MODEL"] ]}
+        """.trimIndent())
+        assertEquals("1", inputsOf(api, 3).getAsJsonArray("model")[0].asString)
     }
 
     @Test

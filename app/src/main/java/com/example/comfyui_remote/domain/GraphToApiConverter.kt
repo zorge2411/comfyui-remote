@@ -156,6 +156,35 @@ object GraphToApiConverter {
             return inputsArr.indexOfFirst { fits(it) }
         }
 
+        fun constantName(node: JsonObject): String? =
+            node.get("widgets_values")?.takeIf { it.isJsonArray }?.asJsonArray
+                ?.takeIf { it.size() > 0 }?.get(0)?.takeIf { it.isJsonPrimitive }?.asString
+
+        // KJNodes SetNode/GetNode pair by name (widgets_values[0]); a GetNode reads the first SetNode in node
+        // order (setgetnodes.js getInputLink). Subgraphs are already flattened here, so the per-subgraph
+        // scoping KJNodes does across graphs isn't reproduced; duplicates are logged.
+        val settersByName = mutableMapOf<String, JsonObject>()
+        virtualNodes.values.filter { it.get("type").asString == "SetNode" }.forEach { setter ->
+            val name = constantName(setter) ?: return@forEach
+            if (settersByName.containsKey(name)) {
+                println("CONVERT_DEBUG: Duplicate SetNode name '$name' (node ${setter.get("id")}); using the first")
+            } else {
+                settersByName[name] = setter
+            }
+        }
+
+        // PrimitiveNode.applyToGraph writes widgets_values[0] into every directly linked target widget,
+        // whatever the primitive's mode. Returns that value when [linkId] comes straight from a PrimitiveNode.
+        fun primitiveValueOf(linkId: Int): JsonElement? {
+            val node = linkMap[linkId]?.first?.let { virtualNodes[it] } ?: return null
+            if (node.get("type").asString != "PrimitiveNode") return null
+            val replace = node.getAsJsonObject("properties")?.get("Run widget replace on values")
+            if (replace != null && replace.isJsonPrimitive && replace.asJsonPrimitive.isBoolean && replace.asBoolean) {
+                println("CONVERT_DEBUG: PrimitiveNode ${node.get("id")}: widget text replacement not supported; sending the raw value")
+            }
+            return node.get("widgets_values")?.takeIf { it.isJsonArray }?.asJsonArray?.takeIf { it.size() > 0 }?.get(0)
+        }
+
         // Resolves a link to the real node output that feeds it, following the frontend's
         // ExecutableNodeDTO.resolveOutput: muted sources drop, bypassed and frontend-only nodes pass through.
         fun resolveRealSource(initialLinkId: Int, targetType: String?, visited: MutableSet<Int> = mutableSetOf()): Pair<Int, Int>? {
@@ -176,9 +205,17 @@ object GraphToApiConverter {
                 return if (replacement != null) resolveRealSource(replacement, targetType, visited) else null
             }
 
-            // Frontend-only nodes pass output [slot] through from the input at the same index (getInputLink)
+            // Frontend-only nodes pass output [slot] through from the input at the same index (getInputLink);
+            // a GetNode reads it from its SetNode. A PrimitiveNode has no inputs, so its links drop here.
             virtualNodes[sourceId]?.let { virtual ->
-                val next = inputLinkAt(inputsOf(virtual), sourceSlot)
+                val next = if (virtual.get("type").asString == "GetNode") {
+                    val name = constantName(virtual)
+                    val setter = name?.let { settersByName[it] }
+                    if (setter == null) println("CONVERT_DEBUG: GetNode $sourceId: no SetNode named '$name'; dropping")
+                    setter?.let { inputLinkAt(inputsOf(it), sourceSlot) }
+                } else {
+                    inputLinkAt(inputsOf(virtual), sourceSlot)
+                }
                 println("CONVERT_DEBUG: Node $sourceId is frontend-only; output $sourceSlot -> input link $next")
                 return if (next != null) resolveRealSource(next, targetType, visited) else null
             }
@@ -426,14 +463,21 @@ object GraphToApiConverter {
                     val slot = graphSlot(path)
                     val linkId = linkOf(slot)
                     if (linkId != null) {
-                        val linked = addLink(path, linkId)
+                        val primitive = primitiveValueOf(linkId)
+                        val linked = primitive == null && addLink(path, linkId)
                         // A widget converted to an input keeps its slot in widgets_values even when linked.
                         if (slot?.has("widget") == true) {
                             val saved = findNextCompatibleWidget(spec)
                             skipControlWidgets(controlSlots(path, spec))
                             // The frontend writes every widget value and only replaces it with a link that
-                            // resolves (graphToPrompt), so a broken link still sends the widget's value.
-                            if (!linked) widgetValueFor(path, spec, saved, hasWidget(spec))?.let { inputs.add(path, it) }
+                            // resolves (graphToPrompt), so a broken link still sends the widget's value. A target
+                            // reached through a Reroute isn't a direct primitive link, so it keeps its saved value.
+                            val value = when {
+                                linked -> null
+                                primitive != null -> resolveComboValue(path, spec, promoted?.get(path) ?: primitive)
+                                else -> widgetValueFor(path, spec, saved, hasWidget(spec))
+                            }
+                            value?.let { inputs.add(path, it) }
                         }
                         return
                     }

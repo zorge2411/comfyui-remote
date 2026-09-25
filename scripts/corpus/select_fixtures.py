@@ -16,7 +16,7 @@ import os
 import sys
 
 # Node types that exist only in the ComfyUI frontend; they never reach /prompt.
-FRONTEND_ONLY = {"Reroute", "PrimitiveNode", "Note", "MarkdownNote"}
+FRONTEND_ONLY = {"Reroute", "PrimitiveNode", "Note", "MarkdownNote", "SetNode", "GetNode"}
 
 FEATURES = ["subgraph", "linked_widget", "autogrow", "bypass", "mute",
             "reroute", "primitive_node", "note", "load_image", "video_out", "api_node"]

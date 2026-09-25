@@ -8,7 +8,7 @@ import com.google.gson.JsonObject
  * Structural checks on an API-format prompt produced by GraphToApiConverter, against a
  * saved /object_info. No server needed. Check IDs (see .gsd/phases/89/89-CONTEXT.md, D-05):
  *  C1 unknown class_type, C2 dangling link, C3 link type mismatch, C4 missing required input,
- *  C5 invalid combo value (file-name values are not checked), C6 muted/bypassed node sent, C7 frontend-only node sent.
+ *  C5 invalid combo value (file-name values are not checked), C6 muted/bypassed node sent, C7 frontend-only node sent (FRONTEND_ONLY, incl. KJNodes SetNode/GetNode).
  */
 object ApiPromptValidator {
 
@@ -16,7 +16,7 @@ object ApiPromptValidator {
         override fun toString() = "$check node $nodeId: $detail"
     }
 
-    val FRONTEND_ONLY = setOf("Reroute", "PrimitiveNode", "Note", "MarkdownNote")
+    val FRONTEND_ONLY = setOf("Reroute", "PrimitiveNode", "Note", "MarkdownNote", "SetNode", "GetNode")
 
     // V3 dynamic input kinds: their API keys are dotted ("values.a", "model.max_tokens").
     private val DOTTED_KINDS = setOf("COMFY_AUTOGROW_V3", "COMFY_DYNAMICCOMBO_V3")
