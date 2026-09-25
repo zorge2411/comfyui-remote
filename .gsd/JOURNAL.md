@@ -29,3 +29,8 @@ Implemented a persistent local queue and significant improvements to graph-to-AP
 - Added todo: copy all text button in prompt text box
 - Added todo: support for image to image workflow nodes
 - Added todo: positive prompt text input must be the most top one in workflow
+
+## 2026-09-25: Milestone 3 Complete, Milestone 4 Created
+
+- Closed Milestone 3 (Phases 29–88). Archived phase folders and the full roadmap to `.gsd/milestones/Milestone 3/`; summary in `Milestone 3-SUMMARY.md`.
+- Created Milestone 4 — Workflow compatibility: regression corpus (89), frontend-only/virtual nodes (90), pre-flight check against `/object_info` (91), full `node_errors` reporting (92).

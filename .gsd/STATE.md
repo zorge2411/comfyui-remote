@@ -2,12 +2,12 @@
 
 ## Current Position
 
-- **Phase**: 88 (Honor Bypassed and Muted Node Modes in Graph Conversion)
-- **Status**: ✅ Done — verified live: real MiniMax H3 easy i2v workflow runs end to end from the phone
-- **Milestone 3**: All roadmapped phases (through 88) done; backlog empty
-- **Session Goal**: Completed
+- **Milestone**: 4 — Workflow compatibility (planned)
+- **Phase**: Not started (next: Phase 89, Workflow Compatibility Regression Corpus)
+- **Status**: Milestone 3 complete and archived 2026-09-25; Milestone 4 planned with Phases 89–92
+- **Previous**: Milestone 3 ended at Phase 88 (bypassed/muted node modes, verified live)
 
-## Achievements
+## Achievements (Milestone 3)
 
 - [x] Implemented Phase 88 (bypassed/muted node modes) — found testing the real MiniMax workflow on the phone: bypassed node 18 (SageAttention patch) was sent to the server and failed. Converter now drops muted nodes and rewires bypassed ones to their type-matched upstream input. 5 tests; verified live: the real MiniMax H3 easy i2v workflow now runs end to end from the phone and the video lands in the gallery (also confirms Phases 84, 86, 87 in real use).
 - [x] Implemented Phase 87 (MiniMax widget mapping) — `GraphToApiConverter` Mode B: linked widget-inputs consume their `widgets_values` slot (fixed CreateVideo `bit_depth`=24), and invalid combo values from custom-frontend localized labels resolve to valid options (fixed MiniMaxH3Easy). 5 tests; real workflow now passes server validation (`node_errors: {}`).
@@ -88,6 +88,8 @@
 
 ## Roadmap Evolution
 
+- **2026-09-25**: Milestone 3 completed and archived (`.gsd/milestones/Milestone 3/`, `Milestone 3-SUMMARY.md`). Milestone 4 created: workflow compatibility, Phases 89–92.
+
 - **2026-08-31**: Phase 82 implemented and verified via unit tests — sampler-topology detection (positive/negative link keys), hoist positive-source node's fields to front, no-op fallback on ambiguity. `testDebugUnitTest`/`assembleDebug` green.
 - Phase 80 added: Improve android icon
 - Phase 81 added: Image-to-image workflow node support (was open TODO, 2026-01-30)
@@ -101,8 +103,7 @@
 
 ## Next Steps
 
-1. **Milestone 3 wrap-up**: Define the milestone's Must-Haves (still `TBD` in `ROADMAP.md`) or close Milestone 3 — all roadmapped phases are done.
-2. **Optional device checks**:
+1. **Phase 89**: Plan the workflow compatibility regression corpus (`/plan 89`).
+2. **Optional device checks carried over from Milestone 3**:
    - Phase 82: confirm the positive prompt field appears first in a real workflow (unit-tested only).
    - Phase 80: confirm themed-icon retinting under Android 13+ Material You.
-3. **Plan next work**: backlog is empty — add Phase 89 or start Milestone 4.
