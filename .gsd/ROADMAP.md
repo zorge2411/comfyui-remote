@@ -58,7 +58,12 @@
 
 ### Phase 95: Widget Mapping Gaps for V3 Nodes
 
-**Status**: ⬜ Not Started
-**Objective**: Two widget-mapping gaps. (1) The `control_after_generate` value ("fixed"/"randomize") after a seed is only skipped when the next widget rejects it by type; a V3 `COMBO` accepts any string, so it gets consumed and shifts later widgets. Skip it explicitly when the input's config has `control_after_generate`. (2) Inputs added to a node after the workflow was saved have no `widgets_values` entry; fall back to the `/object_info` default instead of omitting a required input.
-**Discovered**: Phase 89 corpus baseline (2026-09-25)
-**Corpus fixtures to fix**: `templates-character_sheet`, `template_image_speech_to_video` (part), `utility_depth_anything3_image_depth_estimation`, `hidream_e1_1` (C4 part)
+**Status**: 📝 Planned (`.gsd/phases/95/`: 95-CONTEXT, 95-01-PLAN, 95-02-PLAN)
+**Objective**: Read `widgets_values` the way the frontend writes them:
+- skip control widgets (`control_after_generate`: 1 slot for INT/FLOAT, 2 for COMBO including the filter list);
+- don't let unlinked socket inputs consume widget values;
+- use `widgets_values_named` when present (132 templates);
+- send frontend defaults for widgets added after the workflow was saved, instead of omitting required inputs.
+**Scale**: the main causes of the 162 C5 and 109 C4 violations still left across the 572 templates after Phase 94.
+**Discovered**: Phase 89 corpus baseline (2026-09-25); scope widened by the Phase 94 all-template measurement
+**Corpus fixtures to fix**: `templates-character_sheet`, `template_image_speech_to_video`, `utility_depth_anything3_image_depth_estimation`, `hidream_e1_1` (C4 part)

@@ -3,8 +3,9 @@
 ## Current Position
 
 - **Milestone**: 4 (Workflow compatibility)
-- **Phase**: 94 (Support COMFY_DYNAMICCOMBO_V3 Inputs)
-- **Status**: ✅ Code done. Waiting on the Plan 94.3 device check and the local Android run (`testDebugUnitTest`/`assembleDebug`, which also covers Phases 89 and 93). Corpus known failures 26 → 7; all-template clean prompts 123 → 426 of 572.
+- **Phase**: 95 (Widget Mapping Gaps for V3 Nodes)
+- **Task**: Planning complete: 2 plans in 2 waves (`.gsd/phases/95/`)
+- **Status**: Ready for execution. Phase 94 code done; its device check and the local Android run (covers 89, 93, 94) still pending.
 
 ## Achievements (Milestone 4)
 
@@ -112,8 +113,8 @@
 
 ## Next Steps
 
-1. **Run locally and on device**: `gradlew.bat testDebugUnitTest`, `assembleDebug`, `installDebug`; then run a SaveVideo or `utility_image_stitch` workflow from the phone (Plan 94.3 check).
-2. **Next phase**: Phase 95 (control_after_generate + defaults; 3 corpus entries, likely much of the remaining 162 C5 / 109 C4 across templates) or Phase 90 (4 entries).
+1. **Execute Phase 95** (`/execute 95`): Plan 95.1 (control widgets, socket slots), then Plan 95.2 (named values, defaults, all-template measurement).
+2. **Run locally and on device**: `gradlew.bat testDebugUnitTest`, `assembleDebug`, `installDebug`; Phase 94 device check (SaveVideo or `utility_image_stitch` workflow).
 3. **Optional device checks carried over from Milestone 3**:
    - Phase 82: confirm the positive prompt field appears first in a real workflow (unit-tested only).
    - Phase 80: confirm themed-icon retinting under Android 13+ Material You.
