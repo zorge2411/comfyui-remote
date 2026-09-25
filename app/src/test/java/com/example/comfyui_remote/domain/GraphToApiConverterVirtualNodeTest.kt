@@ -159,6 +159,54 @@ class GraphToApiConverterVirtualNodeTest {
         assertEquals(30, inputsOf(api, 3).get("steps").asInt)
     }
 
+    // --- Muted/bypassed subgraph instances (graphToPrompt skips their inner nodes) ---
+
+    /** Subgraph "PatchSG": model (MODEL) -> Sink-like interior "Pair".a/b -> output model. */
+    private val patchSubgraph = """
+        {"id": "PatchSG", "name": "PatchSG",
+         "inputs": [{"id": "i0", "name": "model", "type": "MODEL", "linkIds": [901]}],
+         "outputs": [{"id": "o0", "name": "model", "type": "MODEL", "linkIds": [902]}],
+         "nodes": [
+           {"id": 20, "type": "Pair", "mode": 0, "inputs": [
+              {"name": "a", "type": "MODEL", "link": 901}, {"name": "b", "type": "MODEL", "link": null}],
+            "outputs": [{"name": "a", "type": "MODEL", "links": [902]}], "widgets_values": []}],
+         "links": [
+           {"id": 901, "origin_id": -10, "origin_slot": 0, "target_id": 20, "target_slot": 0, "type": "MODEL"},
+           {"id": 902, "origin_id": 20, "origin_slot": 0, "target_id": -20, "target_slot": 0, "type": "MODEL"}]}
+    """
+
+    private fun patchGraph(mode: Int) = """
+        {"definitions": {"subgraphs": [$patchSubgraph]},
+         "nodes": [ ${src(1, "ModelSrc", "MODEL")},
+           {"id": 2, "type": "PatchSG", "mode": $mode, "inputs": [{"name": "model", "type": "MODEL", "link": 10}],
+            "outputs": [{"name": "model", "type": "MODEL", "links": [11]}], "widgets_values": []},
+           ${sink(3, 11)} ],
+         "links": [ [10, 1, 0, 2, 0, "MODEL"], [11, 2, 0, 3, 0, "MODEL"] ]}
+    """.trimIndent()
+
+    @Test
+    fun `bypassed subgraph instance passes its input through and sends no inner nodes`() {
+        val result = result(patchGraph(mode = 4))
+        val api = JsonParser.parseString(result.json).asJsonObject
+        assertEquals(setOf("1", "3"), api.keySet())
+        assertEquals("1", inputsOf(api, 3).getAsJsonArray("model")[0].asString)
+        assertTrue(result.missingNodes.isEmpty())
+    }
+
+    @Test
+    fun `muted subgraph instance drops its outputs and sends no inner nodes`() {
+        val api = convert(patchGraph(mode = 2))
+        assertEquals(setOf("1", "3"), api.keySet())
+        assertFalse(inputsOf(api, 3).has("model"))
+    }
+
+    @Test
+    fun `active subgraph instance is still expanded`() {
+        val api = convert(patchGraph(mode = 0))
+        val pair = api.entrySet().single { it.value.asJsonObject.get("class_type").asString == "Pair" }
+        assertEquals(pair.key, inputsOf(api, 3).getAsJsonArray("model")[0].asString)
+    }
+
     // --- PrimitiveNode (widgetInputs.ts applyToGraph) ---
 
     private fun primitive(id: Int, value: String, type: String, widget: String, links: String, mode: Int = 0) =

@@ -86,7 +86,9 @@ object GraphToApiConverter {
 
                 val isUuidType = type.matches(Regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", RegexOption.IGNORE_CASE))
 
+                // Only muted/bypassed instances are left unexpanded; the mode handling below removes them
                 val isSubgraph = definitions.containsKey(type)
+                if (isSubgraph) return@forEach
 
                 val hasOutputs = nodesWithOutputs.contains(id)
 
@@ -700,9 +702,11 @@ object GraphToApiConverter {
             val type = node.get("type").asString
             val id = node.get("id").asInt
             
-            // Check if it's a wrapper
+            // Check if it's a wrapper. A muted or bypassed instance stays one node: the frontend never runs its
+            // inner nodes (graphToPrompt) and bypasses it like any other node (ExecutableNodeDTO.resolveOutput).
             val def = definitions[type]
-            val isSubgraph = def != null
+            val mode = node.get("mode")?.takeIf { it.isJsonPrimitive }?.asInt ?: 0
+            val isSubgraph = def != null && mode != 2 && mode != 4
             
             if (isSubgraph) {
                 subgraphsExpanded++

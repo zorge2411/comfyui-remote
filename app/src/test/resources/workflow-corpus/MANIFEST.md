@@ -83,3 +83,15 @@ python scripts/corpus/export_object_info.py --url http://127.0.0.1:8188 \
 
 To add a fixture, check `select_fixtures.py --object-info object_info.json` reports no missing node
 types, re-export `object_info.json` if it does, and run the tests.
+
+## All-template report
+
+`AllTemplatesReportTest` converts every official template and prints per-check totals (it never
+fails; it's skipped unless `COMFY_TEMPLATES_DIR` is set). Use a full, untrimmed `/object_info`
+from the stock server above, or most templates report C1:
+
+```bash
+curl -s http://127.0.0.1:8188/object_info > /tmp/object_info_full.json   # stock ComfyUI, --cpu
+COMFY_TEMPLATES_DIR=wt/x/comfyui_workflow_templates_json/templates COMFY_OBJECT_INFO=/tmp/object_info_full.json \
+    ./gradlew testDebugUnitTest --tests "*AllTemplatesReportTest*"   # report: app/build/reports/all-templates.txt
+```
