@@ -591,6 +591,8 @@ object GraphToApiConverter {
         // Maps to handle link rewiring
         val wrapperInputRedirects = mutableMapOf<Int, Map<Int, List<Pair<Int, Int>>>>()
         val wrapperOutputRedirects = mutableMapOf<Int, Map<Int, Pair<Int, Int>>>()
+        // Wrapper ID -> instance input slot -> subgraph input index (instances may list a subset, reordered)
+        val wrapperSlotMaps = mutableMapOf<Int, Map<Int, Int>>()
         
         // Pass-wide maps for updating node inputs
         val globalLinkIdRemapper = mutableMapOf<Int, Int>()
@@ -697,6 +699,7 @@ object GraphToApiConverter {
                 }
                 
                 wrapperInputRedirects[id] = inputRedirects
+                wrapperSlotMaps[id] = mapInstanceInputs(node, definition)
                 wrapperOutputRedirects[id] = outputRedirects
                 
                 // 4. Add Pure Internal Nodes (excluding Input -10/Output -20)
@@ -734,7 +737,8 @@ object GraphToApiConverter {
             if (isDestWrapper && isSourceWrapper) {
                 // Wrapper -> Wrapper
                 val sourceRedirect = wrapperOutputRedirects[sourceId]?.get(sourceSlot)
-                val destRedirects = wrapperInputRedirects[targetId]?.get(targetSlot)
+                val destRedirects = wrapperSlotMaps[targetId]?.get(targetSlot)
+                    ?.let { wrapperInputRedirects[targetId]?.get(it) }
                 
                 if (sourceRedirect != null && destRedirects != null) {
                     val (realSourceId, realSourceSlot) = sourceRedirect
@@ -757,7 +761,8 @@ object GraphToApiConverter {
             }
             else if (isDestWrapper) {
                 // External -> Wrapper
-                val destRedirects = wrapperInputRedirects[targetId]?.get(targetSlot)
+                val destRedirects = wrapperSlotMaps[targetId]?.get(targetSlot)
+                    ?.let { wrapperInputRedirects[targetId]?.get(it) }
                 
                 if (destRedirects != null) {
                     destRedirects.forEach { (realDestId, realDestSlot) ->
@@ -825,6 +830,40 @@ object GraphToApiConverter {
         newGraph.add("nodes", finalNodes)
         newGraph.add("links", newLinks)
         return newGraph to subgraphsExpanded
+    }
+
+    /**
+     * Maps each instance input slot to its subgraph input index, like the ComfyUI frontend
+     * (SubgraphNode._rebindInputSubgraphSlots): match by name + type first, then by name, using each
+     * subgraph input at most once. A serialized instance can list only some inputs, in any order.
+     */
+    internal fun mapInstanceInputs(instance: JsonObject, definition: SubgraphDefinition): Map<Int, Int> {
+        val instanceInputs = instance.getAsJsonArray("inputs")?.map { it.asJsonObject } ?: return emptyMap()
+        // Definitions without declared inputs (older/synthetic graphs): keep positional slots.
+        if (definition.inputs.isEmpty()) return instanceInputs.indices.associateWith { it }
+
+        fun str(obj: JsonObject, key: String) = obj.get(key)?.takeIf { it.isJsonPrimitive }?.asString
+        val assigned = mutableSetOf<Int>()
+        val result = mutableMapOf<Int, Int>()
+        fun match(slot: Int, predicate: (SubgraphInput) -> Boolean) {
+            val index = definition.inputs.indices.firstOrNull { it !in assigned && predicate(definition.inputs[it]) }
+            if (index != null) {
+                result[slot] = index
+                assigned += index
+            }
+        }
+        instanceInputs.forEachIndexed { slot, input ->
+            val name = str(input, "name")
+            val type = str(input, "type")
+            match(slot) { it.name == name && it.type == type }
+        }
+        instanceInputs.forEachIndexed { slot, input ->
+            if (slot in result) return@forEachIndexed
+            val name = str(input, "name")
+            match(slot) { it.name == name }
+            if (slot !in result) println("SUBGRAPH_DEBUG: Instance input '$name' matches no input of subgraph ${definition.id}; ignored")
+        }
+        return result
     }
 
     private fun intId(node: JsonObject): Int {

@@ -16,6 +16,7 @@ class ApiPromptValidatorTest {
               "optional": { "steps": ["INT,FLOAT", {}] } },
             "output": ["LATENT"] },
           "Grow": { "input": { "required": { "values": ["COMFY_AUTOGROW_V3", {}] } }, "output": ["STRING"] },
+          "Refs": { "input": { "required": { "images": ["COMFY_AUTOGROW_V3", {"template": {"min": 0}}] } }, "output": ["IMAGE"] },
           "Reroute": { "input": { "required": {} }, "output": ["*"] }
         }
     """)
@@ -40,6 +41,12 @@ class ApiPromptValidatorTest {
     @Test
     fun `dotted autogrow keys satisfy the required group input`() {
         assertEquals(emptyList<String>(), checks("""{ "3": {"class_type": "Grow", "inputs": {"values.a": "x", "values.b": "y"}} }"""))
+    }
+
+    @Test
+    fun `empty autogrow group with min 0 is not missing but min 1 is`() {
+        assertEquals(emptyList<String>(), checks("""{ "3": {"class_type": "Refs", "inputs": {}} }"""))
+        assertEquals(listOf("C4"), checks("""{ "3": {"class_type": "Grow", "inputs": {}} }"""))
     }
 
     @Test

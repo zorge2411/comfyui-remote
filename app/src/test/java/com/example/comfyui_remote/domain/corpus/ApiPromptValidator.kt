@@ -83,6 +83,7 @@ object ApiPromptValidator {
             }
 
             for (key in requiredKeys(def)) {
+                if (specs[key]?.let { isOptionalAutogrow(it) } == true) continue
                 if (!inputs.has(key) && inputs.keySet().none { it.startsWith("$key.") }) {
                     out += Violation("C4", id, "$classType is missing required input $key")
                 }
@@ -103,6 +104,13 @@ object ApiPromptValidator {
 
     private fun requiredKeys(def: JsonObject): Set<String> =
         def.getAsJsonObject("input")?.getAsJsonObject("required")?.keySet().orEmpty()
+
+    /** An autogrow group with template.min == 0 may have no entries at all. */
+    private fun isOptionalAutogrow(spec: JsonArray): Boolean {
+        if (!spec[0].isJsonPrimitive || spec[0].asString != "COMFY_AUTOGROW_V3" || spec.size() < 2) return false
+        val min = spec[1].asJsonObject.getAsJsonObject("template")?.get("min")
+        return min != null && min.isJsonPrimitive && min.asInt == 0
+    }
 
     /** A link is ["nodeId", slot]. */
     private fun asLink(value: JsonElement): Pair<String, Int>? {
