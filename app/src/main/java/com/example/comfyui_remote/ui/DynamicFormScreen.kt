@@ -63,6 +63,7 @@ import androidx.core.net.toUri
 import com.example.comfyui_remote.MainViewModel
 import com.example.comfyui_remote.data.WorkflowEntity
 import com.example.comfyui_remote.domain.InputField
+import com.example.comfyui_remote.domain.displayName
 import com.example.comfyui_remote.network.ExecutionStatus
 import com.example.comfyui_remote.ui.components.ErrorCard
 import kotlin.random.Random
@@ -165,7 +166,7 @@ fun DynamicFormScreen(
                                     it[index] = inputField.copy(value = newValue)
                                 }
                             },
-                            label = { Text("${inputField.nodeTitle} (${inputField.fieldName})") },
+                            label = { Text("${inputField.nodeTitle} (${inputField.displayName})") },
                             minLines = 3,
                             trailingIcon = if (inputField.value.isNotEmpty()) {
                                 {
@@ -197,7 +198,7 @@ fun DynamicFormScreen(
                                     it[index] = inputField.copy(value = intVal)
                                 }
                             },
-                            label = { Text("${inputField.nodeTitle} (${inputField.fieldName})") },
+                            label = { Text("${inputField.nodeTitle} (${inputField.displayName})") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -211,7 +212,7 @@ fun DynamicFormScreen(
                                     it[index] = inputField.copy(value = floatVal)
                                 }
                             },
-                            label = { Text("${inputField.nodeTitle} (${inputField.fieldName})") },
+                            label = { Text("${inputField.nodeTitle} (${inputField.displayName})") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -252,7 +253,7 @@ fun DynamicFormScreen(
                                 value = inputField.value,
                                 onValueChange = {},
                                 readOnly = true,
-                                label = { Text("${inputField.nodeTitle} (${inputField.fieldName})") },
+                                label = { Text("${inputField.nodeTitle} (${inputField.displayName})") },
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                                 modifier = Modifier.menuAnchor().fillMaxWidth()
@@ -327,7 +328,7 @@ fun DynamicFormScreen(
                         }
 
                         com.example.comfyui_remote.ui.components.ImageSelector(
-                            label = "${inputField.nodeTitle} (${inputField.fieldName})",
+                            label = "${inputField.nodeTitle} (${inputField.displayName})",
                             currentUri = inputField.localUri,
                             serverUrl = serverUrl,
                             onImageSelected = { uri ->

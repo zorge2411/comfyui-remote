@@ -59,3 +59,7 @@ sealed class InputField(
         override val nodeTitle: String
     ) : InputField("Image")
 }
+
+/** Field name for display: inputs of a dynamic combo option are dotted ("format.codec" -> "format › codec"). */
+val InputField.displayName: String
+    get() = fieldName.replace(".", " › ")
