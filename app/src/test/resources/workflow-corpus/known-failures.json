@@ -1,0 +1,38 @@
+{
+ "3d_hunyuan3d_multiview_to_model.json": {
+  "checks": [
+   "C3"
+  ],
+  "reason": "Bypassed CLIPVisionEncode (output CLIP_VISION_OUTPUT) has no input of that type; the same-index fallback wires CLIP_VISION into an optional CLIP_VISION_OUTPUT input. The frontend drops the link instead.",
+  "phase": [
+   90
+  ]
+ },
+ "audio_ace_step_1_5_checkpoint.json": {
+  "checks": [
+   "C7"
+  ],
+  "reason": "PrimitiveNode is sent to the server instead of being resolved into its targets' widget values.",
+  "phase": [
+   90
+  ]
+ },
+ "hidream_e1_1.json": {
+  "checks": [
+   "C7"
+  ],
+  "reason": "PrimitiveNode is sent to the server instead of being resolved into its targets' widget values.",
+  "phase": [
+   90
+  ]
+ },
+ "utility_topaz_illustration_upscale.json": {
+  "checks": [
+   "C7"
+  ],
+  "reason": "PrimitiveNode is sent to the server.",
+  "phase": [
+   90
+  ]
+ }
+}

@@ -246,4 +246,74 @@ class WorkflowParserTest {
         assertEquals("9", inputs[1].nodeId)
         assertEquals("9", inputs[2].nodeId)
     }
+
+    // --- Phase 94: V3 combos, dynamic combo keys and dotted sub-inputs ---
+
+    private val v3Metadata = com.google.gson.JsonParser.parseString("""
+        {
+          "SaveVid": { "input": {
+            "required": {
+              "filename_prefix": ["STRING", {}],
+              "format": ["COMFY_DYNAMICCOMBO_V3", {"options": [
+                {"key": "auto", "inputs": {"required": {}}},
+                {"key": "mp4", "inputs": {"required": {
+                  "codec": ["COMBO", {"options": ["auto", "h264", "av1"]}]}}}]}]
+            } } },
+          "Resize": { "input": { "required": {
+            "resize_type": ["COMFY_DYNAMICCOMBO_V3", {"options": [
+              {"key": "scale total pixels", "inputs": {"required": {"megapixels": ["FLOAT", {}]}}}]}],
+            "scale_method": ["COMBO", {"options": ["nearest-exact", "area", "lanczos"]}]
+          } } }
+        }
+    """.trimIndent()).asJsonObject
+
+    private val v3Prompt = """
+        {
+          "1": { "class_type": "Resize", "_meta": { "title": "Resize" },
+                 "inputs": { "resize_type": "scale total pixels", "resize_type.megapixels": 1.5, "scale_method": "area" } },
+          "2": { "class_type": "SaveVid", "_meta": { "title": "Save" },
+                 "inputs": { "filename_prefix": "video/ComfyUI", "format": "mp4", "format.codec": "h264" } }
+        }
+    """.trimIndent()
+
+    private fun field(fields: List<InputField>, node: String, name: String) =
+        fields.firstOrNull { it.nodeId == node && it.fieldName == name }
+
+    @Test
+    fun `V3 COMBO inputs become dropdowns with their options`() {
+        val scale = field(parser.parse(v3Prompt, v3Metadata), "1", "scale_method")
+        assertTrue(scale is InputField.SelectionInput)
+        assertEquals(listOf("nearest-exact", "area", "lanczos"), (scale as InputField.SelectionInput).options)
+    }
+
+    @Test
+    fun `dynamic combo keys are not editable but stay in the prompt`() {
+        val fields = parser.parse(v3Prompt, v3Metadata)
+        assertNull(field(fields, "2", "format"))
+        assertNull(field(fields, "1", "resize_type"))
+
+        val patched = com.google.gson.JsonParser.parseString(WorkflowExecutor().injectValues(v3Prompt, fields)).asJsonObject
+        assertEquals("mp4", patched.getAsJsonObject("2").getAsJsonObject("inputs").get("format").asString)
+    }
+
+    @Test
+    fun `dotted sub-input resolves options through the selected option`() {
+        val codec = field(parser.parse(v3Prompt, v3Metadata), "2", "format.codec")
+        assertTrue(codec is InputField.SelectionInput)
+        assertEquals(listOf("auto", "h264", "av1"), (codec as InputField.SelectionInput).options)
+        assertEquals("format › codec", codec.displayName)
+    }
+
+    @Test
+    fun `dotted numeric sub-input becomes a float field`() {
+        val mp = field(parser.parse(v3Prompt, v3Metadata), "1", "resize_type.megapixels")
+        assertTrue(mp is InputField.FloatInput)
+    }
+
+    @Test
+    fun `dotted key whose option is not selected falls back to heuristics`() {
+        val prompt = v3Prompt.replace("\"format\": \"mp4\"", "\"format\": \"mkv\"")
+        val codec = field(parser.parse(prompt, v3Metadata), "2", "format.codec")
+        assertTrue(codec is InputField.StringInput)
+    }
 }

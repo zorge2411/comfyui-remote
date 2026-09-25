@@ -3,8 +3,10 @@ package com.example.comfyui_remote.domain
 import com.example.comfyui_remote.data.ComfyObjectInfo
 import com.google.gson.Gson
 import com.google.gson.JsonArray
+import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.google.gson.JsonPrimitive
 
 object GraphToApiConverter {
 
@@ -263,20 +265,10 @@ object GraphToApiConverter {
                 }
 
  
-                // Helper to get expected type
-                fun getExpectedType(key: String): String? {
-                    val reqDef = required?.get(key)?.asJsonArray
-                    val optDef = optional?.get(key)?.asJsonArray
-                    val def = reqDef ?: optDef ?: return null
-                    if (def.size() == 0) return null
-                    val firstElement = def[0]
-                    return when {
-                        firstElement.isJsonPrimitive && firstElement.asJsonPrimitive.isString -> firstElement.asString
-                        firstElement.isJsonArray -> "COMBO"
-                        else -> null
-                    }
-                }
-                 
+                fun specOf(key: String): JsonArray? = (required?.get(key) ?: optional?.get(key)) as? JsonArray
+
+                fun kindOf(spec: JsonArray?): String? = specKind(spec)
+
                 // Helper to check compatibility
                 fun isCompatible(value: com.google.gson.JsonElement, expectedType: String?): Boolean {
                     if (expectedType == null) return true
@@ -286,13 +278,14 @@ object GraphToApiConverter {
                         "STRING" -> value.isJsonPrimitive && value.asJsonPrimitive.isString
                         "BOOLEAN" -> value.isJsonPrimitive && value.asJsonPrimitive.isBoolean
                         "COMBO" -> value.isJsonPrimitive
+                        DYNAMIC_COMBO -> value.isJsonPrimitive && value.asJsonPrimitive.isString
                         else -> true
                     }
                 }
-                 
-                fun findNextCompatibleWidget(key: String): com.google.gson.JsonElement? {
+
+                fun findNextCompatibleWidget(spec: JsonArray?): com.google.gson.JsonElement? {
                     if (graphWidgets == null) return null
-                    val expectedType = getExpectedType(key)
+                    val expectedType = kindOf(spec)
                     while (widgetIndex < graphWidgets.size()) {
                         val widget = graphWidgets[widgetIndex]
                         widgetIndex++
@@ -300,23 +293,58 @@ object GraphToApiConverter {
                     }
                     return null
                 }
- 
-                if (isManualLoadImage) {
-                    if (graphWidgets != null && graphWidgets.size() > 0) {
-                        inputs.add("image", graphWidgets[0])
+
+                /**
+                 * Extra widgets_values slots the frontend stores after this input's widget: a
+                 * control_after_generate combo (1 for INT/FLOAT; 2 for COMBO, plus control_filter_list).
+                 * INT inputs named seed/noise_seed get one unless the spec says otherwise (useIntWidget.ts).
+                 */
+                fun controlSlots(path: String, spec: JsonArray?): Int {
+                    val config = spec?.takeIf { it.size() > 1 }?.get(1)?.takeIf { it.isJsonObject }?.asJsonObject
+                    val flag = config?.get("control_after_generate")
+                    val enabled = when {
+                        flag == null || flag.isJsonNull -> null
+                        flag.isJsonPrimitive && flag.asJsonPrimitive.isBoolean -> flag.asBoolean
+                        flag.isJsonPrimitive && flag.asJsonPrimitive.isString -> flag.asString.isNotEmpty()
+                        else -> true
                     }
+                    return when (kindOf(spec)) {
+                        "INT" -> if (enabled ?: (path.substringAfterLast('.') in SEED_NAMES)) 1 else 0
+                        "FLOAT" -> if (enabled == true) 1 else 0
+                        "COMBO" -> if (enabled == true) 2 else 0
+                        else -> 0
+                    }
+                }
+
+                // Only skip what really is a control value: older saves may lack the control widget.
+                fun skipControlWidgets(count: Int) {
+                    if (count == 0 || graphWidgets == null || widgetIndex >= graphWidgets.size()) return
+                    val control = graphWidgets[widgetIndex]
+                    if (!control.isJsonPrimitive || control.asString !in CONTROL_VALUES) return
+                    widgetIndex++
+                    if (count == 2 && widgetIndex < graphWidgets.size()) {
+                        val filter = graphWidgets[widgetIndex]
+                        if (filter.isJsonPrimitive && filter.asJsonPrimitive.isString) widgetIndex++
+                    }
+                }
+
+                // Newer frontends also save widget values by name, which survives node definition changes
+                val named = node.get("widgets_values_named")?.takeIf { it.isJsonObject }?.asJsonObject
+
+                // Values promoted from an enclosing subgraph instance replace this node's own widget values
+                val promoted = node.getAsJsonObject(PROMOTED_WIDGETS)
+
+                if (isManualLoadImage) {
+                    val image = promoted?.get("image")
+                        ?: graphWidgets?.takeIf { it.size() > 0 }?.get(0)
+                    if (image != null) inputs.add("image", image)
                 }
 
                 // Custom frontend extensions can store localized display labels (e.g. "By filename")
                 // in widgets_values for combo inputs; /object_info only knows the real values.
-                fun resolveComboValue(key: String, value: com.google.gson.JsonElement): com.google.gson.JsonElement {
-                    if (!value.isJsonPrimitive || !value.asJsonPrimitive.isString) return value
-                    val def = (required?.get(key) ?: optional?.get(key)) as? JsonArray ?: return value
-                    val optionsEl = if (def.size() > 0) def[0] else return value
-                    if (!optionsEl.isJsonArray) return value
-                    val options = optionsEl.asJsonArray
-                        .filter { it.isJsonPrimitive && it.asJsonPrimitive.isString }
-                        .map { it.asString }
+                fun resolveComboValue(key: String, spec: JsonArray?, value: com.google.gson.JsonElement): com.google.gson.JsonElement {
+                    if (!value.isJsonPrimitive || !value.asJsonPrimitive.isString || spec == null) return value
+                    val options = comboOptions(spec) ?: return value
                     val label = value.asString
                     if (options.isEmpty() || options.contains(label)) return value
 
@@ -330,7 +358,7 @@ object GraphToApiConverter {
                                 hits.filter { norm(it).length == longest }.singleOrNull()
                             }
                             ?: run {
-                                val cfg = if (def.size() > 1 && def[1].isJsonObject) def[1].asJsonObject else null
+                                val cfg = if (spec.size() > 1 && spec[1].isJsonObject) spec[1].asJsonObject else null
                                 val d = cfg?.get("default")
                                 if (d != null && d.isJsonPrimitive && d.asJsonPrimitive.isString && options.contains(d.asString)) d.asString else null
                             }
@@ -339,58 +367,100 @@ object GraphToApiConverter {
                     return com.google.gson.JsonPrimitive(resolved)
                 }
 
-                fun isAutogrow(key: String): Boolean {
-                    val def = (required?.get(key) ?: optional?.get(key)) as? JsonArray ?: return false
-                    return def.size() > 0 && def[0].isJsonPrimitive && def[0].asString == "COMFY_AUTOGROW_V3"
+                fun addLink(key: String, linkId: Int) {
+                    val resolved = resolveRealSource(linkId)
+                    if (resolved != null) {
+                        val linkArray = JsonArray()
+                        linkArray.add(resolved.first.toString())
+                        linkArray.add(resolved.second)
+                        inputs.add(key, linkArray)
+                    } else {
+                        // Could not resolve (maybe link to missing node that has no input?)
+                        println("CONVERT_DEBUG: Warn: Node $id: key '$key' link $linkId resolved to null (broken chain?)")
+                    }
                 }
 
-                for (key in allInputKeys) {
-                    if (isAutogrow(key)) {
+                fun graphSlot(name: String): JsonObject? =
+                    graphInputs.firstOrNull { it.asJsonObject.get("name").asString == name }?.asJsonObject
+
+                fun linkOf(slot: JsonObject?): Int? =
+                    slot?.get("link")?.takeIf { !it.isJsonNull }?.asInt
+
+                /**
+                 * Emits one input. [path] is the API key: a top-level input name, or a dotted
+                 * "parent.sub" name for inputs of a selected COMFY_DYNAMICCOMBO_V3 option.
+                 */
+                fun emitInput(path: String, spec: JsonArray?, isSubInput: Boolean) {
+                    val kind = kindOf(spec)
+                    if (kind == "COMFY_AUTOGROW_V3") {
                         // Graph JSON expands autogrow groups into dotted slots ("values.a"); copy linked
                         // ones verbatim and never let the group key consume a widget value.
                         graphInputs.forEach { el ->
                             val slot = el.asJsonObject
                             val name = slot.get("name").asString
-                            if (name.startsWith("$key.") && slot.has("link") && !slot.get("link").isJsonNull) {
-                                val resolved = resolveRealSource(slot.get("link").asInt)
-                                if (resolved != null) {
-                                    val linkArray = JsonArray()
-                                    linkArray.add(resolved.first.toString())
-                                    linkArray.add(resolved.second)
-                                    inputs.add(name, linkArray)
-                                }
+                            val link = linkOf(slot)
+                            if (name.startsWith("$path.") && link != null) addLink(name, link)
+                        }
+                        return
+                    }
+                    if (kind == IMAGE_COMPARE) {
+                        // Display-only widget: never saved in widgets_values, sent as ["", ""] (useImageCompareWidget.ts)
+                        inputs.add(path, JsonArray().apply { add(""); add("") })
+                        return
+                    }
+                    val slot = graphSlot(path)
+                    val linkId = linkOf(slot)
+                    if (linkId != null) {
+                        addLink(path, linkId)
+                        // A widget converted to an input keeps its slot in widgets_values even when linked.
+                        if (slot?.has("widget") == true) {
+                            findNextCompatibleWidget(spec)
+                            skipControlWidgets(controlSlots(path, spec))
+                        }
+                        return
+                    }
+                    // In the frontend only widget-type inputs get a widget; sockets have no widgets_values slot.
+                    val isWidget = hasWidget(spec)
+                    if (!isWidget && (isSubInput || (slot != null && !slot.has("widget")) || isForcedInput(spec))) return
+
+                    // Always consume the widgets_values slot so later widgets stay aligned
+                    val saved = findNextCompatibleWidget(spec)
+                    if (saved != null) skipControlWidgets(controlSlots(path, spec))
+                    // Promoted (Phase 93) > saved value > the frontend's default for a widget the node gained
+                    // after the workflow was saved. A named map lists every saved widget, so when it exists a
+                    // missing name means a newer widget, and the (possibly shifted) positional value is not used.
+                    val stored = if (named != null) named.get(path)?.takeIf { !it.isJsonNull } else saved
+                    val widget = promoted?.get(path)
+                        ?: stored
+                        ?: (if (isWidget) frontendDefault(spec)?.also {
+                            println("CONVERT_DEBUG: Node $id: no saved value for '$path', using default $it")
+                        } else null)
+                        ?: return
+                    val value = resolveComboValue(path, spec, widget)
+                    inputs.add(path, value)
+
+                    if (kind == DYNAMIC_COMBO) {
+                        // The selected option's inputs follow the combo in widgets_values, depth-first
+                        // (frontend dynamicWidgets.ts); the server reads them as "path.sub" (comfy_api _io.py).
+                        val selected = value.takeIf { it.isJsonPrimitive }?.asString
+                        val option = spec?.get(1)?.takeIf { it.isJsonObject }?.asJsonObject
+                            ?.getAsJsonArray("options")?.map { it.asJsonObject }
+                            ?.firstOrNull { it.get("key")?.asString == selected }
+                        if (option == null) {
+                            println("CONVERT_DEBUG: Node $id: dynamic combo '$path' value '$selected' matches no option")
+                            return
+                        }
+                        val optionInputs = option.getAsJsonObject("inputs")
+                        for (section in listOf("required", "optional")) {
+                            optionInputs?.getAsJsonObject(section)?.entrySet()?.forEach { (name, subSpec) ->
+                                emitInput("$path.$name", subSpec as? JsonArray, isSubInput = true)
                             }
                         }
-                        continue
                     }
-                    if (slotNames.contains(key)) {
-                        val slot = graphInputs.firstOrNull { it.asJsonObject.get("name").asString == key }?.asJsonObject
-                        val linkId = if (slot?.get("link")?.isJsonNull == false) slot.get("link").asInt else null
-                        
-                        if (linkId != null) {
-                            // HERE IS THE FLATTENING CALL
-                            val resolved = resolveRealSource(linkId)
-                            
-                            if (resolved != null) {
-                                val (sourceId, sourceSlot) = resolved
-                                val linkArray = JsonArray()
-                                linkArray.add(sourceId.toString())
-                                linkArray.add(sourceSlot)
-                                inputs.add(key, linkArray)
-                            } else {
-                                // Could not resolve (maybe link to missing node that has no input?)
-                                println("CONVERT_DEBUG: Warn: Node $id: key '$key' link $linkId resolved to null (broken chain?)")
-                            }
-                            // A widget converted to an input keeps its slot in widgets_values even when linked.
-                            if (slot?.has("widget") == true) findNextCompatibleWidget(key)
-                        } else {
-                            val widget = findNextCompatibleWidget(key)
-                            if (widget != null) inputs.add(key, resolveComboValue(key, widget))
-                        }
-                    } else {
-                        val widget = findNextCompatibleWidget(key)
-                        if (widget != null) inputs.add(key, resolveComboValue(key, widget))
-                    }
+                }
+
+                for (key in allInputKeys) {
+                    emitInput(key, specOf(key), isSubInput = false)
                 }
             } else {
                 println("CONVERT_DEBUG: FALLTHROUGH Node $id ($type). Metadata Missing? Mapping available data.")
@@ -591,6 +661,8 @@ object GraphToApiConverter {
         // Maps to handle link rewiring
         val wrapperInputRedirects = mutableMapOf<Int, Map<Int, List<Pair<Int, Int>>>>()
         val wrapperOutputRedirects = mutableMapOf<Int, Map<Int, Pair<Int, Int>>>()
+        // Wrapper ID -> instance input slot -> subgraph input index (instances may list a subset, reordered)
+        val wrapperSlotMaps = mutableMapOf<Int, Map<Int, Int>>()
         
         // Pass-wide maps for updating node inputs
         val globalLinkIdRemapper = mutableMapOf<Int, Int>()
@@ -697,6 +769,9 @@ object GraphToApiConverter {
                 }
                 
                 wrapperInputRedirects[id] = inputRedirects
+                val slotMap = mapInstanceInputs(node, definition)
+                wrapperSlotMaps[id] = slotMap
+                val promotedOverrides = promotedWidgetOverrides(node, definition, slotMap, idRemapper)
                 wrapperOutputRedirects[id] = outputRedirects
                 
                 // 4. Add Pure Internal Nodes (excluding Input -10/Output -20)
@@ -706,6 +781,11 @@ object GraphToApiConverter {
                     if (currentId != remappedInputId && currentId != remappedOutputId) {
                         // Update this node's input links
                         val updatedNode = updateNodeInputLinks(internalNode, linkIdRemapper)
+                        promotedOverrides[currentId]?.let { overrides ->
+                            val merged = updatedNode.getAsJsonObject(PROMOTED_WIDGETS) ?: JsonObject()
+                            overrides.entrySet().forEach { (name, value) -> merged.add(name, value) }
+                            updatedNode.add(PROMOTED_WIDGETS, merged)
+                        }
                         newNodes.add(updatedNode)
                     }
                 }
@@ -734,7 +814,8 @@ object GraphToApiConverter {
             if (isDestWrapper && isSourceWrapper) {
                 // Wrapper -> Wrapper
                 val sourceRedirect = wrapperOutputRedirects[sourceId]?.get(sourceSlot)
-                val destRedirects = wrapperInputRedirects[targetId]?.get(targetSlot)
+                val destRedirects = wrapperSlotMaps[targetId]?.get(targetSlot)
+                    ?.let { wrapperInputRedirects[targetId]?.get(it) }
                 
                 if (sourceRedirect != null && destRedirects != null) {
                     val (realSourceId, realSourceSlot) = sourceRedirect
@@ -757,7 +838,8 @@ object GraphToApiConverter {
             }
             else if (isDestWrapper) {
                 // External -> Wrapper
-                val destRedirects = wrapperInputRedirects[targetId]?.get(targetSlot)
+                val destRedirects = wrapperSlotMaps[targetId]?.get(targetSlot)
+                    ?.let { wrapperInputRedirects[targetId]?.get(it) }
                 
                 if (destRedirects != null) {
                     destRedirects.forEach { (realDestId, realDestSlot) ->
@@ -825,6 +907,166 @@ object GraphToApiConverter {
         newGraph.add("nodes", finalNodes)
         newGraph.add("links", newLinks)
         return newGraph to subgraphsExpanded
+    }
+
+    private const val DYNAMIC_COMBO = "COMFY_DYNAMICCOMBO_V3"
+
+    private const val IMAGE_COMPARE = "IMAGECOMPARE"
+    private val SEED_NAMES = setOf("seed", "noise_seed")
+    private val CONTROL_VALUES = setOf("fixed", "increment", "decrement", "randomize", "increment-wrap")
+
+    /** Input kinds the frontend renders as widgets (and so store a widgets_values entry). */
+    private val WIDGET_KINDS = setOf("INT", "FLOAT", "STRING", "BOOLEAN", "COMBO", DYNAMIC_COMBO)
+
+    private fun specConfig(spec: JsonArray?): JsonObject? =
+        spec?.takeIf { it.size() > 1 }?.get(1)?.takeIf { it.isJsonObject }?.asJsonObject
+
+    /** forceInput (or the deprecated defaultInput) turns a widget type into a socket-only input. */
+    private fun isForcedInput(spec: JsonArray?): Boolean {
+        val config = specConfig(spec) ?: return false
+        return listOf("forceInput", "defaultInput").any { key ->
+            config.get(key)?.let { it.isJsonPrimitive && it.asJsonPrimitive.isBoolean && it.asBoolean } == true
+        }
+    }
+
+    /** The widget kind of an input spec: legacy lists are COMBO, and a config widgetType overrides the type. */
+    private fun specKind(spec: JsonArray?): String? {
+        val first = spec?.takeIf { it.size() > 0 }?.get(0) ?: return null
+        specConfig(spec)?.get("widgetType")?.takeIf { it.isJsonPrimitive }?.let { return it.asString }
+        return when {
+            first.isJsonPrimitive && first.asJsonPrimitive.isString -> if (first.asString == "COMBO") "COMBO" else first.asString
+            first.isJsonArray -> "COMBO"
+            else -> null
+        }
+    }
+
+    /** Whether the frontend renders this input as a widget (and so stores a widgets_values entry). */
+    private fun hasWidget(spec: JsonArray?): Boolean = specKind(spec) in WIDGET_KINDS && !isForcedInput(spec)
+
+    /** The value a newly created frontend widget starts with (use{Int,Float,String,Boolean,Combo}Widget.ts). */
+    private fun frontendDefault(spec: JsonArray?): JsonElement? {
+        val default = specConfig(spec)?.get("default")?.takeIf { !it.isJsonNull }
+        return when (specKind(spec)) {
+            "INT", "FLOAT" -> default ?: JsonPrimitive(0)
+            "STRING" -> default ?: JsonPrimitive("")
+            "BOOLEAN" -> default ?: JsonPrimitive(false)
+            "COMBO", DYNAMIC_COMBO -> {
+                val options = spec?.let { comboOptions(it) }.orEmpty()
+                val chosen = default?.takeIf { it.isJsonPrimitive }?.asString?.takeIf { it in options } ?: options.firstOrNull()
+                chosen?.let { JsonPrimitive(it) }
+            }
+            else -> null
+        }
+    }
+
+    /** Valid values of a combo spec: legacy [[options], {...}], V3 ["COMBO", {options}], or dynamic option keys. */
+    private fun comboOptions(spec: JsonArray): List<String>? {
+        val first = spec.takeIf { it.size() > 0 }?.get(0) ?: return null
+        val config = spec.takeIf { it.size() > 1 }?.get(1)?.takeIf { it.isJsonObject }?.asJsonObject
+        fun strings(arr: JsonArray?) = arr?.filter { it.isJsonPrimitive && it.asJsonPrimitive.isString }?.map { it.asString }
+        return when {
+            first.isJsonArray -> strings(first.asJsonArray)
+            first.asString == "COMBO" -> strings(config?.getAsJsonArray("options"))
+            first.asString == DYNAMIC_COMBO ->
+                config?.getAsJsonArray("options")?.mapNotNull { it.asJsonObject.get("key")?.asString }
+            else -> null
+        }
+    }
+
+    /** Graph-node property holding widget values promoted from an enclosing subgraph instance. Never sent to the API. */
+    private const val PROMOTED_WIDGETS = "__promoted_widgets"
+
+    /**
+     * Widget values a subgraph instance supplies to its interior nodes, keyed by remapped interior node ID,
+     * then input name. Mirrors the ComfyUI frontend (SubgraphNode._setWidget/_applyPromotedWidgetValues and
+     * ExecutableNodeDTO.resolveInput): a subgraph input is a promoted widget when the first of its links that
+     * reaches an interior input with a widget exists; the instance's widgets_values are assigned to those
+     * inputs by position (proxyWidgetErrorQuarantine host values win), and a value only applies when no
+     * external link feeds that input. Empty widgets_values keeps the interior values.
+     */
+    internal fun promotedWidgetOverrides(
+        instance: JsonObject,
+        definition: SubgraphDefinition,
+        slotMap: Map<Int, Int>,
+        idRemapper: Map<Int, Int>
+    ): Map<Int, JsonObject> {
+        val linksById = definition.links.associateBy { it[0].asInt }
+        val nodesById = definition.nodes.associateBy { intId(it) }
+        val instanceWidgets = instance.get("widgets_values")?.takeIf { it.isJsonArray }?.asJsonArray
+        val inheritedValues = instance.getAsJsonObject(PROMOTED_WIDGETS) // this instance is itself promoted into
+        val quarantine = mutableMapOf<String, com.google.gson.JsonElement>()
+        instance.getAsJsonObject("properties")?.get("proxyWidgetErrorQuarantine")
+            ?.takeIf { it.isJsonArray }?.asJsonArray?.forEach { entryEl ->
+                val entry = entryEl.takeIf { it.isJsonObject }?.asJsonObject ?: return@forEach
+                val original = entry.get("originalEntry")?.takeIf { it.isJsonArray }?.asJsonArray ?: return@forEach
+                if (original.size() >= 2 && original[0].asString == "-1" && entry.has("hostValue")) {
+                    quarantine[original[1].asString] = entry.get("hostValue")
+                }
+            }
+        val externallyLinked = mutableSetOf<Int>()
+        instance.getAsJsonArray("inputs")?.forEachIndexed { slot, inputEl ->
+            val link = inputEl.asJsonObject.get("link")
+            if (link != null && !link.isJsonNull) slotMap[slot]?.let { externallyLinked += it }
+        }
+
+        val result = mutableMapOf<Int, JsonObject>()
+        var valueIndex = 0
+        definition.inputs.forEachIndexed { index, subgraphInput ->
+            // Every interior input fed by this subgraph input: (node ID, input name, has a widget)
+            val targets = subgraphInput.linkIds.mapNotNull { linkId ->
+                val link = linksById[linkId] ?: return@mapNotNull null
+                val target = nodesById[link[3].asInt] ?: return@mapNotNull null
+                val slot = target.getAsJsonArray("inputs")?.let { ins ->
+                    link[4].asInt.takeIf { it < ins.size() }?.let { ins[it].asJsonObject }
+                } ?: return@mapNotNull null
+                Triple(intId(target), slot.get("name").asString, slot.has("widget"))
+            }
+            if (targets.none { it.third }) return@forEachIndexed // not a promoted widget
+            val positional = instanceWidgets?.let { if (valueIndex < it.size()) it[valueIndex] else null }
+            valueIndex++
+            val value = inheritedValues?.get(subgraphInput.name) ?: quarantine[subgraphInput.name] ?: positional
+            if (value == null || value.isJsonNull || index in externallyLinked) return@forEachIndexed
+            // The frontend resolves every interior input of this subgraph input to the promoted value
+            targets.forEach { (targetId, inputName, _) ->
+                val remapped = idRemapper[targetId] ?: targetId
+                result.getOrPut(remapped) { JsonObject() }.add(inputName, value)
+            }
+        }
+        return result
+    }
+
+    /**
+     * Maps each instance input slot to its subgraph input index, like the ComfyUI frontend
+     * (SubgraphNode._rebindInputSubgraphSlots): match by name + type first, then by name, using each
+     * subgraph input at most once. A serialized instance can list only some inputs, in any order.
+     */
+    internal fun mapInstanceInputs(instance: JsonObject, definition: SubgraphDefinition): Map<Int, Int> {
+        val instanceInputs = instance.getAsJsonArray("inputs")?.map { it.asJsonObject } ?: return emptyMap()
+        // Definitions without declared inputs (older/synthetic graphs): keep positional slots.
+        if (definition.inputs.isEmpty()) return instanceInputs.indices.associateWith { it }
+
+        fun str(obj: JsonObject, key: String) = obj.get(key)?.takeIf { it.isJsonPrimitive }?.asString
+        val assigned = mutableSetOf<Int>()
+        val result = mutableMapOf<Int, Int>()
+        fun match(slot: Int, predicate: (SubgraphInput) -> Boolean) {
+            val index = definition.inputs.indices.firstOrNull { it !in assigned && predicate(definition.inputs[it]) }
+            if (index != null) {
+                result[slot] = index
+                assigned += index
+            }
+        }
+        instanceInputs.forEachIndexed { slot, input ->
+            val name = str(input, "name")
+            val type = str(input, "type")
+            match(slot) { it.name == name && it.type == type }
+        }
+        instanceInputs.forEachIndexed { slot, input ->
+            if (slot in result) return@forEachIndexed
+            val name = str(input, "name")
+            match(slot) { it.name == name }
+            if (slot !in result) println("SUBGRAPH_DEBUG: Instance input '$name' matches no input of subgraph ${definition.id}; ignored")
+        }
+        return result
     }
 
     private fun intId(node: JsonObject): Int {

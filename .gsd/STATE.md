@@ -2,15 +2,27 @@
 
 ## Current Position
 
-- **Phase**: 81 (Image-to-Image Workflow Node Support)
-- **Status**: ✅ Done — full UAT complete, 2 gaps found live and fixed, both user-confirmed on device
-- **Session Goal**: Completed
+- **Milestone**: 4 (Workflow compatibility)
+- **Phase**: 95 (Widget Mapping Gaps for V3 Nodes)
+- **Status**: ✅ Code done. All-template clean prompts 426 → 542 of 572; corpus known failures 7 → 4 (Phase 90 only). Local Android run (covers 89, 93, 94, 95) and the Phase 94 device check still pending.
 
-## Achievements
+## Achievements (Milestone 4)
+
+- [x] Implemented Phase 96 (In-App Template Browser): Workflows → grid icon opens the server's template library (thumbnails, search, categories, Local-only filter); tap imports and opens. Not compiled in the cloud session: needs local `assembleDebug`.
+
+- [x] Implemented Phase 95 (widget mapping): control_after_generate slots skipped by frontend rules, sockets/forceInput consume nothing, `widgets_values_named` preferred, frontend defaults for widgets added after saving, IMAGECOMPARE/widgetType handled. C5 across templates 162 → 1, C4 109 → 37. See `.gsd/phases/95/95-SUMMARY.md`.
+
+- [x] Implemented Phase 94 (COMFY_DYNAMICCOMBO_V3): validator sees dotted sub-inputs; converter expands selected options recursively (SaveVideo `format.codec`, ResizeImageMaskNode, V3 API nodes); form shows V3 COMBO dropdowns, resolves dotted fields, hides dynamic keys. See `.gsd/phases/94/94-SUMMARY.md`.
+
+- [x] Implemented Phase 93 (Subgraph input mapping + promoted widget values): instance inputs bind to subgraph inputs by name+type, then name (frontend `_rebindInputSubgraphSlots`); instance `widgets_values` now reach interior nodes for unlinked promoted inputs, so the app sends the prompt/seed ComfyUI shows. 12 synthetic tests + real-fixture test; all 572 templates convert without errors. See `.gsd/phases/93/93-SUMMARY.md`.
+
+- [x] Implemented Phase 89 (Workflow Compatibility Regression Corpus): 30 official ComfyUI templates (MIT) + stock ComfyUI v0.37.2 `object_info` snapshot, `ApiPromptValidator` (C1–C7) and `WorkflowCorpusTest` with enforced `known-failures.json`. The baseline found 4 converter gap groups, filed as Phase 90 scope plus new Phases 93–95. See `.gsd/phases/89/89-SUMMARY.md`.
+
+## Achievements (Milestone 3)
 
 - [x] Implemented Phase 88 (bypassed/muted node modes) — found testing the real MiniMax workflow on the phone: bypassed node 18 (SageAttention patch) was sent to the server and failed. Converter now drops muted nodes and rewires bypassed ones to their type-matched upstream input. 5 tests; verified live: the real MiniMax H3 easy i2v workflow now runs end to end from the phone and the video lands in the gallery (also confirms Phases 84, 86, 87 in real use).
 - [x] Implemented Phase 87 (MiniMax widget mapping) — `GraphToApiConverter` Mode B: linked widget-inputs consume their `widgets_values` slot (fixed CreateVideo `bit_depth`=24), and invalid combo values from custom-frontend localized labels resolve to valid options (fixed MiniMaxH3Easy). 5 tests; real workflow now passes server validation (`node_errors: {}`).
-- [x] Implemented Phase 86 (COMFY_AUTOGROW_V3 support) — `GraphToApiConverter` Mode B now copies linked dotted autogrow slots (`values.a`, `images.image0`) and keeps autogrow keys out of the widget matcher (also fixes a latent bug where `values` stole the next input's widget value, e.g. `StringFormat.f_string`). 4 synthetic tests. Not re-run against the real workflow.
+- [x] Implemented Phase 86 (COMFY_AUTOGROW_V3 support) — `GraphToApiConverter` Mode B now copies linked dotted autogrow slots (`values.a`, `images.image0`) and keeps autogrow keys out of the widget matcher (also fixes a latent bug where `values` stole the next input's widget value, e.g. `StringFormat.f_string`). 4 synthetic tests. Confirmed against the real workflow via Phase 88's live run.
 - [x] Implemented Phase 84 (Real Progress Indicator) — new `ExecutionProgressTracker` (nodes completed + step fraction over nodes that will run, excluding `execution_cached`), wired into `MainViewModel.handleMessage()`, single bar + node/step label in `DynamicFormScreen.kt`. 5 unit tests, verified live on Fairphone 6.
 - [x] Closed Phase 83 (Camera Capture for Gallery Add-Image) — no code needed: `GalleryScreen.kt` already had a "Take Photo" option with runtime permission handling (built 2026-01-24, roadmap entry never closed). Verified live on Fairphone 6.
 - [x] Implemented Phase 82 (Prompt Field Ordering)
@@ -87,6 +99,10 @@
 
 ## Roadmap Evolution
 
+- **2026-09-25**: Phases 93–95 added from the Phase 89 corpus baseline (subgraph input mapping by name, `COMFY_DYNAMICCOMBO_V3`, V3 widget-mapping gaps); Phase 90 scope extended (PrimitiveNode, bypass fallback).
+
+- **2026-09-25**: Milestone 3 completed and archived (`.gsd/milestones/Milestone 3/`, `Milestone 3-SUMMARY.md`). Milestone 4 created: workflow compatibility, Phases 89–92.
+
 - **2026-08-31**: Phase 82 implemented and verified via unit tests — sampler-topology detection (positive/negative link keys), hoist positive-source node's fields to front, no-op fallback on ambiguity. `testDebugUnitTest`/`assembleDebug` green.
 - Phase 80 added: Improve android icon
 - Phase 81 added: Image-to-image workflow node support (was open TODO, 2026-01-30)
@@ -95,7 +111,13 @@
 - Phase 84 added: Real progress indicator (was unchecked Nice-to-Have, never phased)
 - Phase 85 added: Fix subgraph flattening output-link bug (discovered during Phase 81 live testing, 2026-08-25 — HTTP 400 "video/IMAGE mismatch" on `SaveVideo` node when a phantom subgraph node gets bypassed)
 - Phase 86 added: Support `COMFY_AUTOGROW_V3` dynamic input type (discovered during Phase 85's live proof-of-fix, 2026-08-25 — `ComfyMathExpression`'s dynamic `values.a`/`values.b`... inputs aren't understood by the app's input-mapping logic)
+- Phase 87 added: Fix widget value mapping for MiniMax H3 workflow (server validation errors on `CreateVideo.bit_depth` and localized combo labels)
+- Phase 88 added: Honor bypassed and muted node modes in graph conversion (discovered 2026-09-24 running the real MiniMax workflow on the phone)
 
 ## Next Steps
 
-1. **Phase 80 wrap-up**: Themed-icon retinting under Android 13+ Material You wasn't interactively spot-checked in Settings — optional manual confirmation if desired.
+1. **Run locally and on device**: `gradlew.bat testDebugUnitTest`, `assembleDebug`, `installDebug`. Then on the phone: Workflows → grid icon (Templates), open `utility_image_stitch` (Phase 94 check), a SaveVideo template, and a Gemini/Grok one (Phase 95).
+2. **Next phase**: Phase 90 (PrimitiveNode, bypass fallback, and the unresolved-link cases found in the Phase 95 run). After that, Milestone 4 must-haves left: Phase 91 (pre-flight) and Phase 92 (error reporting).
+3. **Optional device checks carried over from Milestone 3**:
+   - Phase 82: confirm the positive prompt field appears first in a real workflow (unit-tested only).
+   - Phase 80: confirm themed-icon retinting under Android 13+ Material You.

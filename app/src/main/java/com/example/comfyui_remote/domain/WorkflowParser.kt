@@ -1,10 +1,15 @@
 package com.example.comfyui_remote.domain
 
 import com.google.gson.Gson
+import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 
 class WorkflowParser {
+
+    private companion object {
+        const val DYNAMIC_COMBO = "COMFY_DYNAMICCOMBO_V3"
+    }
 
     fun parse(jsonContent: String, metadata: JsonObject? = null): List<InputField> {
         val inputs = mutableListOf<InputField>()
@@ -28,7 +33,11 @@ class WorkflowParser {
                             val primitive = fieldValue.asJsonPrimitive
                             
                             // Guess or determine Type
-                            val options = getOptionsFromMetadata(metadata, classType, fieldName)
+                            val spec = specFor(metadata, classType, fieldName, inputsObj)
+                            // A dynamic combo's value decides which "key.sub" inputs exist; changing it here
+                            // would send the old option's inputs, so it is not offered for editing.
+                            if (spec?.let { specKind(it) } == DYNAMIC_COMBO) return@forEach
+                            val options = spec?.let { comboOptions(it) }
                             
                             val inputField = when {
                                 (classType == "LoadImage" && fieldName == "image") -> {
@@ -160,26 +169,51 @@ class WorkflowParser {
         return if (positiveSourceIds.size == 1) positiveSourceIds.first() else null
     }
 
-    private fun getOptionsFromMetadata(metadata: JsonObject?, classType: String, fieldName: String): List<String>? {
+    /**
+     * The /object_info spec of an API input. Dotted keys ("format.codec") are inputs of a selected
+     * COMFY_DYNAMICCOMBO_V3 option: walk each prefix, picking the option by the node's value for it.
+     */
+    private fun specFor(metadata: JsonObject?, classType: String, fieldName: String, nodeInputs: JsonObject): JsonArray? {
         if (metadata == null) return null
-        try {
-            val nodeDef = metadata.getAsJsonObject(classType) ?: return null
-            val inputDef = nodeDef.getAsJsonObject("input") ?: return null
-            
-            // Check required and optional
-            val required = inputDef.getAsJsonObject("required")
-            val optional = inputDef.getAsJsonObject("optional")
-            
-            val fieldDef = (required?.get(fieldName) ?: optional?.get(fieldName))?.asJsonArray ?: return null
-            
-            if (fieldDef.size() > 0 && fieldDef.get(0).isJsonArray) {
-                val optionsArray = fieldDef.get(0).asJsonArray
-                return optionsArray.map { it.asString }
+        return try {
+            var group = metadata.getAsJsonObject(classType)?.getAsJsonObject("input") ?: return null
+            val parts = fieldName.split(".")
+            var spec: JsonArray? = null
+            parts.forEachIndexed { i, part ->
+                spec = (group.getAsJsonObject("required")?.get(part) ?: group.getAsJsonObject("optional")?.get(part))
+                    ?.takeIf { it.isJsonArray }?.asJsonArray ?: return null
+                if (i < parts.lastIndex) {
+                    if (specKind(spec!!) != DYNAMIC_COMBO) return null
+                    val selected = nodeInputs.get(parts.take(i + 1).joinToString("."))
+                        ?.takeIf { it.isJsonPrimitive }?.asString ?: return null
+                    group = spec!!.get(1).asJsonObject.getAsJsonArray("options")
+                        .map { it.asJsonObject }
+                        .firstOrNull { it.get("key")?.asString == selected }
+                        ?.getAsJsonObject("inputs") ?: return null
+                }
             }
+            spec
         } catch (e: Exception) {
             e.printStackTrace()
+            null
         }
-        return null
+    }
+
+    private fun specKind(spec: JsonArray): String? {
+        val first = spec.takeIf { it.size() > 0 }?.get(0) ?: return null
+        return if (first.isJsonArray) "COMBO" else first.takeIf { it.isJsonPrimitive }?.asString
+    }
+
+    /** Options of a legacy [[...], {...}] or V3 ["COMBO", {"options": [...]}] combo; null for other inputs. */
+    private fun comboOptions(spec: JsonArray): List<String>? {
+        val first = spec.takeIf { it.size() > 0 }?.get(0) ?: return null
+        val list = when {
+            first.isJsonArray -> first.asJsonArray
+            first.isJsonPrimitive && first.asString == "COMBO" ->
+                spec.takeIf { it.size() > 1 }?.get(1)?.takeIf { it.isJsonObject }?.asJsonObject?.getAsJsonArray("options")
+            else -> null
+        } ?: return null
+        return list.filter { it.isJsonPrimitive }.map { it.asString }
     }
 
     fun parseAllNodes(jsonContent: String): List<NodeInfo> {

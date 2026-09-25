@@ -4,6 +4,7 @@ enum class WorkflowSource {
     LOCAL_IMPORT,
     SERVER_USERDATA,
     SERVER_HISTORY,
+    SERVER_TEMPLATE,
     UNKNOWN
 }
 

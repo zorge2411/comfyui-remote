@@ -710,6 +710,75 @@ class MainViewModel(
 
 
 
+    // Template library of the connected server (/templates/index.json)
+    private val _templateCategories = MutableStateFlow<List<com.example.comfyui_remote.domain.TemplateCategory>>(emptyList())
+    val templateCategories: StateFlow<List<com.example.comfyui_remote.domain.TemplateCategory>> = _templateCategories.asStateFlow()
+
+    private val _templatesLoading = MutableStateFlow(false)
+    val templatesLoading: StateFlow<Boolean> = _templatesLoading.asStateFlow()
+
+    private val _templatesError = MutableStateFlow<String?>(null)
+    val templatesError: StateFlow<String?> = _templatesError.asStateFlow()
+
+    private val _templateImportError = MutableStateFlow<String?>(null)
+    val templateImportError: StateFlow<String?> = _templateImportError.asStateFlow()
+
+    fun clearTemplateImportError() {
+        _templateImportError.value = null
+    }
+
+    /** Base URL of the connected server, e.g. "http://192.168.1.5:8188". */
+    val serverBaseUrl: String
+        get() = "${if (_isSecure.value) "https" else "http"}://${_serverAddress.value}"
+
+    fun fetchTemplates(force: Boolean = false) {
+        if (_templatesLoading.value || (!force && _templateCategories.value.isNotEmpty())) return
+        viewModelScope.launch {
+            _templatesLoading.value = true
+            _templatesError.value = null
+            try {
+                val categories = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    val body = buildApiService().getTemplateFile(com.example.comfyui_remote.domain.WorkflowTemplateIndex.INDEX_FILE)
+                    com.example.comfyui_remote.domain.WorkflowTemplateIndex.parse(body.string())
+                }
+                _templateCategories.value = categories
+                if (categories.isEmpty()) _templatesError.value = "The server has no workflow templates."
+            } catch (e: retrofit2.HttpException) {
+                android.util.Log.e("TEMPLATES", "Template index HTTP ${e.code()}", e)
+                _templatesError.value = if (e.code() == 404) {
+                    "This server doesn't provide workflow templates. Update ComfyUI (and its comfyui-workflow-templates package)."
+                } else {
+                    "Couldn't load templates (HTTP ${e.code()})."
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("TEMPLATES", "Error loading template index", e)
+                _templatesError.value = "Couldn't load templates: ${e.message ?: e.javaClass.simpleName}"
+            } finally {
+                _templatesLoading.value = false
+            }
+        }
+    }
+
+    /** Downloads a template's workflow from the server and imports it like any other workflow. */
+    fun importTemplate(template: com.example.comfyui_remote.domain.WorkflowTemplate, onSuccess: (WorkflowEntity) -> Unit) {
+        viewModelScope.launch {
+            _isSyncing.value = true
+            _importStatus.value = "Fetching template..."
+            try {
+                val json = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    buildApiService().getTemplateFile("${template.name}.json").string()
+                }
+                importWorkflowInternal(template.title, json, com.example.comfyui_remote.domain.WorkflowSource.SERVER_TEMPLATE, onSuccess)
+            } catch (e: Exception) {
+                android.util.Log.e("TEMPLATES", "Error importing template ${template.name}", e)
+                _templateImportError.value = "Couldn't import '${template.title}': ${e.message ?: e.javaClass.simpleName}"
+            } finally {
+                _isSyncing.value = false
+                _importStatus.value = ""
+            }
+        }
+    }
+
     fun importServerWorkflow(serverFile: ServerWorkflowFile, onSuccess: (WorkflowEntity) -> Unit) {
         viewModelScope.launch {
             android.util.Log.d("WORKFLOW_IMPORT", "Importing server workflow: ${serverFile.name}")

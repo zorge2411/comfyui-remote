@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.AccountTree
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -59,6 +60,7 @@ private val DATE_FORMATTER = java.time.format.DateTimeFormatter.ofPattern("yyyy-
 @Composable
 fun WorkflowListScreen(
     viewModel: MainViewModel,
+    onOpenTemplates: () -> Unit = {},
     onWorkflowValidation: (WorkflowEntity) -> Unit // Will navigate to detail/run screen
 ) {
     val workflows by viewModel.allWorkflows.collectAsState(initial = emptyList())
@@ -74,6 +76,9 @@ fun WorkflowListScreen(
              androidx.compose.material3.TopAppBar(
                  title = { Text("Workflows") },
                  actions = {
+                     IconButton(onClick = onOpenTemplates) {
+                         Icon(Icons.Default.GridView, contentDescription = "Browse Templates")
+                     }
                      IconButton(onClick = { 
                          viewModel.syncHistory() 
                          viewModel.fetchServerWorkflows()
@@ -94,7 +99,9 @@ fun WorkflowListScreen(
                 EmptyState(
                     icon = Icons.Default.AccountTree,
                     title = "No Workflows Yet",
-                    message = "Tap the + button to import a workflow from your device or the server."
+                    message = "Start from one of your server's templates, or tap the + button to import a workflow from your device or the server.",
+                    actionText = "Browse Templates",
+                    onAction = onOpenTemplates
                 )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
