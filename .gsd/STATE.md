@@ -3,8 +3,13 @@
 ## Current Position
 
 - **Milestone**: 4 (Workflow compatibility)
-- **Phase**: 95 (Widget Mapping Gaps for V3 Nodes)
-- **Status**: ✅ Code done. All-template clean prompts 426 → 542 of 572; corpus known failures 7 → 4 (Phase 90 only). Local Android run (covers 89, 93, 94, 95) and the Phase 94 device check still pending.
+- **Phase**: 90 (Frontend-Only and Virtual Node Support)
+- **Task**: Planning complete: 3 plans in 3 waves (`.gsd/phases/90/`)
+- **Status**: Ready for execution. Still pending from earlier phases: the local Android run (covers 89, 93, 94, 95) and the Phase 94 device check.
+
+## Next Steps
+
+1. /execute 90
 
 ## Achievements (Milestone 4)
 
