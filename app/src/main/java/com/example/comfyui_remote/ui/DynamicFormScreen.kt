@@ -168,6 +168,8 @@ fun DynamicFormScreen(
                             },
                             label = { Text("${inputField.nodeTitle} (${inputField.displayName})") },
                             minLines = 3,
+                            // Long prompts scroll inside the field instead of stretching the whole form.
+                            maxLines = 8,
                             trailingIcon = if (inputField.value.isNotEmpty()) {
                                 {
                                     Row {
