@@ -3,8 +3,9 @@
 ## Current Position
 
 - **Milestone**: 4 (Workflow compatibility)
-- **Phase**: 93 (Map Subgraph Instance Inputs by Name)
-- **Status**: ✅ Done. Subgraph inputs bind by name; promoted widget values applied. Corpus known failures 12 → 10. Android `testDebugUnitTest`/`assembleDebug` still to run locally for Phases 89 and 93.
+- **Phase**: 94 (Support COMFY_DYNAMICCOMBO_V3 Inputs)
+- **Task**: Planning complete: 3 plans in 2 waves (`.gsd/phases/94/`)
+- **Status**: Ready for execution. Phases 89 and 93 done; Android `testDebugUnitTest`/`assembleDebug` still to run locally.
 
 ## Achievements (Milestone 4)
 
@@ -110,8 +111,8 @@
 
 ## Next Steps
 
-1. **Run locally**: `gradlew.bat testDebugUnitTest` and `gradlew.bat assembleDebug` (Phases 89 and 93 verified only on the plain JVM). Optional: open `video_minimax_h3_t2v` in the app and check that the form shows the instance prompt.
-2. **Next phase**: Phase 94 (`COMFY_DYNAMICCOMBO_V3`; clears 4 corpus entries), Phase 95 or Phase 90.
+1. **Execute Phase 94** (`/execute 94`): Plan 94.1 (validator + fixtures + re-baseline), then Plans 94.2 (converter) and 94.3 (form; ends with an on-device check).
+2. **Run locally**: `gradlew.bat testDebugUnitTest` and `gradlew.bat assembleDebug` (Phases 89 and 93 verified only on the plain JVM).
 3. **Optional device checks carried over from Milestone 3**:
    - Phase 82: confirm the positive prompt field appears first in a real workflow (unit-tested only).
    - Phase 80: confirm themed-icon retinting under Android 13+ Material You.

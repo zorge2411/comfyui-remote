@@ -50,10 +50,11 @@
 
 ### Phase 94: Support COMFY_DYNAMICCOMBO_V3 Inputs
 
-**Status**: ⬜ Not Started
-**Objective**: A dynamic combo (e.g. `ResizeImageMaskNode.resize_type`) stores its selected option plus that option's sub-widget values in `widgets_values`, and the API expects dotted keys (`resize_type.megapixels`). The converter doesn't expand them, so every later widget shifts. Expand the selected option's inputs from `/object_info`, like Phase 86 did for autogrow.
+**Status**: 📝 Planned (`.gsd/phases/94/`: 94-CONTEXT, 94-01/02/03-PLAN)
+**Objective**: A dynamic combo (e.g. `ResizeImageMaskNode.resize_type`, core `SaveVideo.format` → `codec` → `encoding`) stores its selected option plus that option's sub-widget values in `widgets_values`, and the API expects dotted keys (`resize_type.megapixels`). Expand the selected option's inputs from `/object_info`, recursively (like Phase 86 did for autogrow). Also: make the corpus validator see sub-inputs, and make the app form show V3 `COMBO` inputs as dropdowns, resolve dotted fields, and keep the dynamic key from being edited into an invalid state.
+**Scale**: 401 of 572 templates, 152 of 962 stock node types.
 **Discovered**: Phase 89 corpus baseline (2026-09-25)
-**Corpus fixtures to fix**: `utility_image_stitch`, `image_qwen_Image_2512_controlnet` (C5 part), `template_image_speech_to_video` (part), `video_ltx2_depth_to_video` (C5 part)
+**Corpus fixtures to fix**: `utility_image_stitch`, `image_qwen_Image_2512_controlnet`, `template_image_speech_to_video` (part), `video_ltx2_depth_to_video`, plus whatever the Plan 94.1 validator extension reveals (e.g. SaveVideo fixtures)
 
 ### Phase 95: Widget Mapping Gaps for V3 Nodes
 
