@@ -8,7 +8,7 @@
 
 - [x] Regression corpus of representative graph workflows that the converter test suite runs on every build (Phase 89)
 - [ ] Frontend-only / virtual nodes (Reroute, PrimitiveNode, SetNode/GetNode, Note) convert correctly, with type-aware passthrough
-- [ ] Every corpus fixture passes: `known-failures.json` is empty (Phases 90, 93–95); 7 entries left after Phase 94, for Phases 90 and 95
+- [ ] Every corpus fixture passes: `known-failures.json` is empty (Phases 90, 93–95); 4 entries left after Phase 95, all for Phase 90
 - [ ] Pre-flight check against `/object_info` before queueing (missing node types, missing required inputs, invalid combo values), with no false "missing node" warnings for nodes the converter removes
 - [ ] All server `node_errors` shown to the user, per node, not just the first one
 
@@ -27,7 +27,8 @@
 
 **Status**: ⬜ Not Started
 **Objective**: Handle nodes that exist only in the editor. Phantom-node passthrough currently takes the first input link without checking its type (`GraphToApiConverter.resolveRealSource`); make it type-aware like the Phase 88 bypass logic, and resolve SetNode/GetNode pairs, which are linked by name rather than by a graph link. Resolve PrimitiveNode into its targets' widget values. Also fix the Phase 88 bypass fallback: when no input matches the output type, drop the link instead of wiring the same-index input (corpus: `3d_hunyuan3d_multiview_to_model`).
-**Corpus fixtures to fix**: `3d_hunyuan3d_multiview_to_model`, `audio_ace_step_1_5_checkpoint`, `hidream_e1_1` (C7 part), `utility_topaz_illustration_upscale`
+**Corpus fixtures to fix**: `3d_hunyuan3d_multiview_to_model`, `audio_ace_step_1_5_checkpoint`, `hidream_e1_1`, `utility_topaz_illustration_upscale`
+**Also investigate (from the Phase 95 all-template run)**: unresolved link sources around bypassed/muted groups: `video_wan2_2_14B_s2v` (23 missing inputs), `flux1_dev_uso_reference_image_gen`, `image_ernie_image(_turbo)` (`PreviewAny.source`), `image_qwen_image_instantx_inpainting_controlnet`; 29 C7 PrimitiveNode across templates.
 **Depends on**: Phase 89
 
 ### Phase 91: Pre-flight Compatibility Check
@@ -58,7 +59,7 @@
 
 ### Phase 95: Widget Mapping Gaps for V3 Nodes
 
-**Status**: 📝 Planned (`.gsd/phases/95/`: 95-CONTEXT, 95-01-PLAN, 95-02-PLAN)
+**Status**: ✅ Done (code) (`.gsd/phases/95/95-SUMMARY.md`)
 **Objective**: Read `widgets_values` the way the frontend writes them:
 - skip control widgets (`control_after_generate`: 1 slot for INT/FLOAT, 2 for COMBO including the filter list);
 - don't let unlinked socket inputs consume widget values;

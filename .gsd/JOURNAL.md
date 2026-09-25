@@ -50,3 +50,8 @@ Implemented a persistent local queue and significant improvements to graph-to-AP
 
 - Dynamic combos are expanded into dotted sub-inputs, and the form handles V3 combos. All-template clean prompts went 123 → 426 of 572.
 - Lesson: extend the checker before fixing. The first corpus baseline hid 14 more fixtures that also had this bug.
+
+## 2026-09-25: Phase 95 Complete (code)
+
+- Widget mapping now follows the frontend's save rules: control widgets, sockets and forceInput, named values, defaults, and display-only widgets. All-template clean prompts: 426 → 542 of 572.
+- Lesson: a `widgets_values_named` map is complete for the widgets saved, so a missing name means a newer widget. Falling back to the positional value there brings the shift back.
