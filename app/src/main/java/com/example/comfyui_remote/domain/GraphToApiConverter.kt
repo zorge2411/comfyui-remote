@@ -301,10 +301,13 @@ object GraphToApiConverter {
                     return null
                 }
  
+                // Values promoted from an enclosing subgraph instance replace this node's own widget values
+                val promoted = node.getAsJsonObject(PROMOTED_WIDGETS)
+
                 if (isManualLoadImage) {
-                    if (graphWidgets != null && graphWidgets.size() > 0) {
-                        inputs.add("image", graphWidgets[0])
-                    }
+                    val image = promoted?.get("image")
+                        ?: graphWidgets?.takeIf { it.size() > 0 }?.get(0)
+                    if (image != null) inputs.add("image", image)
                 }
 
                 // Custom frontend extensions can store localized display labels (e.g. "By filename")
@@ -384,11 +387,12 @@ object GraphToApiConverter {
                             // A widget converted to an input keeps its slot in widgets_values even when linked.
                             if (slot?.has("widget") == true) findNextCompatibleWidget(key)
                         } else {
-                            val widget = findNextCompatibleWidget(key)
+                            // Always consume the widgets_values slot so later widgets stay aligned
+                            val widget = findNextCompatibleWidget(key).let { promoted?.get(key) ?: it }
                             if (widget != null) inputs.add(key, resolveComboValue(key, widget))
                         }
                     } else {
-                        val widget = findNextCompatibleWidget(key)
+                        val widget = findNextCompatibleWidget(key).let { promoted?.get(key) ?: it }
                         if (widget != null) inputs.add(key, resolveComboValue(key, widget))
                     }
                 }
@@ -699,7 +703,9 @@ object GraphToApiConverter {
                 }
                 
                 wrapperInputRedirects[id] = inputRedirects
-                wrapperSlotMaps[id] = mapInstanceInputs(node, definition)
+                val slotMap = mapInstanceInputs(node, definition)
+                wrapperSlotMaps[id] = slotMap
+                val promotedOverrides = promotedWidgetOverrides(node, definition, slotMap, idRemapper)
                 wrapperOutputRedirects[id] = outputRedirects
                 
                 // 4. Add Pure Internal Nodes (excluding Input -10/Output -20)
@@ -709,6 +715,11 @@ object GraphToApiConverter {
                     if (currentId != remappedInputId && currentId != remappedOutputId) {
                         // Update this node's input links
                         val updatedNode = updateNodeInputLinks(internalNode, linkIdRemapper)
+                        promotedOverrides[currentId]?.let { overrides ->
+                            val merged = updatedNode.getAsJsonObject(PROMOTED_WIDGETS) ?: JsonObject()
+                            overrides.entrySet().forEach { (name, value) -> merged.add(name, value) }
+                            updatedNode.add(PROMOTED_WIDGETS, merged)
+                        }
                         newNodes.add(updatedNode)
                     }
                 }
@@ -830,6 +841,68 @@ object GraphToApiConverter {
         newGraph.add("nodes", finalNodes)
         newGraph.add("links", newLinks)
         return newGraph to subgraphsExpanded
+    }
+
+    /** Graph-node property holding widget values promoted from an enclosing subgraph instance. Never sent to the API. */
+    private const val PROMOTED_WIDGETS = "__promoted_widgets"
+
+    /**
+     * Widget values a subgraph instance supplies to its interior nodes, keyed by remapped interior node ID,
+     * then input name. Mirrors the ComfyUI frontend (SubgraphNode._setWidget/_applyPromotedWidgetValues and
+     * ExecutableNodeDTO.resolveInput): a subgraph input is a promoted widget when the first of its links that
+     * reaches an interior input with a widget exists; the instance's widgets_values are assigned to those
+     * inputs by position (proxyWidgetErrorQuarantine host values win), and a value only applies when no
+     * external link feeds that input. Empty widgets_values keeps the interior values.
+     */
+    internal fun promotedWidgetOverrides(
+        instance: JsonObject,
+        definition: SubgraphDefinition,
+        slotMap: Map<Int, Int>,
+        idRemapper: Map<Int, Int>
+    ): Map<Int, JsonObject> {
+        val linksById = definition.links.associateBy { it[0].asInt }
+        val nodesById = definition.nodes.associateBy { intId(it) }
+        val instanceWidgets = instance.get("widgets_values")?.takeIf { it.isJsonArray }?.asJsonArray
+        val inheritedValues = instance.getAsJsonObject(PROMOTED_WIDGETS) // this instance is itself promoted into
+        val quarantine = mutableMapOf<String, com.google.gson.JsonElement>()
+        instance.getAsJsonObject("properties")?.get("proxyWidgetErrorQuarantine")
+            ?.takeIf { it.isJsonArray }?.asJsonArray?.forEach { entryEl ->
+                val entry = entryEl.takeIf { it.isJsonObject }?.asJsonObject ?: return@forEach
+                val original = entry.get("originalEntry")?.takeIf { it.isJsonArray }?.asJsonArray ?: return@forEach
+                if (original.size() >= 2 && original[0].asString == "-1" && entry.has("hostValue")) {
+                    quarantine[original[1].asString] = entry.get("hostValue")
+                }
+            }
+        val externallyLinked = mutableSetOf<Int>()
+        instance.getAsJsonArray("inputs")?.forEachIndexed { slot, inputEl ->
+            val link = inputEl.asJsonObject.get("link")
+            if (link != null && !link.isJsonNull) slotMap[slot]?.let { externallyLinked += it }
+        }
+
+        val result = mutableMapOf<Int, JsonObject>()
+        var valueIndex = 0
+        definition.inputs.forEachIndexed { index, subgraphInput ->
+            // Every interior input fed by this subgraph input: (node ID, input name, has a widget)
+            val targets = subgraphInput.linkIds.mapNotNull { linkId ->
+                val link = linksById[linkId] ?: return@mapNotNull null
+                val target = nodesById[link[3].asInt] ?: return@mapNotNull null
+                val slot = target.getAsJsonArray("inputs")?.let { ins ->
+                    link[4].asInt.takeIf { it < ins.size() }?.let { ins[it].asJsonObject }
+                } ?: return@mapNotNull null
+                Triple(intId(target), slot.get("name").asString, slot.has("widget"))
+            }
+            if (targets.none { it.third }) return@forEachIndexed // not a promoted widget
+            val positional = instanceWidgets?.let { if (valueIndex < it.size()) it[valueIndex] else null }
+            valueIndex++
+            val value = inheritedValues?.get(subgraphInput.name) ?: quarantine[subgraphInput.name] ?: positional
+            if (value == null || value.isJsonNull || index in externallyLinked) return@forEachIndexed
+            // The frontend resolves every interior input of this subgraph input to the promoted value
+            targets.forEach { (targetId, inputName, _) ->
+                val remapped = idRemapper[targetId] ?: targetId
+                result.getOrPut(remapped) { JsonObject() }.add(inputName, value)
+            }
+        }
+        return result
     }
 
     /**

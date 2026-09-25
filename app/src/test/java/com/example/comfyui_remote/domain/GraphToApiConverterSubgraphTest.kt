@@ -384,4 +384,103 @@ class GraphToApiConverterSubgraphTest {
         assertEquals("IntSrc", api.getAsJsonObject(source).get("class_type").asString)
         assertEquals(512, latent.get("width").asInt)
     }
+
+    // --- Phase 93: promoted widget values on the instance replace interior values ---
+
+    private fun sgInstance(widgets: String, inputs: String = "[]", extra: String = "") =
+        """{"id": 2, "type": "SG", "inputs": $inputs, "widgets_values": $widgets $extra}"""
+
+    private fun withSg(vararg nodes: String, links: String = "[]", defs: String = textSizeSubgraph) =
+        """{"definitions": {"subgraphs": [$defs]}, "nodes": [${nodes.joinToString(",")}], "links": $links}"""
+
+    @Test
+    fun `instance widget values replace interior values`() {
+        val api = convertApi(withSg(sgInstance("""["from instance", 1024, 768]""")))
+        assertEquals("from instance", nodeOfType(api, "TextEnc").get("text").asString)
+        val latent = nodeOfType(api, "Latent")
+        assertEquals(1024, latent.get("width").asInt)
+        assertEquals(768, latent.get("height").asInt)
+    }
+
+    @Test
+    fun `empty instance widget values keep interior values`() {
+        val api = convertApi(withSg(sgInstance("[]")))
+        assertEquals("interior text", nodeOfType(api, "TextEnc").get("text").asString)
+        assertEquals(512, nodeOfType(api, "Latent").get("width").asInt)
+    }
+
+    @Test
+    fun `externally linked promoted input uses the link and keeps later values aligned`() {
+        val api = convertApi(withSg(
+            """{"id": 1, "type": "IntSrc", "outputs": [{"name": "INT", "type": "INT"}]}""",
+            sgInstance("""["from instance", 1024, 768]""",
+                """[{"name": "width", "type": "INT", "widget": {"name": "width"}, "link": 50}]"""),
+            links = """[[50, 1, 0, 2, 0, "INT"]]"""))
+        val latent = nodeOfType(api, "Latent")
+        assertEquals("1", latent.getAsJsonArray("width")[0].asString)
+        assertEquals(768, latent.get("height").asInt)
+        assertEquals("from instance", nodeOfType(api, "TextEnc").get("text").asString)
+    }
+
+    @Test
+    fun `non-widget subgraph inputs take no widget value position`() {
+        val sg = """
+            {"id": "SG3", "name": "SG3",
+             "inputs": [
+               {"id": "a", "name": "count", "type": "INT", "linkIds": [931]},
+               {"id": "b", "name": "text", "type": "STRING", "linkIds": [932]}],
+             "outputs": [],
+             "nodes": [
+               {"id": 40, "type": "Count", "inputs": [{"name": "value", "type": "INT", "link": 931}], "widgets_values": [7]},
+               {"id": 41, "type": "TextEnc", "inputs": [{"name": "text", "type": "STRING", "widget": {"name": "text"}, "link": 932}], "widgets_values": ["interior"]}],
+             "links": [
+               {"id": 931, "origin_id": -10, "origin_slot": 0, "target_id": 40, "target_slot": 0, "type": "INT"},
+               {"id": 932, "origin_id": -10, "origin_slot": 1, "target_id": 41, "target_slot": 0, "type": "STRING"}]}
+        """
+        val api = convertApi(withSg("""{"id": 2, "type": "SG3", "inputs": [], "widgets_values": ["promoted"]}""", defs = sg))
+        assertEquals("promoted", nodeOfType(api, "TextEnc").get("text").asString)
+    }
+
+    @Test
+    fun `one subgraph input feeding two interior nodes sets both`() {
+        val sg = """
+            {"id": "SG4", "name": "SG4",
+             "inputs": [{"id": "a", "name": "text", "type": "STRING", "linkIds": [941, 942]}],
+             "outputs": [],
+             "nodes": [
+               {"id": 50, "type": "TextEnc", "inputs": [{"name": "text", "type": "STRING", "widget": {"name": "text"}, "link": 941}], "widgets_values": ["one"]},
+               {"id": 51, "type": "TextEnc", "inputs": [{"name": "text", "type": "STRING", "widget": {"name": "text"}, "link": 942}], "widgets_values": ["two"]}],
+             "links": [
+               {"id": 941, "origin_id": -10, "origin_slot": 0, "target_id": 50, "target_slot": 0, "type": "STRING"},
+               {"id": 942, "origin_id": -10, "origin_slot": 0, "target_id": 51, "target_slot": 0, "type": "STRING"}]}
+        """
+        val api = convertApi(withSg("""{"id": 2, "type": "SG4", "inputs": [], "widgets_values": ["shared"]}""", defs = sg))
+        val texts = api.entrySet().map { it.value.asJsonObject.getAsJsonObject("inputs").get("text").asString }
+        assertEquals(listOf("shared", "shared"), texts)
+    }
+
+    @Test
+    fun `outer instance value reaches a nested subgraph's interior node`() {
+        val outer = """
+            {"id": "OUT", "name": "OUT",
+             "inputs": [{"id": "o", "name": "prompt", "type": "STRING", "linkIds": [951]}],
+             "outputs": [],
+             "nodes": [{"id": 60, "type": "SG",
+                        "inputs": [{"name": "text", "type": "STRING", "widget": {"name": "text"}, "link": 951}],
+                        "widgets_values": ["middle", 640, 480]}],
+             "links": [{"id": 951, "origin_id": -10, "origin_slot": 0, "target_id": 60, "target_slot": 0, "type": "STRING"}]}
+        """
+        val api = convertApi(withSg("""{"id": 2, "type": "OUT", "inputs": [], "widgets_values": ["outermost"]}""",
+            defs = "$textSizeSubgraph, $outer"))
+        assertEquals("outermost", nodeOfType(api, "TextEnc").get("text").asString)
+        assertEquals(640, nodeOfType(api, "Latent").get("width").asInt)
+    }
+
+    @Test
+    fun `quarantined host value overrides the positional value`() {
+        val quarantine = """, "properties": {"proxyWidgetErrorQuarantine": [
+            {"originalEntry": ["-1", "text"], "reason": "missingSubgraphInput", "hostValue": "rescued", "attemptedAtVersion": 1}]}"""
+        val api = convertApi(withSg(sgInstance("""["positional", 1024, 768]""", extra = quarantine)))
+        assertEquals("rescued", nodeOfType(api, "TextEnc").get("text").asString)
+    }
 }

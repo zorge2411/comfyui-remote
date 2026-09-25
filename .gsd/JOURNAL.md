@@ -40,3 +40,8 @@ Implemented a persistent local queue and significant improvements to graph-to-AP
 - Built the workflow compatibility corpus from the official ComfyUI templates (MIT), plus an `/object_info` snapshot from stock ComfyUI v0.37.2 running headless on CPU in the cloud session.
 - Lesson: `/object_info` input order is load-bearing. The converter maps `widgets_values` by that order, so a snapshot saved with sorted keys breaks every node.
 - The baseline exposed 4 converter gap groups in real templates, filed as Phases 90 and 93–95.
+
+## 2026-09-25: Phase 93 Complete
+
+- Subgraph instance inputs now bind by name+type, then name, matching the ComfyUI frontend. Promoted widget values on instances now reach interior nodes.
+- Lesson: the frontend source (`ComfyUI_frontend/src/lib/litegraph/src/subgraph/`) is the reference for graph semantics, and reading it turned up the silent wrong-values bug (Bug B) that the structural corpus checks couldn't see.

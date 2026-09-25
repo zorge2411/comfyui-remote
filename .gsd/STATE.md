@@ -4,10 +4,11 @@
 
 - **Milestone**: 4 (Workflow compatibility)
 - **Phase**: 93 (Map Subgraph Instance Inputs by Name)
-- **Task**: Planning complete: 2 plans in 2 waves (`.gsd/phases/93/`)
-- **Status**: Ready for execution. Phase 89 done; its Android `testDebugUnitTest`/`assembleDebug` run is still pending locally.
+- **Status**: ✅ Done. Subgraph inputs bind by name; promoted widget values applied. Corpus known failures 12 → 10. Android `testDebugUnitTest`/`assembleDebug` still to run locally for Phases 89 and 93.
 
 ## Achievements (Milestone 4)
+
+- [x] Implemented Phase 93 (Subgraph input mapping + promoted widget values): instance inputs bind to subgraph inputs by name+type, then name (frontend `_rebindInputSubgraphSlots`); instance `widgets_values` now reach interior nodes for unlinked promoted inputs, so the app sends the prompt/seed ComfyUI shows. 12 synthetic tests + real-fixture test; all 572 templates convert without errors. See `.gsd/phases/93/93-SUMMARY.md`.
 
 - [x] Implemented Phase 89 (Workflow Compatibility Regression Corpus): 30 official ComfyUI templates (MIT) + stock ComfyUI v0.37.2 `object_info` snapshot, `ApiPromptValidator` (C1–C7) and `WorkflowCorpusTest` with enforced `known-failures.json`. The baseline found 4 converter gap groups, filed as Phase 90 scope plus new Phases 93–95. See `.gsd/phases/89/89-SUMMARY.md`.
 
@@ -109,8 +110,8 @@
 
 ## Next Steps
 
-1. **Execute Phase 93** (`/execute 93`): Plan 93.1 (input mapping by name), then Plan 93.2 (promoted widget values).
-2. **Run locally**: `gradlew.bat testDebugUnitTest` and `gradlew.bat assembleDebug` (Phase 89 has only been verified on the plain JVM).
+1. **Run locally**: `gradlew.bat testDebugUnitTest` and `gradlew.bat assembleDebug` (Phases 89 and 93 verified only on the plain JVM). Optional: open `video_minimax_h3_t2v` in the app and check that the form shows the instance prompt.
+2. **Next phase**: Phase 94 (`COMFY_DYNAMICCOMBO_V3`; clears 4 corpus entries), Phase 95 or Phase 90.
 3. **Optional device checks carried over from Milestone 3**:
    - Phase 82: confirm the positive prompt field appears first in a real workflow (unit-tested only).
    - Phase 80: confirm themed-icon retinting under Android 13+ Material You.
