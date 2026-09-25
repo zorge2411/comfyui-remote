@@ -2,10 +2,10 @@
 
 ## Current Position
 
-- **Milestone**: 4 — Workflow compatibility (planned)
-- **Phase**: 89 (Workflow Compatibility Regression Corpus)
-- **Status**: ✅ Done: 30-fixture corpus + `WorkflowCorpusTest`; baseline 18 pass, 12 known failures assigned to Phases 90, 93, 94 and 95. Android `testDebugUnitTest`/`assembleDebug` still to run locally (no Android SDK in the cloud session).
-- **Previous**: Milestone 3 ended at Phase 88 (bypassed/muted node modes, verified live)
+- **Milestone**: 4 (Workflow compatibility)
+- **Phase**: 93 (Map Subgraph Instance Inputs by Name)
+- **Task**: Planning complete: 2 plans in 2 waves (`.gsd/phases/93/`)
+- **Status**: Ready for execution. Phase 89 done; its Android `testDebugUnitTest`/`assembleDebug` run is still pending locally.
 
 ## Achievements (Milestone 4)
 
@@ -109,8 +109,8 @@
 
 ## Next Steps
 
-1. **Run locally**: `gradlew.bat testDebugUnitTest` and `gradlew.bat assembleDebug` to confirm Phase 89 under the Android toolchain.
-2. **Next phase**: Phase 90 (frontend-only nodes), or one of the new corpus-driven Phases 93–95. Each fix should delete its `known-failures.json` entries.
+1. **Execute Phase 93** (`/execute 93`): Plan 93.1 (input mapping by name), then Plan 93.2 (promoted widget values).
+2. **Run locally**: `gradlew.bat testDebugUnitTest` and `gradlew.bat assembleDebug` (Phase 89 has only been verified on the plain JVM).
 3. **Optional device checks carried over from Milestone 3**:
    - Phase 82: confirm the positive prompt field appears first in a real workflow (unit-tested only).
    - Phase 80: confirm themed-icon retinting under Android 13+ Material You.

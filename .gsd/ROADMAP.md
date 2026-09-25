@@ -43,9 +43,9 @@
 
 ### Phase 93: Map Subgraph Instance Inputs by Name
 
-**Status**: ⬜ Not Started
-**Objective**: Subgraph expansion maps an instance node's inputs to the subgraph's inputs by position, but an instance only lists its linked/promoted inputs, so links land on the wrong input (e.g. a width INT reaches `CLIPTextEncode.text`). Map them by name, and keep linked-widget consumption correct for promoted widgets inside subgraphs.
-**Discovered**: Phase 89 corpus baseline (2026-09-25)
+**Status**: 📝 Planned (`.gsd/phases/93/`: 93-CONTEXT, 93-01-PLAN, 93-02-PLAN)
+**Objective**: Make subgraph expansion match the ComfyUI frontend. (A) Match instance inputs to subgraph inputs by name+type, then by name, not by position; position fails in 136 of 293 template instances (e.g. a width INT reaches `CLIPTextEncode.text`). (B) Apply the instance's promoted widget values (`widgets_values`) to interior nodes when the input isn't linked; today the stale interior values are sent (61 of 788 template values differ, including prompts).
+**Discovered**: Phase 89 corpus baseline (2026-09-25); Bug B found while researching Phase 93
 **Corpus fixtures to fix**: `image_boogu_image_0_1_turbo_t2i`, `image_mage_flow_t2i_int8`, `image_qwen_Image_2512_controlnet` (C4 part), `video_ltx2_depth_to_video` (C3/C4 part)
 
 ### Phase 94: Support COMFY_DYNAMICCOMBO_V3 Inputs
