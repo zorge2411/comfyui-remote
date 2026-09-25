@@ -96,6 +96,23 @@ fun DynamicFormScreen(
     val executionStatus by viewModel.executionStatus.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
 
+    // Phase 91: live pre-flight against the server's /object_info, following the current inputs.
+    val nodeMetadata by viewModel.nodeMetadata.collectAsState()
+    val pendingPreflight by viewModel.pendingPreflight.collectAsState()
+    var formPreflight by remember { mutableStateOf<com.example.comfyui_remote.domain.PreflightResult?>(null) }
+    LaunchedEffect(workflow, inputs, nodeMetadata) {
+        kotlinx.coroutines.delay(300)
+        formPreflight = viewModel.formPreflight(workflow, inputs)
+    }
+
+    pendingPreflight?.let { pending ->
+        com.example.comfyui_remote.ui.components.PreflightDialog(
+            result = pending.result,
+            onQueueAnyway = { viewModel.confirmPreflight() },
+            onCancel = { viewModel.cancelPreflight() }
+        )
+    }
+
     Scaffold { paddingValues ->
         Column(
             modifier = Modifier
@@ -121,27 +138,12 @@ fun DynamicFormScreen(
                 }
             }
             
-            // Missing Nodes Warning
-            if (!workflow.missingNodes.isNullOrBlank()) {
-                androidx.compose.material3.Card(
-                    colors = androidx.compose.material3.CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    ),
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            "⚠️ Missing Nodes on Server",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                        Text(
-                            workflow.missingNodes,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    }
-                }
+            // Server compatibility (Phase 91; replaces the missing-node list saved at import)
+            formPreflight?.takeIf { !it.isEmpty }?.let { result ->
+                com.example.comfyui_remote.ui.components.PreflightCard(
+                    result = result,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
             }
 
             // Detailed Error Message
