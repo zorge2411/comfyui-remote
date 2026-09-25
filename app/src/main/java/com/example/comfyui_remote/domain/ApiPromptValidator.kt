@@ -1,4 +1,4 @@
-package com.example.comfyui_remote.domain.corpus
+package com.example.comfyui_remote.domain
 
 import com.google.gson.JsonArray
 import com.google.gson.JsonElement
@@ -8,12 +8,45 @@ import com.google.gson.JsonObject
  * Structural checks on an API-format prompt produced by GraphToApiConverter, against a
  * saved /object_info. No server needed. Check IDs (see .gsd/phases/89/89-CONTEXT.md, D-05):
  *  C1 unknown class_type, C2 dangling link, C3 link type mismatch, C4 missing required input,
- *  C5 invalid combo value (file-name values are not checked), C6 muted/bypassed node sent, C7 frontend-only node sent (FRONTEND_ONLY, incl. KJNodes SetNode/GetNode).
+ *  C5 invalid combo value, C6 muted/bypassed node sent (only with a graph), C7 frontend-only node sent (FRONTEND_ONLY, incl. KJNodes SetNode/GetNode).
+ * Used by the corpus tests and by the app's pre-flight check (Phase 91); [Options] picks which values C5 checks.
  */
 object ApiPromptValidator {
 
-    data class Violation(val check: String, val nodeId: String, val detail: String) {
+    /**
+     * [input], [value] and [available] (first 5 options, C5 only) are for the pre-flight UI;
+     * [detail] and toString() are the stable form used in logs and known-failures.json.
+     */
+    data class Violation(
+        val check: String,
+        val nodeId: String,
+        val detail: String,
+        val input: String? = null,
+        val value: String? = null,
+        val available: List<String> = emptyList()
+    ) {
         override fun toString() = "$check node $nodeId: $detail"
+    }
+
+    /**
+     * Which combo values C5 checks.
+     * [checkFileValues]: file names (models, images) too; a saved snapshot can't know the server's files, a live server can.
+     * [checkUploadInputs]: inputs whose spec has `*_upload: true` (LoadImage.image etc.).
+     * [skipValues]: values never reported, e.g. files the app just uploaded (not in the cached object_info yet).
+     */
+    data class Options(
+        val checkFileValues: Boolean,
+        val checkUploadInputs: Boolean,
+        val skipValues: Set<String> = emptySet()
+    ) {
+        companion object {
+            /** Corpus tests: no file names, as before Phase 91. */
+            val CORPUS = Options(checkFileValues = false, checkUploadInputs = false)
+            /** Form screen: the stored workflow still holds the author's example images, so upload inputs are skipped. */
+            val FORM = Options(checkFileValues = true, checkUploadInputs = false)
+            /** Queue time: everything except the files uploaded for this run. */
+            fun queue(uploaded: Collection<String>) = Options(checkFileValues = true, checkUploadInputs = true, skipValues = uploaded.toSet())
+        }
     }
 
     val FRONTEND_ONLY = setOf("Reroute", "PrimitiveNode", "Note", "MarkdownNote", "SetNode", "GetNode")
@@ -23,12 +56,17 @@ object ApiPromptValidator {
     private const val MATCH_TYPE = "COMFY_MATCHTYPE_V3"
 
     // Model and input file names depend on the server's files, which a snapshot can't know.
-    private val FILE_VALUE = Regex("""[\\/]|\.(safetensors|ckpt|pt|pth|bin|gguf|onnx|sft|png|jpe?g|webp|gif|mp4|webm|mov|wav|mp3|flac|glb|gltf|fbx|obj|ply|stl|usdz|spz|splat)$""", RegexOption.IGNORE_CASE)
+    internal val FILE_VALUE = Regex("""[\\/]|\.(safetensors|ckpt|pt|pth|bin|gguf|onnx|sft|png|jpe?g|webp|gif|mp4|webm|mov|wav|mp3|flac|glb|gltf|fbx|obj|ply|stl|usdz|spz|splat)$""", RegexOption.IGNORE_CASE)
 
-    fun validate(api: JsonObject, objectInfo: JsonObject, graph: JsonObject): List<Violation> {
+    fun validate(
+        api: JsonObject,
+        objectInfo: JsonObject,
+        graph: JsonObject? = null,
+        options: Options = Options.CORPUS
+    ): List<Violation> {
         val out = mutableListOf<Violation>()
 
-        val skipped = graph.getAsJsonArray("nodes")?.mapNotNull { el ->
+        val skipped = graph?.getAsJsonArray("nodes")?.mapNotNull { el ->
             val n = el.asJsonObject
             val mode = n.get("mode")?.takeIf { it.isJsonPrimitive }?.asInt ?: 0
             if (mode == 2 || mode == 4) n.get("id").asString else null
@@ -58,26 +96,31 @@ object ApiPromptValidator {
                     val (srcId, slot) = link
                     val src = api.getAsJsonObject(srcId)
                     if (src == null) {
-                        out += Violation("C2", id, "$classType.$key links to missing node $srcId")
+                        out += Violation("C2", id, "$classType.$key links to missing node $srcId", input = key)
                         continue
                     }
                     val srcOutputs = objectInfo.getAsJsonObject(src.get("class_type").asString)?.getAsJsonArray("output")
                         ?: continue // C1 reported on the source node itself
                     if (slot >= srcOutputs.size()) {
-                        out += Violation("C2", id, "$classType.$key links to slot $slot of $srcId, which has ${srcOutputs.size()} outputs")
+                        out += Violation("C2", id, "$classType.$key links to slot $slot of $srcId, which has ${srcOutputs.size()} outputs", input = key)
                         continue
                     }
                     val declared = spec?.let { declaredType(it) } ?: continue // dotted/unknown keys: no declared type
                     val produced = srcOutputs[slot].asString
                     if (!compatible(produced, declared)) {
-                        out += Violation("C3", id, "$classType.$key expects $declared but $srcId:$slot gives $produced")
+                        out += Violation("C3", id, "$classType.$key expects $declared but $srcId:$slot gives $produced", input = key)
                     }
                 } else if (spec != null) {
-                    val options = comboOptions(spec) ?: continue
-                    if (options.isNotEmpty() && value.isJsonPrimitive && value.asString !in options &&
-                        !FILE_VALUE.containsMatchIn(value.asString)
+                    val comboValues = comboOptions(spec) ?: continue
+                    if (!options.checkUploadInputs && isUploadInput(spec)) continue
+                    if (comboValues.isNotEmpty() && value.isJsonPrimitive && value.asString !in comboValues &&
+                        value.asString !in options.skipValues &&
+                        (options.checkFileValues || !FILE_VALUE.containsMatchIn(value.asString))
                     ) {
-                        out += Violation("C5", id, "$classType.$key = \"${value.asString}\" not in ${options.take(5)}")
+                        out += Violation(
+                            "C5", id, "$classType.$key = \"${value.asString}\" not in ${comboValues.take(5)}",
+                            input = key, value = value.asString, available = comboValues.take(5)
+                        )
                     }
                 }
             }
@@ -85,7 +128,7 @@ object ApiPromptValidator {
             for (key in required) {
                 if (specs[key]?.let { isOptionalAutogrow(it) } == true) continue
                 if (!inputs.has(key) && inputs.keySet().none { it.startsWith("$key.") }) {
-                    out += Violation("C4", id, "$classType is missing required input $key")
+                    out += Violation("C4", id, "$classType is missing required input $key", input = key)
                 }
             }
         }
@@ -121,6 +164,14 @@ object ApiPromptValidator {
         }
         add(null, def.getAsJsonObject("input"))
         return specs to required
+    }
+
+    /** Upload inputs (LoadImage.image, LoadVideo.file, LoadAudio.audio) carry `image_upload: true` etc. in their config. */
+    private fun isUploadInput(spec: JsonArray): Boolean {
+        val config = spec.takeIf { it.size() > 1 }?.get(1)?.takeIf { it.isJsonObject }?.asJsonObject ?: return false
+        return config.entrySet().any { (k, v) ->
+            k.endsWith("_upload") && v.isJsonPrimitive && v.asJsonPrimitive.isBoolean && v.asBoolean
+        }
     }
 
     /** An autogrow group with template.min == 0 may have no entries at all. */

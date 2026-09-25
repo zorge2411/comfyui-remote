@@ -1,5 +1,6 @@
 package com.example.comfyui_remote.domain.corpus
 
+import com.example.comfyui_remote.domain.ApiPromptValidator
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import org.junit.Assert.assertEquals

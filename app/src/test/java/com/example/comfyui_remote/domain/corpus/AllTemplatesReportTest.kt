@@ -1,6 +1,7 @@
 package com.example.comfyui_remote.domain.corpus
 
 import com.example.comfyui_remote.data.ComfyObjectInfo
+import com.example.comfyui_remote.domain.ApiPromptValidator
 import com.example.comfyui_remote.domain.GraphToApiConverter
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
