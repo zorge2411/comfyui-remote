@@ -3,8 +3,10 @@ package com.example.comfyui_remote.domain
 import com.example.comfyui_remote.data.ComfyObjectInfo
 import com.google.gson.Gson
 import com.google.gson.JsonArray
+import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.google.gson.JsonPrimitive
 
 object GraphToApiConverter {
 
@@ -265,14 +267,7 @@ object GraphToApiConverter {
  
                 fun specOf(key: String): JsonArray? = (required?.get(key) ?: optional?.get(key)) as? JsonArray
 
-                fun kindOf(spec: JsonArray?): String? {
-                    val first = spec?.takeIf { it.size() > 0 }?.get(0) ?: return null
-                    return when {
-                        first.isJsonPrimitive && first.asJsonPrimitive.isString -> first.asString
-                        first.isJsonArray -> "COMBO"
-                        else -> null
-                    }
-                }
+                fun kindOf(spec: JsonArray?): String? = specKind(spec)
 
                 // Helper to check compatibility
                 fun isCompatible(value: com.google.gson.JsonElement, expectedType: String?): Boolean {
@@ -332,6 +327,9 @@ object GraphToApiConverter {
                         if (filter.isJsonPrimitive && filter.asJsonPrimitive.isString) widgetIndex++
                     }
                 }
+
+                // Newer frontends also save widget values by name, which survives node definition changes
+                val named = node.get("widgets_values_named")?.takeIf { it.isJsonObject }?.asJsonObject
 
                 // Values promoted from an enclosing subgraph instance replace this node's own widget values
                 val promoted = node.getAsJsonObject(PROMOTED_WIDGETS)
@@ -405,6 +403,11 @@ object GraphToApiConverter {
                         }
                         return
                     }
+                    if (kind == IMAGE_COMPARE) {
+                        // Display-only widget: never saved in widgets_values, sent as ["", ""] (useImageCompareWidget.ts)
+                        inputs.add(path, JsonArray().apply { add(""); add("") })
+                        return
+                    }
                     val slot = graphSlot(path)
                     val linkId = linkOf(slot)
                     if (linkId != null) {
@@ -417,12 +420,22 @@ object GraphToApiConverter {
                         return
                     }
                     // In the frontend only widget-type inputs get a widget; sockets have no widgets_values slot.
-                    if (kind !in WIDGET_KINDS && (isSubInput || (slot != null && !slot.has("widget")))) return
+                    val isWidget = hasWidget(spec)
+                    if (!isWidget && (isSubInput || (slot != null && !slot.has("widget")) || isForcedInput(spec))) return
 
                     // Always consume the widgets_values slot so later widgets stay aligned
                     val saved = findNextCompatibleWidget(spec)
                     if (saved != null) skipControlWidgets(controlSlots(path, spec))
-                    val widget = promoted?.get(path) ?: saved ?: return
+                    // Promoted (Phase 93) > saved value > the frontend's default for a widget the node gained
+                    // after the workflow was saved. A named map lists every saved widget, so when it exists a
+                    // missing name means a newer widget, and the (possibly shifted) positional value is not used.
+                    val stored = if (named != null) named.get(path)?.takeIf { !it.isJsonNull } else saved
+                    val widget = promoted?.get(path)
+                        ?: stored
+                        ?: (if (isWidget) frontendDefault(spec)?.also {
+                            println("CONVERT_DEBUG: Node $id: no saved value for '$path', using default $it")
+                        } else null)
+                        ?: return
                     val value = resolveComboValue(path, spec, widget)
                     inputs.add(path, value)
 
@@ -898,11 +911,53 @@ object GraphToApiConverter {
 
     private const val DYNAMIC_COMBO = "COMFY_DYNAMICCOMBO_V3"
 
+    private const val IMAGE_COMPARE = "IMAGECOMPARE"
     private val SEED_NAMES = setOf("seed", "noise_seed")
     private val CONTROL_VALUES = setOf("fixed", "increment", "decrement", "randomize", "increment-wrap")
 
     /** Input kinds the frontend renders as widgets (and so store a widgets_values entry). */
     private val WIDGET_KINDS = setOf("INT", "FLOAT", "STRING", "BOOLEAN", "COMBO", DYNAMIC_COMBO)
+
+    private fun specConfig(spec: JsonArray?): JsonObject? =
+        spec?.takeIf { it.size() > 1 }?.get(1)?.takeIf { it.isJsonObject }?.asJsonObject
+
+    /** forceInput (or the deprecated defaultInput) turns a widget type into a socket-only input. */
+    private fun isForcedInput(spec: JsonArray?): Boolean {
+        val config = specConfig(spec) ?: return false
+        return listOf("forceInput", "defaultInput").any { key ->
+            config.get(key)?.let { it.isJsonPrimitive && it.asJsonPrimitive.isBoolean && it.asBoolean } == true
+        }
+    }
+
+    /** The widget kind of an input spec: legacy lists are COMBO, and a config widgetType overrides the type. */
+    private fun specKind(spec: JsonArray?): String? {
+        val first = spec?.takeIf { it.size() > 0 }?.get(0) ?: return null
+        specConfig(spec)?.get("widgetType")?.takeIf { it.isJsonPrimitive }?.let { return it.asString }
+        return when {
+            first.isJsonPrimitive && first.asJsonPrimitive.isString -> if (first.asString == "COMBO") "COMBO" else first.asString
+            first.isJsonArray -> "COMBO"
+            else -> null
+        }
+    }
+
+    /** Whether the frontend renders this input as a widget (and so stores a widgets_values entry). */
+    private fun hasWidget(spec: JsonArray?): Boolean = specKind(spec) in WIDGET_KINDS && !isForcedInput(spec)
+
+    /** The value a newly created frontend widget starts with (use{Int,Float,String,Boolean,Combo}Widget.ts). */
+    private fun frontendDefault(spec: JsonArray?): JsonElement? {
+        val default = specConfig(spec)?.get("default")?.takeIf { !it.isJsonNull }
+        return when (specKind(spec)) {
+            "INT", "FLOAT" -> default ?: JsonPrimitive(0)
+            "STRING" -> default ?: JsonPrimitive("")
+            "BOOLEAN" -> default ?: JsonPrimitive(false)
+            "COMBO", DYNAMIC_COMBO -> {
+                val options = spec?.let { comboOptions(it) }.orEmpty()
+                val chosen = default?.takeIf { it.isJsonPrimitive }?.asString?.takeIf { it in options } ?: options.firstOrNull()
+                chosen?.let { JsonPrimitive(it) }
+            }
+            else -> null
+        }
+    }
 
     /** Valid values of a combo spec: legacy [[options], {...}], V3 ["COMBO", {options}], or dynamic option keys. */
     private fun comboOptions(spec: JsonArray): List<String>? {

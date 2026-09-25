@@ -23,7 +23,7 @@ object ApiPromptValidator {
     private const val MATCH_TYPE = "COMFY_MATCHTYPE_V3"
 
     // Model and input file names depend on the server's files, which a snapshot can't know.
-    private val FILE_VALUE = Regex("""[\\/]|\.(safetensors|ckpt|pt|pth|bin|gguf|onnx|sft|png|jpe?g|webp|gif|mp4|webm|mov|wav|mp3|flac)$""", RegexOption.IGNORE_CASE)
+    private val FILE_VALUE = Regex("""[\\/]|\.(safetensors|ckpt|pt|pth|bin|gguf|onnx|sft|png|jpe?g|webp|gif|mp4|webm|mov|wav|mp3|flac|glb|gltf|fbx|obj|ply|stl|usdz|spz|splat)$""", RegexOption.IGNORE_CASE)
 
     fun validate(api: JsonObject, objectInfo: JsonObject, graph: JsonObject): List<Violation> {
         val out = mutableListOf<Violation>()

@@ -73,7 +73,7 @@ The converter leaves these inputs out, which gives the server's "Required input 
 - **D-02 Socket slots:** at top level too, an unlinked graph slot with no `widget` property, whose spec kind isn't a widget kind, consumes nothing. Unknown or custom types whose graph slot has a `widget` property keep today's behaviour.
 - **D-03 Defaults:** when no widget value is left for a widget-kind input (neither positional nor named), emit the frontend default from D-01's table (combos: `default` or the first option; dynamic combos: `default` or the first option key, then expand that option). Only do this for widget kinds, never for sockets.
 - **D-04 Named values first:** if the graph node has a `widgets_values_named` object:
-  - use `named[path]` for each widget path (top-level or dotted) when it's present;
+  - use `named[path]` for each widget path (top-level or dotted). The map lists every saved widget, so a path missing from it is a widget added later: it gets the default (D-03), not the positional value. (Refined during execution.)
   - still advance the positional cursor as today, so paths missing from the map fall back consistently;
   - control widgets aren't in the map, which is fine.
   Phase 93 promoted values still win over both.

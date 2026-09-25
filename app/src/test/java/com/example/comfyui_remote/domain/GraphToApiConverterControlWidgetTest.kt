@@ -35,6 +35,31 @@ class GraphToApiConverterControlWidgetTest {
             "required": { "text": ["STRING", {}] },
             "optional": { "mask": ["IMAGE", {}], "suffix": ["STRING", {}] }
           }, "output": [] },
+          "Compare": { "input": {
+            "required": { "compare_view": ["IMAGECOMPARE", {"socketless": true}] },
+            "optional": { "image_a": ["IMAGE", {}] } }, "output": [] },
+          "Scale": { "input": { "required": {
+            "image": ["IMAGE", {}],
+            "upscale_method": [["nearest-exact", "area"], {}],
+            "megapixels": ["FLOAT", {"default": 1.0}],
+            "resolution_steps": ["INT", {"default": 1}]
+          } }, "output": [] },
+          "Defaults": { "input": { "required": {
+            "flag": ["BOOLEAN", {}],
+            "pick": ["COMBO", {"options": ["first", "second"]}],
+            "picked": [["p", "q"], {"default": "q"}],
+            "text": ["STRING", {}]
+          } }, "output": [] },
+          "Named": { "input": { "required": {
+            "prompt": ["STRING", {}],
+            "added": ["INT", {"default": 5}],
+            "steps": ["INT", {}]
+          } }, "output": [] },
+          "Forced": { "input": { "required": {
+            "value": ["INT", {"forceInput": true}],
+            "label": ["STRING", {}],
+            "rate": ["FLOAT,INT", {"widgetType": "FLOAT"}]
+          } }, "output": [] },
           "Api": { "input": { "required": {
             "model": ["COMFY_DYNAMICCOMBO_V3", {"options": [
               {"key": "m1", "inputs": {"required": {
@@ -117,5 +142,76 @@ class GraphToApiConverterControlWidgetTest {
         val i = inputs(convert("""{"id": 5, "type": "Api", "inputs": [], "widgets_values": ["m1", 99, "randomize", "2K"]}"""), "5")
         assertEquals(99, i.get("model.seed").asInt)
         assertEquals("2K", i.get("model.size").asString)
+    }
+
+    // --- Plan 95.2: named values, defaults, display-only and socket-only widget kinds ---
+
+    @Test
+    fun `IMAGECOMPARE is sent as an empty pair and takes no saved value`() {
+        val i = inputs(convert("""{"id": 5, "type": "Compare", "inputs": [], "widgets_values": []}"""), "5")
+        assertEquals(listOf("", ""), i.getAsJsonArray("compare_view").map { it.asString })
+    }
+
+    @Test
+    fun `widget added after the workflow was saved gets its default`() {
+        val i = inputs(convert("""
+            {"id": 5, "type": "Scale", "inputs": [{"name": "image", "type": "IMAGE", "link": null}], "widgets_values": ["area", 1.5]}
+        """), "5")
+        assertEquals("area", i.get("upscale_method").asString)
+        assertEquals(1.5, i.get("megapixels").asDouble, 0.0)
+        assertEquals(1, i.get("resolution_steps").asInt)
+    }
+
+    @Test
+    fun `defaults follow the frontend for combos booleans and strings`() {
+        val i = inputs(convert("""{"id": 5, "type": "Defaults", "inputs": [], "widgets_values": []}"""), "5")
+        assertFalse(i.get("flag").asBoolean)
+        assertEquals("first", i.get("pick").asString)
+        assertEquals("q", i.get("picked").asString)
+        assertEquals("", i.get("text").asString)
+    }
+
+    @Test
+    fun `named values win when the positional array no longer matches`() {
+        // Saved before "added" existed: positionally 20 would land on "added"
+        val i = inputs(convert("""
+            {"id": 5, "type": "Named", "inputs": [], "widgets_values": ["hello", 20],
+             "widgets_values_named": {"prompt": "hello", "steps": 20}}
+        """), "5")
+        assertEquals("hello", i.get("prompt").asString)
+        assertEquals(20, i.get("steps").asInt)
+        assertEquals(5, i.get("added").asInt)
+    }
+
+    @Test
+    fun `named values cover dotted dynamic sub-widgets`() {
+        val i = inputs(convert("""
+            {"id": 5, "type": "Api", "inputs": [], "widgets_values": ["m1", 1, "randomize", "1K"],
+             "widgets_values_named": {"model": "m1", "model.seed": 77, "model.size": "2K"}}
+        """), "5")
+        assertEquals(77, i.get("model.seed").asInt)
+        assertEquals("2K", i.get("model.size").asString)
+    }
+
+    @Test
+    fun `linked input ignores its named value`() {
+        val api = convert("""
+            {"id": 1, "type": "Src", "inputs": [], "outputs": [{"name": "INT", "type": "INT"}], "widgets_values": []},
+            {"id": 5, "type": "Gemini", "inputs": [{"name": "seed", "type": "INT", "widget": {"name": "seed"}, "link": 10}],
+             "widgets_values": ["a cat", 0, "fixed", "auto", "1K"],
+             "widgets_values_named": {"prompt": "a cat", "seed": 0, "aspect_ratio": "auto", "resolution": "1K"}}
+        """, """[[10, 1, 0, 5, 0, "INT"]]""")
+        assertEquals("1", inputs(api, "5").getAsJsonArray("seed")[0].asString)
+    }
+
+    @Test
+    fun `forceInput is a socket and widgetType picks the widget kind`() {
+        val i = inputs(convert("""
+            {"id": 5, "type": "Forced", "inputs": [{"name": "value", "type": "INT", "link": null}],
+             "widgets_values": ["name", 24.0]}
+        """), "5")
+        assertFalse(i.has("value"))
+        assertEquals("name", i.get("label").asString)
+        assertEquals(24.0, i.get("rate").asDouble, 0.0)
     }
 }

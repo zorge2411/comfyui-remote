@@ -19,22 +19,11 @@
  },
  "hidream_e1_1.json": {
   "checks": [
-   "C4",
    "C7"
   ],
-  "reason": "PrimitiveNode sent (C7). ImageScaleToTotalPixels.resolution_steps is newer than the workflow, so widgets_values has no entry for it; the converter omits it instead of using the object_info default (C4).",
+  "reason": "PrimitiveNode is sent to the server instead of being resolved into its targets' widget values.",
   "phase": [
-   90,
-   95
-  ]
- },
- "utility_depth_anything3_image_depth_estimation.json": {
-  "checks": [
-   "C4"
-  ],
-  "reason": "ImageCompare.compare_view is newer than the workflow (empty widgets_values); the object_info default is not used.",
-  "phase": [
-   95
+   90
   ]
  },
  "utility_topaz_illustration_upscale.json": {

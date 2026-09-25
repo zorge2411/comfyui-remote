@@ -71,7 +71,7 @@ class GraphToApiConverterDynamicComboTest {
     }
 
     @Test
-    fun `nested dynamic combos expand depth-first and the legacy top-level key is not sent`() {
+    fun `nested dynamic combos expand depth-first and the legacy top-level key takes no saved value`() {
         val api = convert("""
             {"nodes": [ $src,
               {"id": 2, "type": "SaveVid", "inputs": [{"name": "video", "type": "IMAGE", "link": 10}],
@@ -84,7 +84,9 @@ class GraphToApiConverterDynamicComboTest {
         assertEquals("h264", inputs.get("format.codec").asString)
         assertEquals("re-encode", inputs.get("format.codec.encoding").asString)
         assertEquals(23, inputs.get("format.codec.encoding.crf").asInt)
-        assertFalse("legacy top-level codec must not take a value", inputs.has("codec"))
+        // The hidden legacy "codec" widget was not in this save; like the frontend, it gets its default
+        // ("auto") rather than a value meant for format.codec (Phase 95).
+        assertEquals("auto", inputs.get("codec").asString)
     }
 
     private fun gen(widgets: String, inputs: String) = """
