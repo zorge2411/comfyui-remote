@@ -3,19 +3,22 @@
 ## Current Position
 
 - **Milestone**: 4 (Workflow compatibility)
-- **Phase**: 91 (planned)
-- **Task**: Planning complete (3 plans, 3 waves)
-- **Status**: Verified locally (174 tests green) and on the phone. The Phase 90 build also covers the local Android run for Phases 89, 93–95; the device checks for 94 and 96 are still open.
+- **Phase**: 91 (completed, code)
+- **Task**: All tasks complete
+- **Status**: Verified locally (184 tests green, `assembleDebug` OK). Phone check pending: no device was connected. Device checks for 94 and 96 are also still open.
 
 ## Last Session Summary
 
-Phase 90 executed: 3 plans, 9 tasks. Across all 572 templates (stock v0.37.2), clean prompts went 542 → 563; C7 and C3 are now 0; the corpus has no known failures left. The investigation found and fixed bypassed/muted subgraph instances being expanded, and filed Phase 97 (unlinked subgraph inputs feeding sockets).
+Phase 91 discussed, planned and executed (`--auto`): 3 plans, 8 tasks, 6 code commits. `ApiPromptValidator` now lives in the app. It is shared with the corpus and gains live-mode options that check model file names. `PreflightChecker` groups issues by node. Generate and Queue stop at a "Queue anyway / Cancel" dialog when the prompt won't validate, after one `/object_info` refetch. A live "Server compatibility" card replaces the missing-node list saved at import. Found during execution: images picked on the form are uploaded at once, so the queue-time check also skips `ImageInput.value` with a `localUri`.
 
 ## Next Steps
 
-1. /execute 91 (Pre-flight Compatibility Check; plans in `.gsd/phases/91/`)
+1. Phone check for Phase 91 (steps a–e in `.gsd/phases/91/91-SUMMARY.md`): `gradlew.bat installDebug` with the phone connected
+2. /plan 92 (Full Server Validation Error Reporting; reuse `PreflightIssueList`) or /plan 97
 
 ## Achievements (Milestone 4)
+
+- [x] Implemented Phase 91 (pre-flight compatibility check): the prompt is validated against the live `/object_info` before Generate/Queue, covering missing node types, missing models or files, invalid values and missing inputs. A grouped "Queue anyway / Cancel" dialog appears when there are issues, and a live "Server compatibility" card replaces the stored missing-node list. The validator is shared with the corpus. 10 new tests, 184 total. Phone check pending. See `.gsd/phases/91/91-SUMMARY.md`.
 
 - [x] Implemented Phase 90 (frontend-only and virtual nodes): Reroute/PrimitiveNode/notes/SetNode/GetNode resolved like the frontend and never sent or reported missing; bypass by type with no same-index fallback; broken widget links send the saved value; muted/bypassed subgraph instances no longer expanded; opt-in all-template report. All-template clean 542 → 563, C7 29 → 0, C3 4 → 0, C4 37 → 8; corpus known failures 4 → 0. See `.gsd/phases/90/90-SUMMARY.md`.
 

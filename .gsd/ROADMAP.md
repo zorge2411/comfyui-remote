@@ -34,7 +34,7 @@
 
 ### Phase 91: Pre-flight Compatibility Check
 
-**Status**: ⬜ Not Started
+**Status**: ✅ Done (code); device check pending (`.gsd/phases/91/91-SUMMARY.md`)
 **Objective**: Before queueing, validate the converted prompt against the server's `/object_info`: report missing node types, missing required inputs and invalid combo values in the app. Replace the current missing-node list. Since Phase 90 the converter no longer reports frontend-only nodes (Reroute, PrimitiveNode, notes, Set/Get) or muted/bypassed subgraph instances as missing.
 **Depends on**: Phase 90
 
