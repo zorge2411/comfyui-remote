@@ -1,6 +1,6 @@
 # Phase 90 Summary: Frontend-Only and Virtual Node Support
 
-**Completed:** 2026-09-25 (code, verified locally). **Pending:** the phone check (no device was connected).
+**Completed:** 2026-09-25, verified locally and on the phone.
 
 ## Delivered
 
@@ -72,4 +72,4 @@ What remains is not a converter bug:
 
 - `gradlew.bat testDebugUnitTest`: green (174 tests, 0 failures, 1 skipped (the opt-in report); 23 new in `GraphToApiConverterVirtualNodeTest`).
 - `gradlew.bat assembleDebug`: succeeds.
-- **Pending (user):** `installDebug`, then on the phone queue a workflow with a PrimitiveNode or a bypassed node or group. For example, `hidream_e1_1` or `video_wan2_2_14B_s2v` from the template browser, if the server has the models, or one of your own. It should queue without node errors.
+- **Phone check (Fairphone 6, your server running ComfyUI 0.37.0), passed.** Test workflow `phase90-test.json` = the Qwen Image 2.1 t2i template (subgraph) plus a PrimitiveNode driving `steps` (7), a SetNode/GetNode pair carrying `width`, a Reroute, a bypassed ImageInvert and a muted PreviewImage. The server received `KSampler.steps = 7`, width/height linked from the ResolutionSelector, and SaveImageAdvanced fed directly from VAEDecode, with none of the virtual, bypassed or muted nodes; no missing-node warning. Run `68a3d1b5` succeeded, the image is not inverted, and it landed in the app gallery. The first attempt failed server validation only because this server keeps the text encoder at `qwen_2.1/qwen3vl_8b_int8_convrot.safetensors`; picking that file in the form fixed it.

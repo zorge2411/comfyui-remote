@@ -5,7 +5,7 @@
 - **Milestone**: 4 (Workflow compatibility)
 - **Phase**: 90 (completed, code)
 - **Task**: All tasks complete
-- **Status**: Verified locally (174 tests green, `assembleDebug` OK). Pending: the phone check for 90; the local Android run and device checks from Phases 89, 93–96.
+- **Status**: Verified locally (174 tests green) and on the phone. The Phase 90 build also covers the local Android run for Phases 89, 93–95; the device checks for 94 and 96 are still open.
 
 ## Last Session Summary
 
@@ -13,8 +13,7 @@ Phase 90 executed: 3 plans, 9 tasks. Across all 572 templates (stock v0.37.2), c
 
 ## Next Steps
 
-1. Phone check for Phase 90 (see `.gsd/phases/90/90-SUMMARY.md`, Verification)
-2. /plan 91 (Pre-flight Compatibility Check) or /plan 97
+1. /plan 91 (Pre-flight Compatibility Check) or /plan 97
 
 ## Achievements (Milestone 4)
 
