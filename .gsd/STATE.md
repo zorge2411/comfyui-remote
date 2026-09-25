@@ -2,15 +2,16 @@
 
 ## Current Position
 
-- **Phase**: 81 (Image-to-Image Workflow Node Support)
-- **Status**: ✅ Done — full UAT complete, 2 gaps found live and fixed, both user-confirmed on device
+- **Phase**: 88 (Honor Bypassed and Muted Node Modes in Graph Conversion)
+- **Status**: ✅ Done — verified live: real MiniMax H3 easy i2v workflow runs end to end from the phone
+- **Milestone 3**: All roadmapped phases (through 88) done; backlog empty
 - **Session Goal**: Completed
 
 ## Achievements
 
 - [x] Implemented Phase 88 (bypassed/muted node modes) — found testing the real MiniMax workflow on the phone: bypassed node 18 (SageAttention patch) was sent to the server and failed. Converter now drops muted nodes and rewires bypassed ones to their type-matched upstream input. 5 tests; verified live: the real MiniMax H3 easy i2v workflow now runs end to end from the phone and the video lands in the gallery (also confirms Phases 84, 86, 87 in real use).
 - [x] Implemented Phase 87 (MiniMax widget mapping) — `GraphToApiConverter` Mode B: linked widget-inputs consume their `widgets_values` slot (fixed CreateVideo `bit_depth`=24), and invalid combo values from custom-frontend localized labels resolve to valid options (fixed MiniMaxH3Easy). 5 tests; real workflow now passes server validation (`node_errors: {}`).
-- [x] Implemented Phase 86 (COMFY_AUTOGROW_V3 support) — `GraphToApiConverter` Mode B now copies linked dotted autogrow slots (`values.a`, `images.image0`) and keeps autogrow keys out of the widget matcher (also fixes a latent bug where `values` stole the next input's widget value, e.g. `StringFormat.f_string`). 4 synthetic tests. Not re-run against the real workflow.
+- [x] Implemented Phase 86 (COMFY_AUTOGROW_V3 support) — `GraphToApiConverter` Mode B now copies linked dotted autogrow slots (`values.a`, `images.image0`) and keeps autogrow keys out of the widget matcher (also fixes a latent bug where `values` stole the next input's widget value, e.g. `StringFormat.f_string`). 4 synthetic tests. Confirmed against the real workflow via Phase 88's live run.
 - [x] Implemented Phase 84 (Real Progress Indicator) — new `ExecutionProgressTracker` (nodes completed + step fraction over nodes that will run, excluding `execution_cached`), wired into `MainViewModel.handleMessage()`, single bar + node/step label in `DynamicFormScreen.kt`. 5 unit tests, verified live on Fairphone 6.
 - [x] Closed Phase 83 (Camera Capture for Gallery Add-Image) — no code needed: `GalleryScreen.kt` already had a "Take Photo" option with runtime permission handling (built 2026-01-24, roadmap entry never closed). Verified live on Fairphone 6.
 - [x] Implemented Phase 82 (Prompt Field Ordering)
@@ -95,7 +96,13 @@
 - Phase 84 added: Real progress indicator (was unchecked Nice-to-Have, never phased)
 - Phase 85 added: Fix subgraph flattening output-link bug (discovered during Phase 81 live testing, 2026-08-25 — HTTP 400 "video/IMAGE mismatch" on `SaveVideo` node when a phantom subgraph node gets bypassed)
 - Phase 86 added: Support `COMFY_AUTOGROW_V3` dynamic input type (discovered during Phase 85's live proof-of-fix, 2026-08-25 — `ComfyMathExpression`'s dynamic `values.a`/`values.b`... inputs aren't understood by the app's input-mapping logic)
+- Phase 87 added: Fix widget value mapping for MiniMax H3 workflow (server validation errors on `CreateVideo.bit_depth` and localized combo labels)
+- Phase 88 added: Honor bypassed and muted node modes in graph conversion (discovered 2026-09-24 running the real MiniMax workflow on the phone)
 
 ## Next Steps
 
-1. **Phase 80 wrap-up**: Themed-icon retinting under Android 13+ Material You wasn't interactively spot-checked in Settings — optional manual confirmation if desired.
+1. **Milestone 3 wrap-up**: Define the milestone's Must-Haves (still `TBD` in `ROADMAP.md`) or close Milestone 3 — all roadmapped phases are done.
+2. **Optional device checks**:
+   - Phase 82: confirm the positive prompt field appears first in a real workflow (unit-tested only).
+   - Phase 80: confirm themed-icon retinting under Android 13+ Material You.
+3. **Plan next work**: backlog is empty — add Phase 89 or start Milestone 4.

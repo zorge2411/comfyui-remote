@@ -2,6 +2,7 @@
 
 > **Current Milestone**: Milestone 3 (In Progress)
 > **Goal**: Polish UX, fix bugs, and implement standard ComfyUI features (Subgraphs, Icons).
+> **Status**: All roadmapped phases (through 88) done; backlog empty.
 
 ## Must-Haves
 
@@ -9,7 +10,7 @@
 
 ## Nice-to-Haves
 
-- [ ] Real Progress Indicator (Step progress/Unified progress bar) — tracked as Phase 84
+- [x] Real Progress Indicator (Step progress/Unified progress bar) — done in Phase 84
 
 ## Phases
 
