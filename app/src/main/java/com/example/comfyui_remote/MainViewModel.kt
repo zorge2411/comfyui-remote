@@ -359,9 +359,115 @@ class MainViewModel(
     // ... (existing helper flows)
 
 
-    fun addToQueue(workflow: WorkflowEntity, inputs: List<com.example.comfyui_remote.domain.InputField>, batchCount: Int) {
+    // Phase 91: Pre-flight compatibility check. Generate and Queue stop here when the prompt
+    // won't validate against the server's /object_info; the user can queue anyway.
+    sealed interface PreflightAction {
+        val workflow: WorkflowEntity
+        val inputs: List<com.example.comfyui_remote.domain.InputField>
+        val batchCount: Int
+
+        data class Generate(
+            override val workflow: WorkflowEntity,
+            override val inputs: List<com.example.comfyui_remote.domain.InputField>,
+            override val batchCount: Int
+        ) : PreflightAction
+
+        data class AddToQueue(
+            override val workflow: WorkflowEntity,
+            override val inputs: List<com.example.comfyui_remote.domain.InputField>,
+            override val batchCount: Int
+        ) : PreflightAction
+    }
+
+    data class PendingPreflight(
+        val result: com.example.comfyui_remote.domain.PreflightResult,
+        val action: PreflightAction
+    )
+
+    private val _pendingPreflight = MutableStateFlow<PendingPreflight?>(null)
+    val pendingPreflight: StateFlow<PendingPreflight?> = _pendingPreflight.asStateFlow()
+
+    fun confirmPreflight() {
+        val pending = _pendingPreflight.value ?: return
+        _pendingPreflight.value = null
+        when (val a = pending.action) {
+            is PreflightAction.Generate -> executeWorkflow(a.workflow, a.inputs, a.batchCount, skipPreflight = true)
+            is PreflightAction.AddToQueue -> addToQueue(a.workflow, a.inputs, a.batchCount, skipPreflight = true)
+        }
+    }
+
+    fun cancelPreflight() {
+        _pendingPreflight.value = null
+    }
+
+    /**
+     * Issues in [preparedJson], or null when there is nothing to report or no /object_info to
+     * check against. Issues against the cached /object_info are re-checked once against a fresh
+     * one, so a node or model installed since connecting isn't reported.
+     */
+    private suspend fun preflightIssues(
+        preparedJson: String,
+        options: com.example.comfyui_remote.domain.ApiPromptValidator.Options
+    ): com.example.comfyui_remote.domain.PreflightResult? {
+        val cached = _nodeMetadata.value
+        if (cached == null) {
+            android.util.Log.d("PREFLIGHT_DEBUG", "No /object_info, skipping pre-flight check")
+            return null
+        }
+        suspend fun check(info: com.google.gson.JsonObject) =
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                com.example.comfyui_remote.domain.PreflightChecker.check(preparedJson, info, options)
+            }
+        val first = check(cached)
+        if (first.isEmpty) return null
+        val fresh = refreshNodeMetadata() ?: return first
+        return check(fresh).takeIf { !it.isEmpty }
+    }
+
+    /** Server file names this run uses that the cached /object_info may not list yet. */
+    private fun uploadedValues(
+        inputs: List<com.example.comfyui_remote.domain.InputField>,
+        uploadedFilenames: Map<String, String>
+    ): Set<String> = uploadedFilenames.values.toSet() + inputs
+        .filterIsInstance<com.example.comfyui_remote.domain.InputField.ImageInput>()
+        .filter { it.localUri != null }
+        .mapNotNull { it.value }
+
+    /**
+     * Pre-flight result for the form screen: the stored workflow with the current [inputs],
+     * checked against the cached /object_info (no refetch). Null when there is no /object_info.
+     */
+    suspend fun formPreflight(
+        workflow: WorkflowEntity,
+        inputs: List<com.example.comfyui_remote.domain.InputField>
+    ): com.example.comfyui_remote.domain.PreflightResult? {
+        val info = _nodeMetadata.value ?: return null
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            val prepared = workflowExecutionService.prepare(workflow.jsonContent, emptyMap(), inputs)
+            com.example.comfyui_remote.domain.PreflightChecker.check(
+                prepared, info, com.example.comfyui_remote.domain.ApiPromptValidator.Options.FORM
+            )
+        }
+    }
+
+    fun addToQueue(
+        workflow: WorkflowEntity,
+        inputs: List<com.example.comfyui_remote.domain.InputField>,
+        batchCount: Int,
+        skipPreflight: Boolean = false
+    ) {
         viewModelScope.launch {
             try {
+                if (!skipPreflight) {
+                    // Nothing is uploaded until the queue runs, so check with the form rules.
+                    val prepared = workflowExecutionService.prepare(workflow.jsonContent, emptyMap(), inputs)
+                    val issues = preflightIssues(prepared, com.example.comfyui_remote.domain.ApiPromptValidator.Options.FORM)
+                    if (issues != null) {
+                        _pendingPreflight.value = PendingPreflight(issues, PreflightAction.AddToQueue(workflow, inputs, batchCount))
+                        return@launch
+                    }
+                }
+
                 // We need to serialize inputs to JSON
                 // Using standard Gson. InputField has 'label' property which should be serialized
                 // allowing polymorphic deserialization in QueueViewModel.
@@ -573,15 +679,15 @@ class MainViewModel(
         _inputImages.value = current
     }
 
-    fun executeWorkflow(workflow: WorkflowEntity, inputs: List<com.example.comfyui_remote.domain.InputField>, batchCount: Int = 1) {
+    fun executeWorkflow(
+        workflow: WorkflowEntity,
+        inputs: List<com.example.comfyui_remote.domain.InputField>,
+        batchCount: Int = 1,
+        skipPreflight: Boolean = false
+    ) {
         viewModelScope.launch {
             _executionStatus.value = ExecutionStatus.QUEUED
             _errorMessage.value = null
-
-            // Warning for missing nodes
-            if (!workflow.missingNodes.isNullOrBlank()) {
-                android.util.Log.w("EXECUTE_DEBUG", "Workflow has missing nodes but attempting execution anyway: ${workflow.missingNodes}")
-            }
 
             try {
                 _executionStatus.value = ExecutionStatus.EXECUTING
@@ -594,6 +700,20 @@ class MainViewModel(
                      workflowExecutionService.uploadImages(api, inputsToUpload, resolver)
                 } else {
                     emptyMap()
+                }
+
+                // Phase 91: check once per batch; the per-item seed doesn't change the result.
+                if (!skipPreflight) {
+                    val prepared = workflowExecutionService.prepare(workflow.jsonContent, uploadedFilenames, inputs)
+                    val options = com.example.comfyui_remote.domain.ApiPromptValidator.Options.queue(
+                        uploadedValues(inputs, uploadedFilenames)
+                    )
+                    val issues = preflightIssues(prepared, options)
+                    if (issues != null) {
+                        _pendingPreflight.value = PendingPreflight(issues, PreflightAction.Generate(workflow, inputs, batchCount))
+                        _executionStatus.value = ExecutionStatus.IDLE
+                        return@launch
+                    }
                 }
 
                 // Loop for Batch Generation
