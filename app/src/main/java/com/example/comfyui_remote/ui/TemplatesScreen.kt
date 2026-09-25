@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -47,6 +48,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -60,6 +62,7 @@ import com.example.comfyui_remote.data.WorkflowEntity
 import com.example.comfyui_remote.domain.WorkflowTemplate
 import com.example.comfyui_remote.domain.WorkflowTemplateIndex
 import com.example.comfyui_remote.ui.components.EmptyState
+import kotlinx.coroutines.flow.drop
 
 /**
  * Browses the workflow templates the connected ComfyUI server ships (/templates/index.json).
@@ -84,6 +87,14 @@ fun TemplatesScreen(
     var localOnly by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { viewModel.fetchTemplates() }
+
+    // Jump back to the top when the filters change, but keep the position when returning to this screen.
+    val gridState = rememberLazyGridState()
+    LaunchedEffect(gridState) {
+        snapshotFlow { Triple(query, category, localOnly) }
+            .drop(1)
+            .collect { gridState.scrollToItem(0) }
+    }
 
     val visible = remember(categories, query, category, localOnly) {
         WorkflowTemplateIndex.filter(categories, query, category).filter { !localOnly || it.openSource }
@@ -167,6 +178,7 @@ fun TemplatesScreen(
                     )
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(minSize = 160.dp),
+                        state = gridState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)
                     ) {
