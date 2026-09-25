@@ -695,13 +695,16 @@ class MainViewModel(
     }
 
     private fun fetchNodeMetadata() {
-        viewModelScope.launch {
-            try {
-                _nodeMetadata.value = buildApiService().getObjectInfo()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
+        viewModelScope.launch { refreshNodeMetadata() }
+    }
+
+    /** Fetches /object_info, updates [nodeMetadata] and returns it; null if the fetch failed. */
+    private suspend fun refreshNodeMetadata(): com.google.gson.JsonObject? = try {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { buildApiService().getObjectInfo() }
+            .also { _nodeMetadata.value = it }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
     }
 
     private val _serverWorkflows = MutableStateFlow<List<ServerWorkflowFile>>(emptyList())

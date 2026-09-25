@@ -41,6 +41,30 @@ class WorkflowExecutionService(
     }
 
     /**
+     * Patches the workflow JSON with uploaded images and injects input values: the prompt as it
+     * will be sent. Pure, so the pre-flight check (Phase 91) can run on it before queueing.
+     */
+    fun prepare(
+        workflowJson: String,
+        uploadedFilenames: Map<String, String>,
+        inputs: List<InputField>
+    ): String {
+        val patchedJson = WorkflowPatchingService.patchWorkflow(workflowJson, uploadedFilenames)
+        return workflowExecutor.injectValues(patchedJson, inputs)
+    }
+
+    /** Queues a prompt produced by [prepare]. */
+    suspend fun queue(api: ComfyApiService, clientId: String, preparedJson: String): PromptResponse =
+        withContext(Dispatchers.Default) {
+            api.queuePrompt(
+                PromptRequest(
+                    prompt = JsonParser.parseString(preparedJson).asJsonObject,
+                    client_id = clientId
+                )
+            )
+        }
+
+    /**
      * Patches the workflow JSON with uploaded images, injects input values, and queues the prompt.
      * Returns a Pair of (InjectedJSON, PromptResponse)
      */
@@ -51,21 +75,7 @@ class WorkflowExecutionService(
         uploadedFilenames: Map<String, String>,
         inputs: List<InputField>
     ): Pair<String, PromptResponse> = withContext(Dispatchers.Default) {
-        // 1. Patch Workflow with uploaded images
-        val patchedJson = WorkflowPatchingService.patchWorkflow(workflowJson, uploadedFilenames)
-
-        // 2. Inject Values
-        val injectedJson = workflowExecutor.injectValues(patchedJson, inputs)
-        val promptJsonObject = JsonParser.parseString(injectedJson).asJsonObject
-
-        // 3. Queue Prompt
-        val response = api.queuePrompt(
-            PromptRequest(
-                prompt = promptJsonObject,
-                client_id = clientId
-            )
-        )
-
-        Pair(injectedJson, response)
+        val injectedJson = prepare(workflowJson, uploadedFilenames, inputs)
+        Pair(injectedJson, queue(api, clientId, injectedJson))
     }
 }
