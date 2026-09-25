@@ -19,7 +19,7 @@
 
 ### Phase 89: Workflow Compatibility Regression Corpus
 
-**Status**: ⬜ Not Started
+**Status**: 📝 Planned (`.gsd/phases/89/`: 89-CONTEXT, 89-01-PLAN, 89-02-PLAN)
 **Objective**: Build a set of sanitized graph workflow fixtures (no personal prompts, paths or server details) covering the shapes fixed in Milestone 3 (subgraphs, autogrow, bypass/mute, linked widgets, localized combos) plus common community workflows, and a test harness that converts each one and checks the result is structurally valid: every link resolves to a node in the output, no frontend-only nodes remain, and linked types match.
 
 ### Phase 90: Frontend-Only and Virtual Node Support

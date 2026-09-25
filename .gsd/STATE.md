@@ -3,8 +3,9 @@
 ## Current Position
 
 - **Milestone**: 4 — Workflow compatibility (planned)
-- **Phase**: Not started (next: Phase 89, Workflow Compatibility Regression Corpus)
-- **Status**: Milestone 3 complete and archived 2026-09-25; Milestone 4 planned with Phases 89–92
+- **Phase**: 89 (Workflow Compatibility Regression Corpus)
+- **Task**: Planning complete: 2 plans in 2 waves (`.gsd/phases/89/`)
+- **Status**: Ready for execution
 - **Previous**: Milestone 3 ended at Phase 88 (bypassed/muted node modes, verified live)
 
 ## Achievements (Milestone 3)
@@ -103,7 +104,7 @@
 
 ## Next Steps
 
-1. **Phase 89**: Plan the workflow compatibility regression corpus (`/plan 89`).
+1. **Execute Phase 89** (`/execute 89`): Plan 89.1 (fixtures and object_info snapshot), then Plan 89.2 (test harness and known-failures baseline). Plan 89.1 may need the user to export `/object_info` from their server if headless ComfyUI can't be installed in the session.
 2. **Optional device checks carried over from Milestone 3**:
    - Phase 82: confirm the positive prompt field appears first in a real workflow (unit-tested only).
    - Phase 80: confirm themed-icon retinting under Android 13+ Material You.
