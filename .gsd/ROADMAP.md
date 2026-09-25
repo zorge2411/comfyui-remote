@@ -8,7 +8,7 @@
 
 - [x] Regression corpus of representative graph workflows that the converter test suite runs on every build (Phase 89)
 - [ ] Frontend-only / virtual nodes (Reroute, PrimitiveNode, SetNode/GetNode, Note) convert correctly, with type-aware passthrough
-- [ ] Every corpus fixture passes: `known-failures.json` is empty (Phases 90, 93–95)
+- [ ] Every corpus fixture passes: `known-failures.json` is empty (Phases 90, 93–95); 7 entries left after Phase 94, for Phases 90 and 95
 - [ ] Pre-flight check against `/object_info` before queueing (missing node types, missing required inputs, invalid combo values), with no false "missing node" warnings for nodes the converter removes
 - [ ] All server `node_errors` shown to the user, per node, not just the first one
 
@@ -50,7 +50,7 @@
 
 ### Phase 94: Support COMFY_DYNAMICCOMBO_V3 Inputs
 
-**Status**: 📝 Planned (`.gsd/phases/94/`: 94-CONTEXT, 94-01/02/03-PLAN)
+**Status**: ✅ Done (code); device check pending (`.gsd/phases/94/94-SUMMARY.md`)
 **Objective**: A dynamic combo (e.g. `ResizeImageMaskNode.resize_type`, core `SaveVideo.format` → `codec` → `encoding`) stores its selected option plus that option's sub-widget values in `widgets_values`, and the API expects dotted keys (`resize_type.megapixels`). Expand the selected option's inputs from `/object_info`, recursively (like Phase 86 did for autogrow). Also: make the corpus validator see sub-inputs, and make the app form show V3 `COMBO` inputs as dropdowns, resolve dotted fields, and keep the dynamic key from being edited into an invalid state.
 **Scale**: 401 of 572 templates, 152 of 962 stock node types.
 **Discovered**: Phase 89 corpus baseline (2026-09-25)

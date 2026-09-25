@@ -4,10 +4,11 @@
 
 - **Milestone**: 4 (Workflow compatibility)
 - **Phase**: 94 (Support COMFY_DYNAMICCOMBO_V3 Inputs)
-- **Task**: Planning complete: 3 plans in 2 waves (`.gsd/phases/94/`)
-- **Status**: Ready for execution. Phases 89 and 93 done; Android `testDebugUnitTest`/`assembleDebug` still to run locally.
+- **Status**: ✅ Code done. Waiting on the Plan 94.3 device check and the local Android run (`testDebugUnitTest`/`assembleDebug`, which also covers Phases 89 and 93). Corpus known failures 26 → 7; all-template clean prompts 123 → 426 of 572.
 
 ## Achievements (Milestone 4)
+
+- [x] Implemented Phase 94 (COMFY_DYNAMICCOMBO_V3): validator sees dotted sub-inputs; converter expands selected options recursively (SaveVideo `format.codec`, ResizeImageMaskNode, V3 API nodes); form shows V3 COMBO dropdowns, resolves dotted fields, hides dynamic keys. See `.gsd/phases/94/94-SUMMARY.md`.
 
 - [x] Implemented Phase 93 (Subgraph input mapping + promoted widget values): instance inputs bind to subgraph inputs by name+type, then name (frontend `_rebindInputSubgraphSlots`); instance `widgets_values` now reach interior nodes for unlinked promoted inputs, so the app sends the prompt/seed ComfyUI shows. 12 synthetic tests + real-fixture test; all 572 templates convert without errors. See `.gsd/phases/93/93-SUMMARY.md`.
 
@@ -111,8 +112,8 @@
 
 ## Next Steps
 
-1. **Execute Phase 94** (`/execute 94`): Plan 94.1 (validator + fixtures + re-baseline), then Plans 94.2 (converter) and 94.3 (form; ends with an on-device check).
-2. **Run locally**: `gradlew.bat testDebugUnitTest` and `gradlew.bat assembleDebug` (Phases 89 and 93 verified only on the plain JVM).
+1. **Run locally and on device**: `gradlew.bat testDebugUnitTest`, `assembleDebug`, `installDebug`; then run a SaveVideo or `utility_image_stitch` workflow from the phone (Plan 94.3 check).
+2. **Next phase**: Phase 95 (control_after_generate + defaults; 3 corpus entries, likely much of the remaining 162 C5 / 109 C4 across templates) or Phase 90 (4 entries).
 3. **Optional device checks carried over from Milestone 3**:
    - Phase 82: confirm the positive prompt field appears first in a real workflow (unit-tested only).
    - Phase 80: confirm themed-icon retinting under Android 13+ Material You.

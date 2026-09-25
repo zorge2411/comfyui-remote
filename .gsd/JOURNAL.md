@@ -45,3 +45,8 @@ Implemented a persistent local queue and significant improvements to graph-to-AP
 
 - Subgraph instance inputs now bind by name+type, then name, matching the ComfyUI frontend. Promoted widget values on instances now reach interior nodes.
 - Lesson: the frontend source (`ComfyUI_frontend/src/lib/litegraph/src/subgraph/`) is the reference for graph semantics, and reading it turned up the silent wrong-values bug (Bug B) that the structural corpus checks couldn't see.
+
+## 2026-09-25: Phase 94 Complete (code)
+
+- Dynamic combos are expanded into dotted sub-inputs, and the form handles V3 combos. All-template clean prompts went 123 → 426 of 572.
+- Lesson: extend the checker before fixing. The first corpus baseline hid 14 more fixtures that also had this bug.
