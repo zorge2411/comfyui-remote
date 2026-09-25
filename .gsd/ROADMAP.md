@@ -15,6 +15,7 @@
 ## Nice-to-Haves
 
 - [ ] Compatibility badge on the workflow list (runs / warnings / will fail) based on the pre-flight check
+- [x] Browse the server's workflow templates in the app (Phase 96)
 
 ## Phases
 
@@ -68,3 +69,15 @@
 **Scale**: the main causes of the 162 C5 and 109 C4 violations still left across the 572 templates after Phase 94.
 **Discovered**: Phase 89 corpus baseline (2026-09-25); scope widened by the Phase 94 all-template measurement
 **Corpus fixtures to fix**: `templates-character_sheet`, `template_image_speech_to_video`, `utility_depth_anything3_image_depth_estimation`, `hidream_e1_1` (C4 part)
+
+### Phase 96: In-App Template Browser
+
+**Status**: ✅ Done (code); device check pending
+**Objective**: Show the connected server's workflow templates in the app without downloading files by hand. ComfyUI serves the `comfyui-workflow-templates` library at `/templates/` (`index.json` = 11 categories / 572 templates; thumbnails `/templates/<name>-1.<mediaSubtype>`; workflows `/templates/<name>.json`; checked in ComfyUI v0.37.2 `server.py` and frontend `useTemplateWorkflows.ts`).
+**Delivered**:
+- `WorkflowTemplateIndex` parser (4 tests; parses the real 572-template index);
+- `ComfyApiService.getTemplateFile`;
+- `MainViewModel.fetchTemplates` / `importTemplate` (new `WorkflowSource.SERVER_TEMPLATE`);
+- `TemplatesScreen`: thumbnail grid, search, category chips, "Local only" filter hiding API-node templates, "API" badge. Tapping a template imports it through the normal converter and opens the form;
+- entry points: grid icon in the Workflows top bar, and a "Browse Templates" button on the empty workflow list.
+**Requested**: 2026-09-25 (user: "make the templates visible in the app without all the downloading stuff")

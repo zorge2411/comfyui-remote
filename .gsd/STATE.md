@@ -8,6 +8,8 @@
 
 ## Achievements (Milestone 4)
 
+- [x] Implemented Phase 96 (In-App Template Browser): Workflows → grid icon opens the server's template library (thumbnails, search, categories, Local-only filter); tap imports and opens. Not compiled in the cloud session: needs local `assembleDebug`.
+
 - [x] Implemented Phase 95 (widget mapping): control_after_generate slots skipped by frontend rules, sockets/forceInput consume nothing, `widgets_values_named` preferred, frontend defaults for widgets added after saving, IMAGECOMPARE/widgetType handled. C5 across templates 162 → 1, C4 109 → 37. See `.gsd/phases/95/95-SUMMARY.md`.
 
 - [x] Implemented Phase 94 (COMFY_DYNAMICCOMBO_V3): validator sees dotted sub-inputs; converter expands selected options recursively (SaveVideo `format.codec`, ResizeImageMaskNode, V3 API nodes); form shows V3 COMBO dropdowns, resolves dotted fields, hides dynamic keys. See `.gsd/phases/94/94-SUMMARY.md`.
@@ -114,7 +116,7 @@
 
 ## Next Steps
 
-1. **Run locally and on device**: `gradlew.bat testDebugUnitTest`, `assembleDebug`, `installDebug`; Phase 94 device check, plus a Gemini/Grok/SaveVideo workflow for Phase 95.
+1. **Run locally and on device**: `gradlew.bat testDebugUnitTest`, `assembleDebug`, `installDebug`. Then on the phone: Workflows → grid icon (Templates), open `utility_image_stitch` (Phase 94 check), a SaveVideo template, and a Gemini/Grok one (Phase 95).
 2. **Next phase**: Phase 90 (PrimitiveNode, bypass fallback, and the unresolved-link cases found in the Phase 95 run). After that, Milestone 4 must-haves left: Phase 91 (pre-flight) and Phase 92 (error reporting).
 3. **Optional device checks carried over from Milestone 3**:
    - Phase 82: confirm the positive prompt field appears first in a real workflow (unit-tested only).

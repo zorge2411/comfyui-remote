@@ -48,6 +48,11 @@ interface ComfyApiService {
     @GET("api/userdata/{path}")
     suspend fun getUserDataContentPath(@Path("path", encoded = true) path: String): com.google.gson.JsonElement
 
+    // Template library served by ComfyUI from the comfyui-workflow-templates package:
+    // "index.json" (categories + templates) and "<name>.json" (the workflow)
+    @GET("templates/{file}")
+    suspend fun getTemplateFile(@Path("file") file: String): okhttp3.ResponseBody
+
     // Legacy catch-all
     @GET("{path}")
     suspend fun getFileContent(@Path("path", encoded = true) path: String): com.google.gson.JsonElement

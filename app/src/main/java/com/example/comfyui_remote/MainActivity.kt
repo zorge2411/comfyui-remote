@@ -249,11 +249,25 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         composable("workflows") {
-                            WorkflowListScreen(viewModel) { workflow ->
+                            WorkflowListScreen(
+                                viewModel = viewModel,
+                                onOpenTemplates = { navController.navigate("templates") }
+                            ) { workflow ->
                                 viewModel.parseWorkflowInputs(workflow.jsonContent)
                                 viewModel.selectWorkflow(workflow)
                                 navController.navigate("remote_control")
                             }
+                        }
+                        composable("templates") {
+                            com.example.comfyui_remote.ui.TemplatesScreen(
+                                viewModel = viewModel,
+                                onBack = { navController.popBackStack() },
+                                onOpenWorkflow = { workflow ->
+                                    viewModel.parseWorkflowInputs(workflow.jsonContent)
+                                    viewModel.selectWorkflow(workflow)
+                                    navController.navigate("remote_control")
+                                }
+                            )
                         }
                         composable("queue") {
                             com.example.comfyui_remote.ui.QueueScreen(queueViewModel) {
