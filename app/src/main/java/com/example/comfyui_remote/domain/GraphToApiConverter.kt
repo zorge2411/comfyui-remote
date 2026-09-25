@@ -27,8 +27,9 @@ object GraphToApiConverter {
         val api = JsonObject()
         val missingNodes = mutableSetOf<String>()
 
-        // 1. Index Links: ID -> [SourceNodeID, SourceSlotIndex]
+        // 1. Index Links: ID -> [SourceNodeID, SourceSlotIndex], and ID -> link type (the target input's type)
         val linkMap = mutableMapOf<Int, Pair<Int, Int>>()
+        val linkTypeMap = mutableMapOf<Int, String>()
         val linksArray = graph.getAsJsonArray("links") ?: JsonArray()
         linksArray.forEach { element ->
             if (element.isJsonArray) {
@@ -38,6 +39,7 @@ object GraphToApiConverter {
                     val sourceNodeId = arr[1].asInt
                     val sourceSlotIndex = arr[2].asInt
                     linkMap[id] = sourceNodeId to sourceSlotIndex
+                    if (arr.size() >= 6 && arr[5].isJsonPrimitive) linkTypeMap[id] = arr[5].asString
                 }
             }
         }
@@ -54,17 +56,24 @@ object GraphToApiConverter {
             }
         }
 
-        // Map: PhantomNodeID -> List<InputLinkID>
-        val phantomNodeInputs = mutableMapOf<Int, List<Int>>()
+        // Map: PhantomNodeID -> its graph input slots (empty for a dead-end shell)
+        val phantomNodeInputs = mutableMapOf<Int, JsonArray>()
+        // Frontend-only nodes (VIRTUAL_TYPES the server doesn't define): never sent, never reported missing
+        val virtualNodes = mutableMapOf<Int, JsonObject>()
         val nodesArray = graph.getAsJsonArray("nodes") ?: JsonArray()
-        
+
         nodesArray.forEach { nodeElement ->
             val node = nodeElement.asJsonObject
             val idStr = node.get("id").asString
             val id = idStr.toIntOrNull() ?: return@forEach
             val type = node.get("type").asString
             val nodeDef = objectInfo.dynamicNodes.get(type)?.asJsonObject
-            
+
+            if (nodeDef == null && type in VIRTUAL_TYPES) {
+                virtualNodes[id] = node
+                return@forEach
+            }
+
             // Check if it's a Phantom Node
             if (nodeDef == null) {
                 val isManualLoadImage = type == "LoadImage" || type == "ETN_LoadImageBase64"
@@ -87,26 +96,18 @@ object GraphToApiConverter {
                 val isContentless = !hasWidgets && !hasKeyedInputs
                 
                 if ((isUuidType || isContentless) && !isManualLoadImage && !isSubgraph) {
-                    val inputLinks = mutableListOf<Int>()
-                    val rawInputs = if (node.has("inputs")) node.get("inputs") else null
-                    if (rawInputs != null && rawInputs.isJsonArray) {
-                        rawInputs.asJsonArray.forEach { inputEl ->
-                            val linkEl = inputEl.asJsonObject.get("link")
-                            if (linkEl != null && !linkEl.isJsonNull) {
-                                inputLinks.add(linkEl.asInt)
-                            }
-                        }
-                    }
+                    val inputSlots = node.get("inputs")?.takeIf { it.isJsonArray }?.asJsonArray ?: JsonArray()
+                    val linkedCount = inputSlots.count { linkOfSlot(it) != null }
 
                     // A: If it has inputs, we can potentially flatten/bypass it
-                    if (inputLinks.isNotEmpty()) {
-                        println("CONVERT_DEBUG: Node $id ($type): Flattening candidate (found ${inputLinks.size} inputs)")
-                        phantomNodeInputs[id] = inputLinks
-                    } 
+                    if (linkedCount > 0) {
+                        println("CONVERT_DEBUG: Node $id ($type): Flattening candidate (found $linkedCount inputs)")
+                        phantomNodeInputs[id] = inputSlots
+                    }
                     // B: If it has NO inputs AND NO outputs, it's a dead-end shell -> skip it
                     else if (!hasOutputs) {
                         println("CONVERT_DEBUG: Node $id ($type): Dead-end shell detection. Skipping generation.")
-                        phantomNodeInputs[id] = emptyList() // Mark for skipping in processing loop
+                        phantomNodeInputs[id] = JsonArray() // Mark for skipping in processing loop
                         missingNodes.add(type)
                     }
                     // C: If it has outputs but no inputs, it might be a producer -> Keep it!
@@ -134,29 +135,30 @@ object GraphToApiConverter {
             }
         }
 
-        // For a bypassed node, find the input link that replaces output [outputSlot]:
-        // first linked input whose type equals the output type, else the input at the same index.
-        fun bypassInputLink(node: JsonObject, outputSlot: Int): Int? {
-            val inputsArr = node.get("inputs")?.takeIf { it.isJsonArray }?.asJsonArray ?: return null
+        fun inputsOf(node: JsonObject): JsonArray =
+            node.get("inputs")?.takeIf { it.isJsonArray }?.asJsonArray ?: JsonArray()
+
+        fun inputLinkAt(inputsArr: JsonArray, index: Int): Int? =
+            if (index in 0 until inputsArr.size()) linkOfSlot(inputsArr[index]) else null
+
+        // Which input replaces output [slot] of a bypassed node, or -1 (frontend ExecutableNodeDTO._getBypassSlotIndex).
+        // [targetType] is the type of the input at the end of the chain, not of this node's output.
+        fun bypassSlotIndex(node: JsonObject, slot: Int, targetType: String?): Int {
+            val inputsArr = inputsOf(node)
+            if (targetType.isNullOrEmpty() || targetType == "*") return if (inputsArr.size() > slot) slot else 0
             val outputsArr = node.get("outputs")?.takeIf { it.isJsonArray }?.asJsonArray
-            val outType = if (outputsArr != null && outputSlot < outputsArr.size()) {
-                outputsArr[outputSlot].asJsonObject.get("type")?.takeIf { it.isJsonPrimitive }?.asString
-            } else null
-            fun linkOf(el: com.google.gson.JsonElement): Int? {
-                val l = el.asJsonObject.get("link")
-                return if (l != null && !l.isJsonNull) l.asInt else null
-            }
-            if (outType != null) {
-                inputsArr.firstOrNull {
-                    val t = it.asJsonObject.get("type")
-                    linkOf(it) != null && t != null && t.isJsonPrimitive && t.asString == outType
-                }?.let { return linkOf(it) }
-            }
-            return if (outputSlot < inputsArr.size()) linkOf(inputsArr[outputSlot]) else null
+            val outType = if (outputsArr != null && slot < outputsArr.size()) slotType(outputsArr[slot]) else null
+            fun fits(input: JsonElement) = slotType(input).let { isValidConnection(it, outType) && isValidConnection(it, targetType) }
+
+            if (slot < inputsArr.size() && fits(inputsArr[slot])) return slot
+            val exact = inputsArr.indexOfFirst { slotType(it) == targetType }
+            if (exact != -1) return exact
+            return inputsArr.indexOfFirst { fits(it) }
         }
 
-        // Helper function to resolve real source recursively
-        fun resolveRealSource(initialLinkId: Int, visited: MutableSet<Int> = mutableSetOf()): Pair<Int, Int>? {
+        // Resolves a link to the real node output that feeds it, following the frontend's
+        // ExecutableNodeDTO.resolveOutput: muted sources drop, bypassed and frontend-only nodes pass through.
+        fun resolveRealSource(initialLinkId: Int, targetType: String?, visited: MutableSet<Int> = mutableSetOf()): Pair<Int, Int>? {
             if (visited.contains(initialLinkId)) return null // Cycle detected
             visited.add(initialLinkId)
 
@@ -168,22 +170,26 @@ object GraphToApiConverter {
                 return null
             }
             bypassedNodes[sourceId]?.let { bypassed ->
-                val replacement = bypassInputLink(bypassed, sourceSlot)
-                println("CONVERT_DEBUG: Node $sourceId is bypassed; output $sourceSlot -> input link $replacement")
-                return if (replacement != null) resolveRealSource(replacement, visited) else null
+                val index = bypassSlotIndex(bypassed, sourceSlot, targetType)
+                val replacement = inputLinkAt(inputsOf(bypassed), index)
+                println("CONVERT_DEBUG: Node $sourceId is bypassed; output $sourceSlot ($targetType) -> input $index, link $replacement")
+                return if (replacement != null) resolveRealSource(replacement, targetType, visited) else null
             }
 
-            // Is the source a phantom node?
-            if (phantomNodeInputs.containsKey(sourceId)) {
-                val inputs = phantomNodeInputs[sourceId]
-                if (inputs.isNullOrEmpty()) return null // Dead end
+            // Frontend-only nodes pass output [slot] through from the input at the same index (getInputLink)
+            virtualNodes[sourceId]?.let { virtual ->
+                val next = inputLinkAt(inputsOf(virtual), sourceSlot)
+                println("CONVERT_DEBUG: Node $sourceId is frontend-only; output $sourceSlot -> input link $next")
+                return if (next != null) resolveRealSource(next, targetType, visited) else null
+            }
 
-                // Heuristic: specific logic for Reroute/Primitive?
-                // For now: Take the first input link (Index 0). 
-                // Mostly these pass-through nodes have 1 input. If multiple, we gamble on the first.
-                val firstInputLink = inputs[0]
-                println("CONVERT_DEBUG: Flattening - Node $sourceId is phantom, bypassing to input link $firstInputLink")
-                return resolveRealSource(firstInputLink, visited)
+            // Unknown pass-through node: the same-index input, else the first linked input of a compatible type
+            phantomNodeInputs[sourceId]?.let { inputsArr ->
+                val next = inputLinkAt(inputsArr, sourceSlot)
+                    ?: inputsArr.firstOrNull { linkOfSlot(it) != null && isValidConnection(slotType(it), targetType) }
+                        ?.let { linkOfSlot(it) }
+                println("CONVERT_DEBUG: Flattening - Node $sourceId is phantom, bypassing to input link $next")
+                return if (next != null) resolveRealSource(next, targetType, visited) else null
             }
 
             // It's a real node (or at least one we are preserving)
@@ -197,8 +203,8 @@ object GraphToApiConverter {
             val id = idStr.toIntOrNull() ?: 0
             val type = node.get("type").asString
             
-            if (mutedNodes.contains(id) || bypassedNodes.containsKey(id)) {
-                println("CONVERT_DEBUG: Node $id ($type): skipping generation (muted/bypassed)")
+            if (mutedNodes.contains(id) || bypassedNodes.containsKey(id) || virtualNodes.containsKey(id)) {
+                println("CONVERT_DEBUG: Node $id ($type): skipping generation (muted/bypassed/frontend-only)")
                 return@forEach
             }
 
@@ -214,12 +220,6 @@ object GraphToApiConverter {
             }
             
             val nodeDef = objectInfo.dynamicNodes.get(type)?.asJsonObject
-            
-            // Filter non-executables
-            val nonExecutableTypes = setOf("MarkdownNote", "Note")
-            if (nonExecutableTypes.contains(type)) {
-                return@forEach
-            }
 
             val apiNode = JsonObject()
             val inputs = JsonObject()
@@ -367,17 +367,32 @@ object GraphToApiConverter {
                     return com.google.gson.JsonPrimitive(resolved)
                 }
 
-                fun addLink(key: String, linkId: Int) {
-                    val resolved = resolveRealSource(linkId)
+                // Returns false when the link doesn't reach a real node output
+                fun addLink(key: String, linkId: Int): Boolean {
+                    val resolved = resolveRealSource(linkId, linkTypeMap[linkId])
                     if (resolved != null) {
                         val linkArray = JsonArray()
                         linkArray.add(resolved.first.toString())
                         linkArray.add(resolved.second)
                         inputs.add(key, linkArray)
-                    } else {
-                        // Could not resolve (maybe link to missing node that has no input?)
-                        println("CONVERT_DEBUG: Warn: Node $id: key '$key' link $linkId resolved to null (broken chain?)")
+                        return true
                     }
+                    println("CONVERT_DEBUG: Warn: Node $id: key '$key' link $linkId resolved to null (broken chain?)")
+                    return false
+                }
+
+                // Promoted (Phase 93) > saved value > the frontend's default for a widget the node gained
+                // after the workflow was saved. A named map lists every saved widget, so when it exists a
+                // missing name means a newer widget, and the (possibly shifted) positional value is not used.
+                fun widgetValueFor(path: String, spec: JsonArray?, saved: JsonElement?, isWidget: Boolean): JsonElement? {
+                    val stored = if (named != null) named.get(path)?.takeIf { !it.isJsonNull } else saved
+                    val widget = promoted?.get(path)
+                        ?: stored
+                        ?: (if (isWidget) frontendDefault(spec)?.also {
+                            println("CONVERT_DEBUG: Node $id: no saved value for '$path', using default $it")
+                        } else null)
+                        ?: return null
+                    return resolveComboValue(path, spec, widget)
                 }
 
                 fun graphSlot(name: String): JsonObject? =
@@ -411,11 +426,14 @@ object GraphToApiConverter {
                     val slot = graphSlot(path)
                     val linkId = linkOf(slot)
                     if (linkId != null) {
-                        addLink(path, linkId)
+                        val linked = addLink(path, linkId)
                         // A widget converted to an input keeps its slot in widgets_values even when linked.
                         if (slot?.has("widget") == true) {
-                            findNextCompatibleWidget(spec)
+                            val saved = findNextCompatibleWidget(spec)
                             skipControlWidgets(controlSlots(path, spec))
+                            // The frontend writes every widget value and only replaces it with a link that
+                            // resolves (graphToPrompt), so a broken link still sends the widget's value.
+                            if (!linked) widgetValueFor(path, spec, saved, hasWidget(spec))?.let { inputs.add(path, it) }
                         }
                         return
                     }
@@ -426,17 +444,7 @@ object GraphToApiConverter {
                     // Always consume the widgets_values slot so later widgets stay aligned
                     val saved = findNextCompatibleWidget(spec)
                     if (saved != null) skipControlWidgets(controlSlots(path, spec))
-                    // Promoted (Phase 93) > saved value > the frontend's default for a widget the node gained
-                    // after the workflow was saved. A named map lists every saved widget, so when it exists a
-                    // missing name means a newer widget, and the (possibly shifted) positional value is not used.
-                    val stored = if (named != null) named.get(path)?.takeIf { !it.isJsonNull } else saved
-                    val widget = promoted?.get(path)
-                        ?: stored
-                        ?: (if (isWidget) frontendDefault(spec)?.also {
-                            println("CONVERT_DEBUG: Node $id: no saved value for '$path', using default $it")
-                        } else null)
-                        ?: return
-                    val value = resolveComboValue(path, spec, widget)
+                    val value = widgetValueFor(path, spec, saved, isWidget) ?: return
                     inputs.add(path, value)
 
                     if (kind == DYNAMIC_COMBO) {
@@ -477,7 +485,7 @@ object GraphToApiConverter {
                         val linkId = if (slot.has("link") && !slot.get("link").isJsonNull) slot.get("link").asInt else null
                         
                         if (linkId != null) {
-                            val resolved = resolveRealSource(linkId)
+                            val resolved = resolveRealSource(linkId, linkTypeMap[linkId])
                             if (resolved != null) {
                                 val (sourceId, sourceSlot) = resolved
                                 val linkArray = JsonArray()
@@ -516,32 +524,6 @@ object GraphToApiConverter {
 
             api.add(idStr, apiNode)
         }
-
-        // Remove bypassed nodes from missing nodes list so we don't warn user unnecessarily
-        phantomNodeInputs.keys.forEach { bypassedId ->
-             // Actually phantomNodeInputs key is Int.
-             // We need to find the TYPE for that ID to remove it?
-             // Or we just stored Types in missingNodes directly.
-             // This is tricky. simpler to just let them be "missing" warning? 
-             // But if we successfully flattened them, they aren't "missing" in a problematic way.
-             // Ideally we filter missingNodes at the end.
-        }
-        
-        // Better: Validate missingNodes set against the API output.
-        // If a node type is IN the missingNodes set BUT NOT in the final API JSON, it was removed.
-        // Wait, 'missingNodes' stores TYPES.
-        // Let's just return the list. The UI warning is fine: "Missing Nodes: Reroute". 
-        // User will understand "Oh, Reroute is not on server, but maybe it worked?"
-        // Ideally we suppress it if we know we handled it.
-        // Let's Filter: Only report missing nodes that we FAILED to bypass?
-        // Actually, 'missingNodes' are accumulated during the 'Processed Nodes' Loop.
-        // And we SKIP processing phantom nodes in that loop (line 108: return@forEach).
-        // So they WON'T be added to missingNodes anymore!
-        // EXCEPT: We added them in the PRE-SCAN loop (line 66).
-        // Let's REMOVE the add in pre-scan loop to avoid duplicate/false positive.
-        // We only add to 'missingNodes' if we FAIL to bypass? 
-        // No, if we flatten, we just don't include it. 
-        // So I will remove `missingNodes.add(type)` from the Pre-scan loop in the logic above.
 
         return ConversionResult(gson.toJson(api), missingNodes.toList().also { 
             println("CONVERT_DEBUG: Final Missing Nodes List: $it") 
@@ -907,6 +889,26 @@ object GraphToApiConverter {
         newGraph.add("nodes", finalNodes)
         newGraph.add("links", newLinks)
         return newGraph to subgraphsExpanded
+    }
+
+    /**
+     * Node types that exist only in the ComfyUI frontend (isVirtualNode): Reroute, PrimitiveNode,
+     * notes, and KJNodes SetNode/GetNode. Used only when /object_info doesn't define the type.
+     */
+    private val VIRTUAL_TYPES = setOf("Reroute", "PrimitiveNode", "Note", "MarkdownNote", "SetNode", "GetNode")
+
+    private fun linkOfSlot(slot: JsonElement): Int? =
+        slot.takeIf { it.isJsonObject }?.asJsonObject?.get("link")?.takeIf { !it.isJsonNull }?.asInt
+
+    private fun slotType(slot: JsonElement): String? =
+        slot.takeIf { it.isJsonObject }?.asJsonObject?.get("type")?.takeIf { it.isJsonPrimitive }?.asString
+
+    /** LiteGraph.isValidConnection: "" or "*" matches anything; otherwise any shared type of a comma list. */
+    internal fun isValidConnection(a: String?, b: String?): Boolean {
+        if (a.isNullOrEmpty() || a == "*" || b.isNullOrEmpty() || b == "*" || a == b) return true
+        val left = a.lowercase().split(",").map { it.trim() }
+        val right = b.lowercase().split(",").map { it.trim() }.toSet()
+        return left.any { it in right }
     }
 
     private const val DYNAMIC_COMBO = "COMFY_DYNAMICCOMBO_V3"
