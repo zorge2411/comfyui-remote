@@ -40,3 +40,25 @@
 
 - `known-failures.json` must end up empty. Across all 572 templates, C7 goes 29 → 0 and C3 goes 4 → 0. Record the before/after numbers in `90-SUMMARY.md`.
 - Research must check two points against the frontend: whether a muted or bypassed primitive still applies its value, and the order in which a bypassed node's inputs are searched.
+
+## Phase 91 Decisions
+
+**Date:** 2026-09-25 (`--auto`: recommended options picked; full detail in `.gsd/phases/91/91-CONTEXT.md`)
+
+### Scope
+
+- Check the prompt against the live `/object_info` before queueing. It reports node types the server doesn't have, missing required inputs, and invalid combo values, including model files that aren't installed. The live result replaces the stored import-time missing-node card on the form screen.
+- Out of scope: full server `node_errors` display (Phase 92), converter fixes the check reveals (Phase 97), and installing nodes or models.
+
+### Approach
+
+- Move `ApiPromptValidator` into the app and share it with the corpus test. The graph argument becomes optional, so C6 runs only in the corpus. A live mode also checks file names but skips just-uploaded files and `image_upload` inputs.
+- Run the check when the form screen opens and again at queue time, on the patched and injected prompt. If there are issues, refetch `/object_info` once. With no `/object_info`, skip the check.
+- Warn, don't block: a dialog lists the issues grouped by node (title and type, in plain wording, missing types first) and offers **Queue anyway** and **Cancel**.
+- Reason: the server is still the authority, and a stale `/object_info` must not block a prompt that would run.
+
+### Constraints
+
+- Keep the `missingNodes` column; no Room migration.
+- Corpus results stay identical: `known-failures.json` stays empty.
+- Put the issue model and list UI in their own files so Phase 92 can reuse them.

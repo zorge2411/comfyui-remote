@@ -3,8 +3,8 @@
 ## Current Position
 
 - **Milestone**: 4 (Workflow compatibility)
-- **Phase**: 90 (completed, code)
-- **Task**: All tasks complete
+- **Phase**: 91 (planned)
+- **Task**: Planning complete (3 plans, 3 waves)
 - **Status**: Verified locally (174 tests green) and on the phone. The Phase 90 build also covers the local Android run for Phases 89, 93–95; the device checks for 94 and 96 are still open.
 
 ## Last Session Summary
@@ -13,7 +13,7 @@ Phase 90 executed: 3 plans, 9 tasks. Across all 572 templates (stock v0.37.2), c
 
 ## Next Steps
 
-1. /plan 91 (Pre-flight Compatibility Check) or /plan 97
+1. /execute 91 (Pre-flight Compatibility Check; plans in `.gsd/phases/91/`)
 
 ## Achievements (Milestone 4)
 
