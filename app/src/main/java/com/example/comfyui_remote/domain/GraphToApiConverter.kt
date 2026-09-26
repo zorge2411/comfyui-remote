@@ -418,7 +418,7 @@ object GraphToApiConverter {
                     when (val resolved = resolveRealSource(linkId, targetType)) {
                         is Source.Link -> inputs.add(key, JsonArray().apply { add(resolved.nodeId.toString()); add(resolved.slot) })
                         // A PrimitiveNode's value becomes the target's literal value
-                        is Source.Literal -> inputs.add(key, resolveComboValue(key, spec, resolved.value))
+                        is Source.Literal -> inputs.add(key, widgetValue(resolveComboValue(key, spec, resolved.value)))
                         null -> {
                             // Could not resolve (maybe link to missing node that has no input?)
                             println("CONVERT_DEBUG: Warn: Node $id: key '$key' link $linkId resolved to null (broken chain?)")
@@ -454,7 +454,7 @@ object GraphToApiConverter {
                     }
                     if (kind == IMAGE_COMPARE) {
                         // Display-only widget: never saved in widgets_values, sent as ["", ""] (useImageCompareWidget.ts)
-                        inputs.add(path, JsonArray().apply { add(""); add("") })
+                        inputs.add(path, widgetValue(JsonArray().apply { add(""); add("") }))
                         return
                     }
                     val slot = graphSlot(path)
@@ -486,7 +486,7 @@ object GraphToApiConverter {
                         } else null)
                         ?: return
                     val value = resolveComboValue(path, spec, widget)
-                    inputs.add(path, value)
+                    inputs.add(path, widgetValue(value))
 
                     if (kind == DYNAMIC_COMBO) {
                         // The selected option's inputs follow the combo in widgets_values, depth-first
@@ -1001,6 +1001,13 @@ object GraphToApiConverter {
     /** Input kinds the frontend renders as widgets (and so store a widgets_values entry). */
     private val WIDGET_KINDS = setOf("INT", "FLOAT", "STRING", "BOOLEAN", "COMBO", DYNAMIC_COMBO)
 
+    /**
+     * A list-valued widget is sent as {"__value__": [...]} (frontend executionUtil.graphToPrompt): a bare
+     * 2-element list would be read by the server as a link.
+     */
+    private fun widgetValue(value: JsonElement): JsonElement =
+        if (value.isJsonArray) JsonObject().apply { add("__value__", value) } else value
+
     /** LiteGraph.isValidConnection: "*" or empty matches anything; comma-separated type lists match if they overlap. */
     internal fun typesCompatible(a: String, b: String): Boolean {
         if (a == "*" || b == "*" || a.isEmpty() || b.isEmpty()) return true
@@ -1050,10 +1057,11 @@ object GraphToApiConverter {
     }
 
     /** Valid values of a combo spec: legacy [[options], {...}], V3 ["COMBO", {options}], or dynamic option keys. */
-    private fun comboOptions(spec: JsonArray): List<String>? {
+    internal fun comboOptions(spec: JsonArray): List<String>? {
         val first = spec.takeIf { it.size() > 0 }?.get(0) ?: return null
         val config = spec.takeIf { it.size() > 1 }?.get(1)?.takeIf { it.isJsonObject }?.asJsonObject
-        fun strings(arr: JsonArray?) = arr?.filter { it.isJsonPrimitive && it.asJsonPrimitive.isString }?.map { it.asString }
+        // Options may be numbers too (e.g. CreateVideo.bit_depth ["auto", 8, 10])
+        fun strings(arr: JsonArray?) = arr?.filter { it.isJsonPrimitive }?.map { it.asString }
         return when {
             first.isJsonArray -> strings(first.asJsonArray)
             first.asString == "COMBO" -> strings(config?.getAsJsonArray("options"))

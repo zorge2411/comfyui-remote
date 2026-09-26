@@ -147,9 +147,10 @@ class GraphToApiConverterControlWidgetTest {
     // --- Plan 95.2: named values, defaults, display-only and socket-only widget kinds ---
 
     @Test
-    fun `IMAGECOMPARE is sent as an empty pair and takes no saved value`() {
+    fun `IMAGECOMPARE is sent as a wrapped empty pair and takes no saved value`() {
         val i = inputs(convert("""{"id": 5, "type": "Compare", "inputs": [], "widgets_values": []}"""), "5")
-        assertEquals(listOf("", ""), i.getAsJsonArray("compare_view").map { it.asString })
+        // List widget values are wrapped like the frontend does, so the server doesn't read them as links
+        assertEquals(listOf("", ""), i.getAsJsonObject("compare_view").getAsJsonArray("__value__").map { it.asString })
     }
 
     @Test
