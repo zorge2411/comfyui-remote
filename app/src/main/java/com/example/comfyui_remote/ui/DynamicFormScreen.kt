@@ -64,6 +64,7 @@ import androidx.core.net.toUri
 import com.example.comfyui_remote.MainViewModel
 import com.example.comfyui_remote.data.WorkflowEntity
 import com.example.comfyui_remote.domain.InputField
+import com.example.comfyui_remote.domain.ModelSource
 import com.example.comfyui_remote.domain.PromptValidator
 import com.example.comfyui_remote.domain.displayName
 import com.example.comfyui_remote.network.ExecutionStatus
@@ -121,6 +122,14 @@ fun DynamicFormScreen(
         value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { viewModel.missingNodeTypes(workflow) }
     }
     val missingNodesText = liveMissingNodes?.joinToString(", ") ?: workflow.missingNodes
+    // Phase 97: models named by the workflow's download links that the server doesn't have
+    val helperAvailable by viewModel.helperAvailable.collectAsState()
+    val helperHasToken by viewModel.helperHasToken.collectAsState()
+    val modelDownloads by viewModel.modelDownloads.collectAsState()
+    val modelsVersion by viewModel.modelsVersion.collectAsState()
+    val missingModels by androidx.compose.runtime.produceState(emptyList<ModelSource>(), workflow, nodeMetadata, modelsVersion) {
+        value = viewModel.missingModels(workflow)
+    }
     val errorMessage by viewModel.errorMessage.collectAsState()
     val serverWarning by viewModel.serverWarning.collectAsState()
 
@@ -170,6 +179,18 @@ fun DynamicFormScreen(
                         )
                     }
                 }
+            }
+
+            if (missingModels.isNotEmpty()) {
+                MissingModelsCard(
+                    models = missingModels,
+                    downloads = modelDownloads,
+                    helperAvailable = helperAvailable,
+                    helperHasToken = helperHasToken,
+                    onProbe = { viewModel.probeModel(it) },
+                    onDownload = { viewModel.downloadModel(it) },
+                    onCancel = { viewModel.cancelModelDownload(it) }
+                )
             }
 
             // Detailed Error Message
@@ -530,6 +551,7 @@ fun DynamicFormScreen(
                     preflightIssues?.let { issues ->
                         PreflightDialog(
                             issues = issues,
+                            missingModelCount = missingModels.size,
                             onQueueAnyway = {
                                 val action = pendingAction
                                 preflightIssues = null
@@ -699,6 +721,7 @@ fun DynamicFormScreen(
 @Composable
 private fun PreflightDialog(
     issues: List<PromptValidator.Issue>,
+    missingModelCount: Int,
     onQueueAnyway: () -> Unit,
     onCancel: () -> Unit
 ) {
@@ -719,6 +742,13 @@ private fun PreflightDialog(
                     ).joinToString(", "),
                     style = MaterialTheme.typography.labelLarge
                 )
+                if (missingModelCount > 0) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "$missingModelCount missing model file${if (missingModelCount == 1) "" else "s"} can be fetched from the Missing Models card",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
                 byNode.forEach { (node, nodeIssues) ->
                     val (title, classType) = node
                     Spacer(Modifier.height(12.dp))
@@ -745,4 +775,143 @@ private fun PreflightDialog(
             androidx.compose.material3.TextButton(onClick = onCancel) { Text("Cancel") }
         }
     )
+}
+
+private fun formatBytes(bytes: Long): String =
+    if (bytes >= 1024L * 1024 * 1024) "%.1f GB".format(bytes / (1024.0 * 1024 * 1024))
+    else "%.1f MB".format(bytes / (1024.0 * 1024))
+
+/** Phase 97: models the server lacks, downloadable through the server's comfyui_remote_helper extension. */
+@Composable
+private fun MissingModelsCard(
+    models: List<ModelSource>,
+    downloads: Map<String, MainViewModel.ModelDownload>,
+    helperAvailable: Boolean?,
+    helperHasToken: Boolean,
+    onProbe: suspend (ModelSource) -> Pair<Long?, Boolean>?,
+    onDownload: (ModelSource) -> Unit,
+    onCancel: (MainViewModel.ModelDownload) -> Unit
+) {
+    val clipboard = LocalClipboardManager.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var confirming by remember { mutableStateOf<ModelSource?>(null) }
+    var probing by remember { mutableStateOf(false) }
+    var probe by remember { mutableStateOf<Pair<Long?, Boolean>?>(null) }
+    val onCard = MaterialTheme.colorScheme.onErrorContainer
+
+    androidx.compose.material3.Card(
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        ),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text("⚠️ Missing Models on Server", style = MaterialTheme.typography.titleSmall, color = onCard)
+            models.forEach { model ->
+                val download = downloads["${model.directory}/${model.name}"]
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(model.name, style = MaterialTheme.typography.bodyMedium, color = onCard)
+                        Text("models/${model.directory}", style = MaterialTheme.typography.bodySmall, color = onCard)
+                    }
+                    when {
+                        download?.active == true ->
+                            androidx.compose.material3.TextButton(
+                                onClick = { onCancel(download) },
+                                enabled = download.id != null
+                            ) { Text("Cancel") }
+                        helperAvailable == true ->
+                            androidx.compose.material3.TextButton(onClick = {
+                                confirming = model
+                                probe = null
+                                probing = true
+                                scope.launch {
+                                    probe = onProbe(model)
+                                    probing = false
+                                }
+                            }) { Text(if (download?.status == "error") "Retry" else "Download") }
+                        else ->
+                            androidx.compose.material3.TextButton(onClick = {
+                                clipboard.setText(AnnotatedString(model.url))
+                            }) { Text("Copy link") }
+                    }
+                }
+                if (download?.active == true) {
+                    val total = download.total
+                    if (total != null && total > 0) {
+                        LinearProgressIndicator(
+                            progress = { (download.done.toFloat() / total).coerceIn(0f, 1f) },
+                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                        )
+                        Text(
+                            "${formatBytes(download.done)} / ${formatBytes(total)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = onCard
+                        )
+                    } else {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+                        Text(
+                            if (download.status == "queued") "Waiting…" else formatBytes(download.done),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = onCard
+                        )
+                    }
+                } else if (download?.status == "error" && download.error != null) {
+                    Text(download.error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                }
+            }
+            if (helperAvailable == false) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Install comfyui_remote_helper on the server to download from here",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = onCard
+                )
+            }
+        }
+    }
+
+    confirming?.let { model ->
+        val size = probe?.first
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirming = null },
+            title = { Text("Download to server?") },
+            text = {
+                Column {
+                    Text(model.name, style = MaterialTheme.typography.bodyMedium)
+                    Text("Folder: models/${model.directory}", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        when {
+                            probing -> "Checking size…"
+                            size != null -> "Size: ${formatBytes(size)}"
+                            else -> "Size: unknown"
+                        },
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    if (probe?.second == true) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            if (helperHasToken) "This model is gated: the Hugging Face account of the server's HF_TOKEN must have accepted its licence."
+                            else "This model is gated: accept its licence on huggingface.co and set HF_TOKEN on the server, or the download will fail.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        onDownload(model)
+                        confirming = null
+                    },
+                    enabled = !probing
+                ) { Text("Download") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { confirming = null }) { Text("Cancel") }
+            }
+        )
+    }
 }
