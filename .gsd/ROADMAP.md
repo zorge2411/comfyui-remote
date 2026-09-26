@@ -133,3 +133,23 @@
 
 **Verification**:
 - `testDebugUnitTest` (test suite unchanged); device check with the Real-ESRGAN template
+
+### Phase 99: Model Download Queue
+
+**Status**: ⬜ Not Started
+**Objective**: Turn Phase 97's per-model downloads into a managed queue that downloads one model at a time. The server extension already runs downloads one at a time, first in first out; this phase adds control and visibility. Scope agreed with the user on 2026-09-26:
+- **Download all missing**: one button on the Missing Models card queues every missing model of the workflow, after a confirm step showing the count and total size (probed per model).
+- **Model downloads on the Queue screen**: a "Model downloads" section on the existing Queue screen, next to prompt jobs. It lists every server download from all workflows (queued, downloading, done, failed or cancelled) with progress, position and Cancel.
+- **Reorder and remove**: move a queued download up or down, or remove it before it starts. Needs new `comfyui_remote_helper` routes, e.g. `POST /remote_helper/models/downloads/{id}/move {position}`; removing reuses cancel. Bump the extension version to 2, and have the app hide reorder when the server runs version 1.
+- **Retry**: failed and cancelled items stay in the list with Retry (re-queued at the end), plus Clear finished.
+- **Notification**: the existing foreground `ExecutionService` shows download progress ("Downloading 2 of 5: name, 40%") and a "Model downloads finished" notification (or failures) while the app is minimized.
+- **Not in scope**: the queue survives a server restart (memory only, as today).
+
+**Depends on**: Phase 97
+**Requested**: 2026-09-26
+
+**Tasks**:
+- [ ] TBD (run /plan 99 to create)
+
+**Verification**:
+- TBD

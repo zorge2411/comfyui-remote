@@ -108,6 +108,8 @@
 
 ## Roadmap Evolution
 
+- **2026-09-26**: Phase 99 added (model download queue: Download all, Queue-screen section, reorder/remove, retry, notifications; memory-only queue).
+
 - **2026-09-26**: Phase 98 added (pre-flight misses missing input files, e.g. `LoadVideo` `gan_input.mp4`; found in the Phase 97 device check).
 
 - **2026-09-26**: Phase 97 added (download missing models to the server through ComfyUI-Manager, using the download links stored in workflows).
