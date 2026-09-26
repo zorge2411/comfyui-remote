@@ -4,7 +4,7 @@
 
 - **Milestone**: 4 (Workflow compatibility)
 - **Phase**: 95 (Widget Mapping Gaps for V3 Nodes)
-- **Status**: ✅ Code done. All-template clean prompts 426 → 542 of 572; corpus known failures 7 → 4 (Phase 90 only). Local Android run (covers 89, 93, 94, 95) and the Phase 94 device check still pending.
+- **Status**: ✅ Code done. All-template clean prompts 426 → 542 of 572; corpus known failures 7 → 4 (Phase 90 only). Phase 94 device check passed 2026-09-26 (Image Stitch 2x2 Grid ran on the phone; app built and installed locally).
 
 ## Achievements (Milestone 4)
 
@@ -116,8 +116,11 @@
 
 ## Next Steps
 
-1. **Run locally and on device**: `gradlew.bat testDebugUnitTest`, `assembleDebug`, `installDebug`. Then on the phone: Workflows → grid icon (Templates), open `utility_image_stitch` (Phase 94 check), a SaveVideo template, and a Gemini/Grok one (Phase 95).
-2. **Next phase**: Phase 90 (PrimitiveNode, bypass fallback, and the unresolved-link cases found in the Phase 95 run). After that, Milestone 4 must-haves left: Phase 91 (pre-flight) and Phase 92 (error reporting).
+1. **Remaining device checks**:
+   - Phase 95: a Gemini/Grok template, or a video template with SaveVideo; values should match ComfyUI.
+   - Phase 96: template browser thumbnails, search and filters.
+   - Optional: `gradlew.bat testDebugUnitTest`, to run the corpus suite under the Android toolchain.
+2. **Next phase**: Phase 90 (PrimitiveNode, bypass fallback, unresolved-link cases), then Phases 91 and 92.
 3. **Optional device checks carried over from Milestone 3**:
    - Phase 82: confirm the positive prompt field appears first in a real workflow (unit-tested only).
    - Phase 80: confirm themed-icon retinting under Android 13+ Material You.

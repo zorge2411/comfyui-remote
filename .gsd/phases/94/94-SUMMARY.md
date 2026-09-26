@@ -1,6 +1,6 @@
 # Phase 94 Summary: Support COMFY_DYNAMICCOMBO_V3 Inputs
 
-**Completed:** 2026-09-25 (code). **Pending:** the device check at the end of Plan 94.3 and the Android Gradle run.
+**Completed:** 2026-09-25 (code); device check passed 2026-09-26.
 
 ## Delivered
 
@@ -51,3 +51,7 @@
 
 - A server older than the one a workflow was saved with may define a node without the dynamic combo. The converter follows whatever `/object_info` the connected server returns, so it adapts either way.
 - Switching a dynamic option in the app isn't supported: the key is hidden, not editable. That would be a separate phase if wanted.
+
+## Device Check (2026-09-26)
+
+✅ **Passed.** On the user's phone, the official "Image Stitch 2x2 Grid" template (`utility_image_stitch`, ResizeImageMaskNode with the `resize_type` dynamic combo) ran end to end, which confirms Plans 94.2 and 94.3 on device. The app was built and installed locally for this run, so the Android build of Phases 89–96 compiled.

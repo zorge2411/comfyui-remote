@@ -55,3 +55,7 @@ Implemented a persistent local queue and significant improvements to graph-to-AP
 
 - Widget mapping now follows the frontend's save rules: control widgets, sockets and forceInput, named values, defaults, and display-only widgets. All-template clean prompts: 426 → 542 of 572.
 - Lesson: a `widgets_values_named` map is complete for the widgets saved, so a missing name means a newer widget. Falling back to the positional value there brings the shift back.
+
+## 2026-09-26: Phase 94 Device Check Passed
+
+- The "Image Stitch 2x2 Grid" template (ResizeImageMaskNode dynamic combo) ran end to end from the phone. This is the first local build containing Phases 89–96.

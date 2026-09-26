@@ -52,7 +52,7 @@
 
 ### Phase 94: Support COMFY_DYNAMICCOMBO_V3 Inputs
 
-**Status**: ✅ Done (code); device check pending (`.gsd/phases/94/94-SUMMARY.md`)
+**Status**: ✅ Done; device check passed 2026-09-26 (`.gsd/phases/94/94-SUMMARY.md`)
 **Objective**: A dynamic combo (e.g. `ResizeImageMaskNode.resize_type`, core `SaveVideo.format` → `codec` → `encoding`) stores its selected option plus that option's sub-widget values in `widgets_values`, and the API expects dotted keys (`resize_type.megapixels`). Expand the selected option's inputs from `/object_info`, recursively (like Phase 86 did for autogrow). Also: make the corpus validator see sub-inputs, and make the app form show V3 `COMBO` inputs as dropdowns, resolve dotted fields, and keep the dynamic key from being edited into an invalid state.
 **Scale**: 401 of 572 templates, 152 of 962 stock node types.
 **Discovered**: Phase 89 corpus baseline (2026-09-25)
