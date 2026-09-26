@@ -3,7 +3,7 @@
 ## Current Position
 
 - **Milestone**: 4 (Workflow compatibility): all 5 must-haves delivered in code
-- **Phase**: 97 (Download Missing Models to the Server): ✅ done, device-verified
+- **Phase**: 98 (Pre-flight Misses Missing Input Files): planning complete, ready for `/execute 98` (1 plan; cause: an empty server file list suppresses the check)
 - **Status**: ✅ Phase 97 verified on the phone (2026-09-26): Room 11 → 12 in place, download / progress / cancel / Copy link fallback all work against the real server with `comfyui_remote_helper`. ✅ Phases 90, 91 and 92 verified on the phone. Device checks still open for 95 and 96.
 - **Note**: local-master versions of Phases 90/91, built in parallel, were superseded by the agent's. See merge `a9c45ec`, with a backup on branch `backup/local-phase-90-91`.
 

@@ -111,7 +111,7 @@
 
 ### Phase 98: Pre-flight Misses Missing Input Files
 
-**Status**: ⬜ Not Started
+**Status**: 📋 Planned (`.gsd/phases/98/`: 1 plan)
 **Objective**: The pre-flight check should warn before queueing when an input file (video, audio, image) that a loader node names isn't on the server. Found in the Phase 97 device check (2026-09-26):
 - The template "Video Upscale: Real-ESRGAN" names `LoadVideo.file = gan_input.mp4`, which isn't in the server's input folder. The server's `/object_info` lists 5 other files for that input.
 - Generate showed no pre-flight dialog. The prompt went to the server, which rejected it: "Invalid video file: gan_input.mp4".
@@ -124,11 +124,12 @@
 - Log whenever the pre-flight check is skipped, so a silent skip is visible.
 - The template's sample inputs aren't on the server, so the warning should say to pick or upload a file.
 
+**Root cause** (found while planning): the server's `LoadVideo.file` list is empty (no videos in its input folder), and `PromptValidator` only runs the list check when the list is non-empty.
 **Depends on**: Phase 91
 **Requested**: 2026-09-26
 
 **Tasks**:
-- [ ] TBD (run /plan 98 to create)
+- [ ] 98.1 Check file values against empty server lists, plus the device check
 
 **Verification**:
-- TBD
+- `testDebugUnitTest` (test suite unchanged); device check with the Real-ESRGAN template
