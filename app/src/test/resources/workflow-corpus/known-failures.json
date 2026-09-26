@@ -1,13 +1,4 @@
 {
- "3d_hunyuan3d_multiview_to_model.json": {
-  "checks": [
-   "C3"
-  ],
-  "reason": "Bypassed CLIPVisionEncode (output CLIP_VISION_OUTPUT) has no input of that type; the same-index fallback wires CLIP_VISION into an optional CLIP_VISION_OUTPUT input. The frontend drops the link instead.",
-  "phase": [
-   90
-  ]
- },
  "audio_ace_step_1_5_checkpoint.json": {
   "checks": [
    "C7"

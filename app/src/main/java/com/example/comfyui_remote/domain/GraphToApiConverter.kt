@@ -65,6 +65,10 @@ object GraphToApiConverter {
             val type = node.get("type").asString
             val nodeDef = objectInfo.dynamicNodes.get(type)?.asJsonObject
             
+            // Muted/bypassed nodes are never sent, so they are neither phantoms nor missing
+            val nodeMode = node.get("mode")?.takeIf { it.isJsonPrimitive }?.asInt ?: 0
+            if (nodeMode == 2 || nodeMode == 4) return@forEach
+
             // Check if it's a Phantom Node
             if (nodeDef == null) {
                 val isManualLoadImage = type == "LoadImage" || type == "ETN_LoadImageBase64"
@@ -134,29 +138,30 @@ object GraphToApiConverter {
             }
         }
 
-        // For a bypassed node, find the input link that replaces output [outputSlot]:
-        // first linked input whose type equals the output type, else the input at the same index.
-        fun bypassInputLink(node: JsonObject, outputSlot: Int): Int? {
-            val inputsArr = node.get("inputs")?.takeIf { it.isJsonArray }?.asJsonArray ?: return null
+        // For a bypassed node, find the input link that replaces output [outputSlot], like the frontend's
+        // ExecutableNodeDTO._getBypassSlotIndex. [targetType] is the type of the input finally consuming it.
+        fun bypassInputLink(node: JsonObject, outputSlot: Int, targetType: String): Int? {
+            val inputs = node.get("inputs")?.takeIf { it.isJsonArray }?.asJsonArray?.map { it.asJsonObject }
+                ?: return null
+            if (inputs.isEmpty()) return null
             val outputsArr = node.get("outputs")?.takeIf { it.isJsonArray }?.asJsonArray
-            val outType = if (outputsArr != null && outputSlot < outputsArr.size()) {
-                outputsArr[outputSlot].asJsonObject.get("type")?.takeIf { it.isJsonPrimitive }?.asString
-            } else null
-            fun linkOf(el: com.google.gson.JsonElement): Int? {
-                val l = el.asJsonObject.get("link")
-                return if (l != null && !l.isJsonNull) l.asInt else null
+            val outType = outputsArr?.takeIf { outputSlot < it.size() }?.get(outputSlot)?.asJsonObject
+                ?.get("type")?.takeIf { it.isJsonPrimitive }?.asString ?: "*"
+            fun typeOf(input: JsonObject) = input.get("type")?.takeIf { it.isJsonPrimitive }?.asString ?: "*"
+            fun linkOf(input: JsonObject) = input.get("link")?.takeIf { !it.isJsonNull }?.asInt
+            fun fits(input: JsonObject) = typesCompatible(typeOf(input), outType) && typesCompatible(typeOf(input), targetType)
+
+            val index = when {
+                targetType == "*" || targetType.isEmpty() -> if (outputSlot < inputs.size) outputSlot else 0
+                outputSlot < inputs.size && fits(inputs[outputSlot]) -> outputSlot
+                else -> inputs.indexOfFirst { typeOf(it) == targetType }.takeIf { it >= 0 }
+                    ?: inputs.indexOfFirst { fits(it) }
             }
-            if (outType != null) {
-                inputsArr.firstOrNull {
-                    val t = it.asJsonObject.get("type")
-                    linkOf(it) != null && t != null && t.isJsonPrimitive && t.asString == outType
-                }?.let { return linkOf(it) }
-            }
-            return if (outputSlot < inputsArr.size()) linkOf(inputsArr[outputSlot]) else null
+            return if (index >= 0) linkOf(inputs[index]) else null // no match: the frontend drops the link
         }
 
         // Helper function to resolve real source recursively
-        fun resolveRealSource(initialLinkId: Int, visited: MutableSet<Int> = mutableSetOf()): Pair<Int, Int>? {
+        fun resolveRealSource(initialLinkId: Int, targetType: String = "*", visited: MutableSet<Int> = mutableSetOf()): Pair<Int, Int>? {
             if (visited.contains(initialLinkId)) return null // Cycle detected
             visited.add(initialLinkId)
 
@@ -168,9 +173,9 @@ object GraphToApiConverter {
                 return null
             }
             bypassedNodes[sourceId]?.let { bypassed ->
-                val replacement = bypassInputLink(bypassed, sourceSlot)
+                val replacement = bypassInputLink(bypassed, sourceSlot, targetType)
                 println("CONVERT_DEBUG: Node $sourceId is bypassed; output $sourceSlot -> input link $replacement")
-                return if (replacement != null) resolveRealSource(replacement, visited) else null
+                return if (replacement != null) resolveRealSource(replacement, targetType, visited) else null
             }
 
             // Is the source a phantom node?
@@ -183,7 +188,7 @@ object GraphToApiConverter {
                 // Mostly these pass-through nodes have 1 input. If multiple, we gamble on the first.
                 val firstInputLink = inputs[0]
                 println("CONVERT_DEBUG: Flattening - Node $sourceId is phantom, bypassing to input link $firstInputLink")
-                return resolveRealSource(firstInputLink, visited)
+                return resolveRealSource(firstInputLink, targetType, visited)
             }
 
             // It's a real node (or at least one we are preserving)
@@ -367,8 +372,8 @@ object GraphToApiConverter {
                     return com.google.gson.JsonPrimitive(resolved)
                 }
 
-                fun addLink(key: String, linkId: Int) {
-                    val resolved = resolveRealSource(linkId)
+                fun addLink(key: String, linkId: Int, targetType: String) {
+                    val resolved = resolveRealSource(linkId, targetType)
                     if (resolved != null) {
                         val linkArray = JsonArray()
                         linkArray.add(resolved.first.toString())
@@ -382,6 +387,9 @@ object GraphToApiConverter {
 
                 fun graphSlot(name: String): JsonObject? =
                     graphInputs.firstOrNull { it.asJsonObject.get("name").asString == name }?.asJsonObject
+
+                fun slotType(slot: JsonObject?): String =
+                    slot?.get("type")?.takeIf { it.isJsonPrimitive }?.asString ?: "*"
 
                 fun linkOf(slot: JsonObject?): Int? =
                     slot?.get("link")?.takeIf { !it.isJsonNull }?.asInt
@@ -399,7 +407,7 @@ object GraphToApiConverter {
                             val slot = el.asJsonObject
                             val name = slot.get("name").asString
                             val link = linkOf(slot)
-                            if (name.startsWith("$path.") && link != null) addLink(name, link)
+                            if (name.startsWith("$path.") && link != null) addLink(name, link, slotType(slot))
                         }
                         return
                     }
@@ -411,7 +419,7 @@ object GraphToApiConverter {
                     val slot = graphSlot(path)
                     val linkId = linkOf(slot)
                     if (linkId != null) {
-                        addLink(path, linkId)
+                        addLink(path, linkId, slotType(slot))
                         // A widget converted to an input keeps its slot in widgets_values even when linked.
                         if (slot?.has("widget") == true) {
                             findNextCompatibleWidget(spec)
@@ -477,7 +485,7 @@ object GraphToApiConverter {
                         val linkId = if (slot.has("link") && !slot.get("link").isJsonNull) slot.get("link").asInt else null
                         
                         if (linkId != null) {
-                            val resolved = resolveRealSource(linkId)
+                            val resolved = resolveRealSource(linkId, slot.get("type")?.takeIf { it.isJsonPrimitive }?.asString ?: "*")
                             if (resolved != null) {
                                 val (sourceId, sourceSlot) = resolved
                                 val linkArray = JsonArray()
@@ -677,7 +685,16 @@ object GraphToApiConverter {
             // Check if it's a wrapper
             val def = definitions[type]
             val isSubgraph = def != null
-            
+            val mode = node.get("mode")?.takeIf { it.isJsonPrimitive }?.asInt ?: 0
+
+            if (def != null && (mode == 2 || mode == 4)) {
+                // A muted/bypassed subgraph node runs nothing inside it (frontend ExecutableNodeDTO.resolveOutput):
+                // keep it as a plain muted/bypassed node with its full input/output lists so convert() handles it.
+                newNodes.add(collapsedInstance(node, def))
+                println("SUBGRAPH_DEBUG: Wrapper $id ($type) has mode $mode; not expanded")
+                return@forEach
+            }
+
             if (isSubgraph) {
                 subgraphsExpanded++
                 // EXPAND
@@ -918,6 +935,13 @@ object GraphToApiConverter {
     /** Input kinds the frontend renders as widgets (and so store a widgets_values entry). */
     private val WIDGET_KINDS = setOf("INT", "FLOAT", "STRING", "BOOLEAN", "COMBO", DYNAMIC_COMBO)
 
+    /** LiteGraph.isValidConnection: "*" or empty matches anything; comma-separated type lists match if they overlap. */
+    internal fun typesCompatible(a: String, b: String): Boolean {
+        if (a == "*" || b == "*" || a.isEmpty() || b.isEmpty()) return true
+        val left = a.split(",").map { it.trim().uppercase() }.toSet()
+        return b.split(",").any { it.trim().uppercase() in left }
+    }
+
     private fun specConfig(spec: JsonArray?): JsonObject? =
         spec?.takeIf { it.size() > 1 }?.get(1)?.takeIf { it.isJsonObject }?.asJsonObject
 
@@ -971,6 +995,34 @@ object GraphToApiConverter {
                 config?.getAsJsonArray("options")?.mapNotNull { it.asJsonObject.get("key")?.asString }
             else -> null
         }
+    }
+
+    /**
+     * A muted or bypassed subgraph instance, kept unexpanded: at runtime its inputs are the full subgraph input
+     * list in order (Phase 93), so bypass slot matching sees the same inputs the frontend does.
+     */
+    private fun collapsedInstance(instance: JsonObject, definition: SubgraphDefinition): JsonObject {
+        val node = instance.deepCopy()
+        val instanceInputs = instance.getAsJsonArray("inputs")?.map { it.asJsonObject }.orEmpty()
+        val bySubgraphIndex = mapInstanceInputs(instance, definition).entries.associate { (slot, index) -> index to instanceInputs[slot] }
+        node.add("inputs", JsonArray().apply {
+            definition.inputs.forEachIndexed { index, input ->
+                add(JsonObject().apply {
+                    addProperty("name", input.name)
+                    addProperty("type", input.type)
+                    add("link", bySubgraphIndex[index]?.get("link") ?: com.google.gson.JsonNull.INSTANCE)
+                })
+            }
+        })
+        node.add("outputs", JsonArray().apply {
+            definition.outputs.forEach { output ->
+                add(JsonObject().apply {
+                    addProperty("name", output.name)
+                    addProperty("type", output.type)
+                })
+            }
+        })
+        return node
     }
 
     /** Graph-node property holding widget values promoted from an enclosing subgraph instance. Never sent to the API. */
