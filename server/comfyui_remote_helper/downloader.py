@@ -20,7 +20,9 @@ QUEUE_EVENT = "remote_helper.queue"
 FINISHED = ("done", "error", "cancelled")
 CHUNK = 1024 * 1024
 SPARE_BYTES = 1024 ** 3
-GATED_MESSAGE = "Gated model: accept its licence on huggingface.co and set HF_TOKEN on the server"
+# Hugging Face also answers 401 for repos that don't exist, so this can't say "gated" for sure
+GATED_MESSAGE = ("Gated or unavailable model: if it is gated, accept its licence on huggingface.co "
+                 "and set HF_TOKEN on the server")
 
 log = logging.getLogger("remote_helper")
 

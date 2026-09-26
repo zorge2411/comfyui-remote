@@ -30,15 +30,35 @@ Every route is also served under `/api/...`.
 
 | Route | Body | Returns |
 |---|---|---|
-| `GET /remote_helper/info` | | `{version, hf_token}` |
+| `GET /remote_helper/info` | | `{version, hf_token}` (version `"2"`) |
 | `POST /remote_helper/models/probe` | `{url}` | `{size, gated}` (size in bytes, or null) |
 | `POST /remote_helper/models/download` | `{url, directory, filename}` | The job. Errors come back as `{error}` with status 400, 403 or 409. |
-| `GET /remote_helper/models/downloads` | | `[{id, filename, directory, total, done, status, error}]` |
-| `POST /remote_helper/models/downloads/{id}/cancel` | | The job, or 404 |
+| `GET /remote_helper/models/downloads` | | The list (see below) |
+| `POST /remote_helper/models/downloads/{id}/cancel` | | The job, or 404. A queued job is removed from the queue. |
+| `POST /remote_helper/models/downloads/{id}/move` | `{position}` | The job. Moves a queued job to a 1-based position. 404 if unknown, 409 if not queued. (v2) |
+| `POST /remote_helper/models/downloads/{id}/retry` | | The new job. Queues a failed or cancelled job again at the end. (v2) |
+| `POST /remote_helper/models/downloads/clear` | | The remaining list. Removes done, failed and cancelled jobs. (v2) |
 
-`status` is `queued`, `downloading`, `done`, `error` or `cancelled`. Every change is also broadcast on ComfyUI's websocket as `{"type": "remote_helper.download", "data": <job>}`. While a download runs, updates are sent at most once a second.
+A job is `{id, filename, directory, total, done, status, error, position}`:
+- `status` is `queued`, `downloading`, `done`, `error` or `cancelled`;
+- `position` is the 1-based place in the queue for queued jobs, and null otherwise.
+
+The list shows the downloading job first, then queued jobs in order, then finished jobs, newest first.
 
 Downloads run one at a time. A download is written to `<file>.part` and renamed when complete. On cancel or failure the `.part` file is deleted.
+
+The queue is kept in memory, so restarting ComfyUI clears it.
+
+## Websocket events
+
+| Event | Data | When |
+|---|---|---|
+| `remote_helper.download` | One job | On each status change, and at most once a second while downloading |
+| `remote_helper.queue` | `{"jobs": [...]}`, the full list | Whenever jobs are added, removed, reordered or change status (v2) |
+
+Version 1 clients ignore `remote_helper.queue` and keep working.
+
+A 401 or 403 from Hugging Face is reported as "Gated or unavailable model": Hugging Face answers 401 for repos that don't exist, as well as for gated ones.
 
 ## Security
 
