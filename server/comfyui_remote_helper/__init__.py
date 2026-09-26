@@ -6,7 +6,11 @@ Routes (also served under /api):
   POST /remote_helper/models/download           {url, directory, filename}
   GET  /remote_helper/models/downloads
   POST /remote_helper/models/downloads/{id}/cancel
-Progress is broadcast as the websocket event "remote_helper.download".
+  POST /remote_helper/models/downloads/{id}/move    {position}   (version 2)
+  POST /remote_helper/models/downloads/{id}/retry                (version 2)
+  POST /remote_helper/models/downloads/clear                     (version 2)
+Per-job progress is broadcast as the websocket event "remote_helper.download", and the whole list as
+"remote_helper.queue" whenever jobs or their order change. Downloads run one at a time.
 """
 
 import logging
@@ -19,7 +23,7 @@ from server import PromptServer
 from .downloader import Downloader, probe
 from .validation import RequestError, validate_request, validate_url
 
-VERSION = "1"
+VERSION = "2"
 NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
 
@@ -86,6 +90,39 @@ async def cancel_download(request):
     if job is None:
         return web.json_response({"error": "No such download"}, status=404)
     return web.json_response(job)
+
+
+@routes.post("/remote_helper/models/downloads/{id}/move")
+async def move_download(request):
+    job_id = request.match_info["id"]
+    try:
+        position = int((await _json(request)).get("position"))
+    except RequestError as e:
+        return _error(e)
+    except (AttributeError, TypeError, ValueError):
+        return _error(RequestError(400, "Expected {\"position\": <1-based number>}"))
+    if job_id not in {j["id"] for j in downloader.jobs()}:
+        return web.json_response({"error": "No such download"}, status=404)
+    job = downloader.move(job_id, position)
+    if job is None:
+        return web.json_response({"error": "Only queued downloads can be moved"}, status=409)
+    return web.json_response(job)
+
+
+@routes.post("/remote_helper/models/downloads/{id}/retry")
+async def retry_download(request):
+    try:
+        job = downloader.retry(request.match_info["id"], os.path.exists)
+    except RequestError as e:
+        return _error(e)
+    if job is None:
+        return web.json_response({"error": "No such download"}, status=404)
+    return web.json_response(job)
+
+
+@routes.post("/remote_helper/models/downloads/clear")
+async def clear_downloads(request):
+    return web.json_response(downloader.clear_finished())
 
 
 log.info("[remote_helper] version %s loaded; HF_TOKEN %s", VERSION, "set" if os.environ.get("HF_TOKEN") else "not set")
