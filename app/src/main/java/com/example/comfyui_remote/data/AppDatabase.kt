@@ -27,7 +27,7 @@ interface WorkflowDao {
     suspend fun delete(workflow: WorkflowEntity)
 }
 
-@Database(entities = [WorkflowEntity::class, GeneratedMediaEntity::class, LocalQueueItem::class], version = 11, exportSchema = false)
+@Database(entities = [WorkflowEntity::class, GeneratedMediaEntity::class, LocalQueueItem::class], version = 12, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun workflowDao(): WorkflowDao
@@ -116,6 +116,21 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Phase 97: model download links. missingNodes was added in 39d2597 without a migration, so add it if absent.
+        val MIGRATION_11_12 = object : androidx.room.migration.Migration(11, 12) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                val columns = mutableSetOf<String>()
+                database.query("PRAGMA table_info(workflows)").use { c ->
+                    val nameIndex = c.getColumnIndex("name")
+                    while (c.moveToNext()) columns.add(c.getString(nameIndex))
+                }
+                if ("missingNodes" !in columns) {
+                    database.execSQL("ALTER TABLE workflows ADD COLUMN missingNodes TEXT")
+                }
+                database.execSQL("ALTER TABLE workflows ADD COLUMN modelSources TEXT")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -123,7 +138,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "comfy_database"
                 )
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

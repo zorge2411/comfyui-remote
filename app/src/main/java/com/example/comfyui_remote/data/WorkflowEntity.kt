@@ -15,5 +15,6 @@ data class WorkflowEntity(
     val baseModels: String? = null, // Comma-separated list for searching
     val source: String? = null, // "LOCAL_IMPORT", "SERVER_USERDATA", etc.
     val formatVersion: Int = 1,
-    val missingNodes: String? = null // Comma-separated list of missing node types
+    val missingNodes: String? = null, // Comma-separated list of missing node types
+    val modelSources: String? = null // Phase 97: JSON list of ModelSource (model download links)
 )

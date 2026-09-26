@@ -1179,6 +1179,14 @@ class MainViewModel(
                     existingMissingNodes = conversionResult.missingNodes
                 )
             }
+            // Phase 97: keep the graph's model download links for the models the prompt uses
+            val modelSources = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                com.example.comfyui_remote.domain.ModelSources.usedBy(
+                    com.example.comfyui_remote.domain.ModelSources.extract(json),
+                    conversionResult.json
+                )
+            }
+            android.util.Log.d("IMPORT_DEBUG", "Model download links kept: ${modelSources.size}")
             android.util.Log.d("IMPORT_DEBUG", "Normalization complete")
             android.util.Log.d("IMPORT_DEBUG", "Normalized JSON size: ${normalized.jsonContent.length} bytes")
             android.util.Log.d("IMPORT_DEBUG", "Base models detected: ${normalized.baseModels.joinToString(", ")}")
@@ -1197,7 +1205,8 @@ class MainViewModel(
                 baseModels = baseModelsShort,
                 source = normalized.source.name,
                 formatVersion = normalized.formatVersion,
-                missingNodes = if (normalized.missingNodes.isNotEmpty()) normalized.missingNodes.joinToString(", ") else null
+                missingNodes = if (normalized.missingNodes.isNotEmpty()) normalized.missingNodes.joinToString(", ") else null,
+                modelSources = if (modelSources.isNotEmpty()) com.example.comfyui_remote.domain.ModelSources.toJson(modelSources) else null
             )
             
             // Database insert on IO thread
