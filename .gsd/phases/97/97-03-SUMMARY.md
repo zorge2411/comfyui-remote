@@ -1,6 +1,6 @@
 # Plan 97.3 Summary: Download Missing Models from the App
 
-**Code completed:** 2026-09-26. Device check pending.
+**Completed:** 2026-09-26. Device check passed (see the end of this file).
 
 ## Delivered
 
@@ -26,7 +26,7 @@
 ## Verification
 
 - `testDebugUnitTest`: 192 tests, 0 failures. `assembleDebug` OK.
-- **Device check pending** (no device was on adb). Steps are in 97-03-PLAN.md Task 3:
+- Device check steps (97-03-PLAN.md Task 3):
   1. install `server/comfyui_remote_helper` in the server's `custom_nodes` and restart;
   2. `installDebug`; the database upgrades from 11 to 12 with every workflow kept;
   3. re-import a template whose models are missing → the card lists them;

@@ -9,11 +9,11 @@ Checked on 2026-09-26 against the code and tests, not against the summaries.
   - `importWorkflowInternal` stores `modelSources`, filtered by `usedBy`.
 - [x] **Migration 11 → 12 exists.**
   - Evidence: `AppDatabase.MIGRATION_11_12` is registered, and the version is 12.
-  - Upgrading an existing phone database is still unchecked (device).
+  - Device: the phone database upgraded from 11 to 12 with all 19 workflows kept.
 - [x] **The server extension downloads Hugging Face / GitHub models safely.**
   - Evidence: 9 validation tests.
   - Smoke test with a real huggingface.co download: done, 403 for another host, 409 for a duplicate or an existing file, the gated message, cancel leaving no `.part` file.
-  - Not yet run inside a real ComfyUI.
+  - Also run inside the real ComfyUI 0.37.0 server during the device check.
 - [x] **Download from the phone with progress; the card and warnings clear.**
   - Code is in place: `MissingModelsCard`, the `remote_helper.download` handler, and a refresh when a download finishes.
   - Device-verified 2026-09-26 (see 97-03-SUMMARY.md, Device check).
