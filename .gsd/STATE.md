@@ -3,8 +3,8 @@
 ## Current Position
 
 - **Milestone**: 4 (Workflow compatibility): all 5 must-haves delivered in code
-- **Phase**: 92 (Full Server Validation Error Reporting)
-- **Status**: ✅ Phases 90, 91 and 92 verified on the phone (2026-09-26, wireless adb); Room DB migrated to version 11 in place. Device checks still open for 95 and 96.
+- **Phase**: 97 (Download Missing Models to the Server): planning complete, ready for `/execute 97`
+- **Status**: Phase 97 has 3 plans (97.1 and 97.2 in wave 1, 97.3 in wave 2). ✅ Phases 90, 91 and 92 verified on the phone (2026-09-26, wireless adb); Room DB migrated to version 11 in place. Device checks still open for 95 and 96.
 - **Note**: local-master versions of Phases 90/91, built in parallel, were superseded by the agent's. See merge `a9c45ec`, with a backup on branch `backup/local-phase-90-91`.
 
 ## Achievements (Milestone 4)

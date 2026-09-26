@@ -91,19 +91,20 @@
 
 ### Phase 97: Download Missing Models to the Server
 
-**Status**: ⬜ Not Started
+**Status**: 📋 Planned (`.gsd/phases/97/`: 3 plans)
 **Objective**: When a workflow needs model files the server doesn't have, let the user download them to the server from the phone. The file goes straight from its source to the server, never through the phone.
 - **Keep the download links at import.** Workflows list their models as `properties.models` entries (`name`, `url`, `directory`), on nodes, inside subgraph definitions, and in the top-level `models` list. All 80 entries in the corpus have a huggingface.co URL. Today `WorkflowNormalizationService` strips these entries before storing the workflow. Collect them before conversion and store them in a new `modelSources` column (Room migration 11 → 12). Workflows imported earlier need to be imported again; server templates can be fetched again.
-- **Work out what's missing.** For each stored link, check `/models/{directory}`. Workflows without links keep the `PromptValidator` "Value not in list" warnings; optionally look the file up by exact name in ComfyUI-Manager's model list (`/externalmodel/getlist?mode=cache`), never by guessing.
-- **Download through ComfyUI-Manager.** Detect whether the Manager is installed and which version. Queue the install (older versions: `POST /manager/queue/install_model` with `save_path` = directory, then `GET /manager/queue/start`), and follow progress with `/manager/queue/status` or the `cm-queue-status` websocket event. The Manager built into newer ComfyUI uses `/v2/manager/...` routes. Without a Manager, show the link to copy.
+- **Work out what's missing.** For each stored link, check `/models/{directory}`. Workflows without links keep the `PromptValidator` "Value not in list" warnings.
+- **Download through a companion extension** (decided 2026-09-26, see `97-RESEARCH.md`: Manager 3.x accepts only 6 of the 51 corpus models, and v4 refuses installs over `--listen`). `server/comfyui_remote_helper` streams Hugging Face / GitHub URLs into the model folder with progress, cancel and `HF_TOKEN`. Without the extension, the app shows the link to copy.
 - **In the app.** The pre-flight dialog and the missing-items banner get a "Download to server" button per model, with a confirm step that shows the size (HEAD request) and the target folder, then progress. When the download finishes, reload `/object_info` and the model lists so the warnings clear.
-**Risks**: Hugging Face models that need a login token (e.g. Flux dev) will fail and must show a clear message; the Manager's security level can block some installs (non-`.safetensors` files, URLs not in its list); request formats differ between Manager versions and need checking against the version on the server.
-**Follow-up (not in scope)**: a small companion extension on the server for byte progress, cancel and Hugging Face tokens.
+**Risks**: gated Hugging Face models (e.g. Flux dev) need `HF_TOKEN` on the server and must show a clear message without it; ComfyUI has no login, so the extension limits downloads to https from huggingface.co / github.com, safe file types and registered model folders.
 **Depends on**: Phase 91
 **Requested**: 2026-09-26
 
 **Tasks**:
-- [ ] TBD (run /plan 97 to create)
+- [ ] 97.1 Keep model links at import (wave 1)
+- [ ] 97.2 Companion server extension (wave 1)
+- [ ] 97.3 Download from the app + device check (wave 2)
 
 **Verification**:
-- TBD
+- `testDebugUnitTest`, Python unit tests, device check in 97.3
