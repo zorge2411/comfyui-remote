@@ -44,8 +44,11 @@
 
 ### Phase 92: Full Server Validation Error Reporting
 
-**Status**: ⬜ Not Started
-**Objective**: When `/prompt` returns `node_errors`, show every failing node with its title and type, and all of its errors, instead of only the first error of the first node (`MainViewModel` queue error handling).
+**Status**: 📝 Planned (`.gsd/phases/92/`: 92-CONTEXT, 92-01-PLAN, 92-02-PLAN)
+**Objective**: When `/prompt` returns `node_errors`, show every failing node with its title and type, and all of its errors, instead of only the first error of the first node. Research widened the scope:
+- partial acceptance (HTTP 200 with `node_errors`) is silently ignored today;
+- runtime `execution_error` shows no message;
+- local-queue failures store no reason.
 
 ### Phase 93: Map Subgraph Instance Inputs by Name
 

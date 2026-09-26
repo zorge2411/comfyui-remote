@@ -3,8 +3,9 @@
 ## Current Position
 
 - **Milestone**: 4 (Workflow compatibility)
-- **Phase**: 91 (Pre-flight Compatibility Check)
-- **Status**: ✅ Code done. PromptValidator in main code; pre-flight dialog on Generate/Queue; live missing-node banner. Android build and device checks pending for 90, 91, 95 and 96.
+- **Phase**: 92 (Full Server Validation Error Reporting)
+- **Task**: Planning complete: 2 plans in 2 waves (`.gsd/phases/92/`)
+- **Status**: Ready for execution. Last Milestone 4 must-have. Android build and device checks pending for 90, 91, 95 and 96.
 
 ## Achievements (Milestone 4)
 
@@ -125,7 +126,7 @@
    - Phase 90: a PrimitiveNode template.
    - Phase 95: Gemini/Grok/SaveVideo values.
    - Phase 96: template browser.
-2. **Next phase**: Phase 92 (show every server `node_errors` entry): the last Milestone 4 must-have.
+2. **Execute Phase 92** (`/execute 92`): Plan 92.1 (ServerErrorReport parser), then Plan 92.2 (form, partial acceptance, runtime errors, local queue with Room 10 → 11; ends with a device check).
 3. **Optional device checks carried over from Milestone 3**:
    - Phase 82: confirm the positive prompt field appears first in a real workflow (unit-tested only).
    - Phase 80: confirm themed-icon retinting under Android 13+ Material You.
