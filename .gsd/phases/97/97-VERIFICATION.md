@@ -14,16 +14,16 @@ Checked on 2026-09-26 against the code and tests, not against the summaries.
   - Evidence: 9 validation tests.
   - Smoke test with a real huggingface.co download: done, 403 for another host, 409 for a duplicate or an existing file, the gated message, cancel leaving no `.part` file.
   - Not yet run inside a real ComfyUI.
-- [~] **Download from the phone with progress; the card and warnings clear.**
+- [x] **Download from the phone with progress; the card and warnings clear.**
   - Code is in place: `MissingModelsCard`, the `remote_helper.download` handler, and a refresh when a download finishes.
-  - Needs the device check.
-- [~] **Without the extension, missing models still show with Copy link.**
+  - Device-verified 2026-09-26 (see 97-03-SUMMARY.md, Device check).
+- [x] **Without the extension, missing models still show with Copy link.**
   - Code is in place (`helperAvailable == false` branch).
-  - Needs the device check.
+  - Device-verified 2026-09-26 (see 97-03-SUMMARY.md, Device check).
 
 ### Commands
 
 - `gradlew.bat testDebugUnitTest assembleDebug`: 192 tests, 0 failures.
 - `python -m unittest discover -s server/comfyui_remote_helper -p "test_*.py"`: 9 OK.
 
-### Verdict: PASS (code). Device check pending (97-03-PLAN.md Task 3).
+### Verdict: PASS. Device check passed 2026-09-26 (7/7; the gated case was checked on the server, not rendered in the app).

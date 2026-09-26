@@ -91,7 +91,7 @@
 
 ### Phase 97: Download Missing Models to the Server
 
-**Status**: ✅ Done (code); device check pending (`.gsd/phases/97/`, `97-VERIFICATION.md`)
+**Status**: ✅ Done, device-verified 2026-09-26 (`.gsd/phases/97/`, `97-VERIFICATION.md`)
 **Objective**: When a workflow needs model files the server doesn't have, let the user download them to the server from the phone. The file goes straight from its source to the server, never through the phone.
 - **Keep the download links at import.** Workflows list their models as `properties.models` entries (`name`, `url`, `directory`), on nodes, inside subgraph definitions, and in the top-level `models` list. All 80 entries in the corpus have a huggingface.co URL. Today `WorkflowNormalizationService` strips these entries before storing the workflow. Collect them before conversion and store them in a new `modelSources` column (Room migration 11 → 12). Workflows imported earlier need to be imported again; server templates can be fetched again.
 - **Work out what's missing.** For each stored link, check `/models/{directory}`. Workflows without links keep the `PromptValidator` "Value not in list" warnings.
@@ -104,7 +104,7 @@
 **Tasks**:
 - [x] 97.1 Keep model links at import (wave 1)
 - [x] 97.2 Companion server extension (wave 1)
-- [x] 97.3 Download from the app (wave 2); device check pending
+- [x] 97.3 Download from the app (wave 2); device check passed
 
 **Verification**:
 - `testDebugUnitTest`, Python unit tests, device check in 97.3
