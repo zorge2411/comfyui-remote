@@ -761,6 +761,9 @@ class MainViewModel(
         val active get() = status == "queued" || status == "downloading"
     }
 
+    /** Completed once the saved host/port are loaded; server calls before that would go to an empty address. */
+    private val settingsLoaded = kotlinx.coroutines.CompletableDeferred<Unit>()
+
     /** null until checked after connecting; false when the server doesn't have the extension. */
     private val _helperAvailable = MutableStateFlow<Boolean?>(null)
     val helperAvailable: StateFlow<Boolean?> = _helperAvailable.asStateFlow()
@@ -809,9 +812,23 @@ class MainViewModel(
                 _helperHasToken.value = info.get("hf_token")?.asBoolean == true
                 _helperAvailable.value = true
                 api.getModelDownloads().forEach { updateModelDownload(parseModelDownload(it.asJsonObject)) }
+            } catch (e: retrofit2.HttpException) {
+                // 404: the server doesn't have the extension; other codes say nothing about it
+                if (e.code() == 404) _helperAvailable.value = false
+                android.util.Log.w("MODEL_DOWNLOAD", "Helper check: HTTP ${e.code()}")
             } catch (e: Exception) {
-                _helperAvailable.value = false
+                // Network or address problem: keep what we knew, and check again later
+                android.util.Log.w("MODEL_DOWNLOAD", "Helper check failed: ${e.message}")
             }
+        }
+    }
+
+    /** Checks for the server extension again unless it is known to be there (e.g. when a workflow screen opens). */
+    fun refreshModelHelper() {
+        if (_helperAvailable.value == true) return
+        viewModelScope.launch {
+            settingsLoaded.await()
+            if (connectionRepository.connectionState.value == WebSocketState.CONNECTED) checkModelHelper()
         }
     }
 
@@ -1822,7 +1839,7 @@ class MainViewModel(
             _saveFolderUri.value = userPreferencesRepository.saveFolderUri.first()
 
             updateServerAddressFull()
-        }
+        }.invokeOnCompletion { settingsLoaded.complete(Unit) }
 
         // Backfill baseModelName
         // Bolt: Moved to IO dispatcher to avoid blocking main thread with JSON parsing during startup
@@ -1856,6 +1873,9 @@ class MainViewModel(
             connectionRepository.connectionState.collect { state ->
                 // Auto-sync history on connection
                 if (state == WebSocketState.CONNECTED) {
+                    // The connection outlives this view model (foreground service), so a recreated one sees
+                    // CONNECTED at once; wait for the saved server address before calling the server.
+                    settingsLoaded.await()
                     syncHistory()
                     // Refresh node metadata/available models on every transition to CONNECTED,
                     // not just the initial explicit connect() call. Without this, a process

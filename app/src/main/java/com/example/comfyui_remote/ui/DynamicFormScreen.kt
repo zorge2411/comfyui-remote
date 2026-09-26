@@ -130,6 +130,7 @@ fun DynamicFormScreen(
     val missingModels by androidx.compose.runtime.produceState(emptyList<ModelSource>(), workflow, nodeMetadata, modelsVersion) {
         value = viewModel.missingModels(workflow)
     }
+    LaunchedEffect(workflow.id) { viewModel.refreshModelHelper() }
     val errorMessage by viewModel.errorMessage.collectAsState()
     val serverWarning by viewModel.serverWarning.collectAsState()
 
