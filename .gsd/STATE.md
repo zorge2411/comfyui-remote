@@ -4,10 +4,11 @@
 
 - **Milestone**: 4 (Workflow compatibility)
 - **Phase**: 90 (Frontend-Only and Virtual Node Support)
-- **Task**: Planning complete: 2 plans in 2 waves (`.gsd/phases/90/`)
-- **Status**: Ready for execution. Phases 89, 93, 94 done (94 device-checked); 95 and 96 code done, device checks pending.
+- **Status**: ✅ Code done. Corpus `known-failures.json` empty; 565 of 572 official templates convert cleanly (the other 7 are not converter bugs). Device checks pending for 90, 95 and 96.
 
 ## Achievements (Milestone 4)
+
+- [x] Implemented Phase 90 (virtual nodes): frontend bypass rule with target type; muted/bypassed subgraph instances not expanded; PrimitiveNode/Reroute/Set/Get/Note resolved and never sent; promoted socket targets. 17 tests; C3/C7 across templates → 0. See `.gsd/phases/90/90-SUMMARY.md`.
 
 - [x] Implemented Phase 96 (In-App Template Browser): Workflows → grid icon opens the server's template library (thumbnails, search, categories, Local-only filter); tap imports and opens. Not compiled in the cloud session: needs local `assembleDebug`.
 
@@ -117,8 +118,12 @@
 
 ## Next Steps
 
-1. **Execute Phase 90** (`/execute 90`): Plan 90.1 (bypass rule, bypassed/muted subgraph instances), then Plan 90.2 (virtual nodes, promoted socket targets; empties `known-failures.json`).
-2. **Device checks pending**: Phase 95 (Gemini/Grok/SaveVideo values), Phase 96 (template browser).
+1. **Build and device checks**: `gradlew.bat testDebugUnitTest`, `assembleDebug`, `installDebug`, then:
+   - Phase 90: "SDXL Simple" or an ACE-Step template (PrimitiveNode);
+   - Phase 95: Gemini/Grok/SaveVideo values;
+   - Phase 96: template browser;
+   - MiniMax H3 regression.
+2. **Next phase**: Phase 91 (pre-flight check before queueing) or Phase 92 (show every server validation error). These are the last two Milestone 4 must-haves.
 3. **Optional device checks carried over from Milestone 3**:
    - Phase 82: confirm the positive prompt field appears first in a real workflow (unit-tested only).
    - Phase 80: confirm themed-icon retinting under Android 13+ Material You.

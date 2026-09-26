@@ -7,8 +7,8 @@
 ## Must-Haves
 
 - [x] Regression corpus of representative graph workflows that the converter test suite runs on every build (Phase 89)
-- [ ] Frontend-only / virtual nodes (Reroute, PrimitiveNode, SetNode/GetNode, Note) convert correctly, with type-aware passthrough
-- [ ] Every corpus fixture passes: `known-failures.json` is empty (Phases 90, 93–95); 4 entries left after Phase 95, all for Phase 90
+- [x] Frontend-only / virtual nodes (Reroute, PrimitiveNode, SetNode/GetNode, Note) convert correctly, with type-aware passthrough (Phase 90)
+- [x] Every corpus fixture passes: `known-failures.json` is empty (Phases 90, 93–95); 565 of 572 official templates clean, the other 7 not converter bugs
 - [ ] Pre-flight check against `/object_info` before queueing (missing node types, missing required inputs, invalid combo values), with no false "missing node" warnings for nodes the converter removes
 - [ ] All server `node_errors` shown to the user, per node, not just the first one
 
@@ -26,7 +26,7 @@
 
 ### Phase 90: Frontend-Only and Virtual Node Support
 
-**Status**: 📝 Planned (`.gsd/phases/90/`: 90-CONTEXT, 90-01-PLAN, 90-02-PLAN)
+**Status**: ✅ Done (code); device check pending (`.gsd/phases/90/90-SUMMARY.md`)
 **Objective**: Resolve the graph the way the ComfyUI frontend does before it builds the prompt:
 - bypass follows `_getBypassSlotIndex` exactly (target type, drop when nothing matches);
 - bypassed/muted **subgraph instances** aren't expanded (they pass through or produce nothing);

@@ -59,3 +59,8 @@ Implemented a persistent local queue and significant improvements to graph-to-AP
 ## 2026-09-26: Phase 94 Device Check Passed
 
 - The "Image Stitch 2x2 Grid" template (ResizeImageMaskNode dynamic combo) ran end to end from the phone. This is the first local build containing Phases 89–96.
+
+## 2026-09-26: Phase 90 Complete (code)
+
+- Bypass, subgraph instance modes and virtual nodes now resolve like the frontend's `ExecutableNodeDTO`. The corpus known-failures list is empty; 565 of 572 templates convert cleanly.
+- Lesson: bypassing a subgraph node skips its whole interior. Expanding it first was the source of most unresolved inputs.
