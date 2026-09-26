@@ -1,6 +1,6 @@
 # Phase 92 Summary: Full Server Validation Error Reporting
 
-**Completed:** 2026-09-26 (code). **Pending:** Android build and device check (Plan 92.2 checkpoint).
+**Completed:** 2026-09-26. Verified locally and on the phone.
 
 ## Delivered
 
@@ -37,3 +37,10 @@
 ## Milestone 4
 
 All five must-haves are now delivered in code. Phases 90, 91, 92, 95 and 96 still await device checks.
+
+## Device check (2026-09-26)
+
+Passed on the Fairphone 6 over wireless adb. Build from `master` `a9c45ec` (the agent's branch plus the local-master merge): `testDebugUnitTest` 185/185, `assembleDebug` and `installDebug` OK. The database upgraded from 10 to 11 in place, with no data loss (`user_version` 11).
+
+- Queue anyway on the missing-model workflow: the server returned `value_not_in_list` for 3 nodes, `CLIPLoader` 63, `UNETLoader` 67 and `VAELoader` 64. The card listed all three, and Copy worked.
+- A local-queue failure reason showed in the Queue screen.

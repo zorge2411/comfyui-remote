@@ -1,6 +1,6 @@
 # Phase 91 Summary: Pre-flight Compatibility Check
 
-**Completed:** 2026-09-26 (code). **Pending:** Android build and device check (Plan 91.2 checkpoint).
+**Completed:** 2026-09-26. Verified locally and on the phone.
 
 ## Delivered
 
@@ -50,3 +50,11 @@
 
 - Local-queue items are checked when added, not again when they execute.
 - The workflow-list compatibility badge (nice-to-have) can reuse `preflight`.
+
+## Device check (2026-09-26)
+
+Passed on the Fairphone 6 over wireless adb. Build from `master` `a9c45ec` (the agent's branch plus the local-master merge): `testDebugUnitTest` 185/185, `assembleDebug` and `installDebug` OK. The database upgraded from 10 to 11 in place, with no data loss (`user_version` 11).
+
+- A workflow with missing models showed the pre-flight dialog naming them.
+- A normal workflow showed no dialog.
+- Queue anyway queued the prompt.

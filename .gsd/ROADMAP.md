@@ -26,7 +26,7 @@
 
 ### Phase 90: Frontend-Only and Virtual Node Support
 
-**Status**: ✅ Done (code); device check pending (`.gsd/phases/90/90-SUMMARY.md`)
+**Status**: ✅ Done, device-verified 2026-09-26 (`.gsd/phases/90/90-SUMMARY.md`)
 **Objective**: Resolve the graph the way the ComfyUI frontend does before it builds the prompt:
 - bypass follows `_getBypassSlotIndex` exactly (target type, drop when nothing matches);
 - bypassed/muted **subgraph instances** aren't expanded (they pass through or produce nothing);
@@ -38,13 +38,13 @@
 
 ### Phase 91: Pre-flight Compatibility Check
 
-**Status**: ✅ Done (code); device check pending (`.gsd/phases/91/91-SUMMARY.md`)
+**Status**: ✅ Done, device-verified 2026-09-26 (`.gsd/phases/91/91-SUMMARY.md`)
 **Objective**: Before queueing, validate the converted prompt against the server's `/object_info`: report missing node types, missing required inputs and invalid combo values in the app. Replace the current missing-node list, which can include nodes the converter already removed (e.g. Reroute).
 **Depends on**: Phase 90
 
 ### Phase 92: Full Server Validation Error Reporting
 
-**Status**: ✅ Done (code); device check pending (`.gsd/phases/92/92-SUMMARY.md`)
+**Status**: ✅ Done, device-verified 2026-09-26 (`.gsd/phases/92/92-SUMMARY.md`)
 **Objective**: When `/prompt` returns `node_errors`, show every failing node with its title and type, and all of its errors, instead of only the first error of the first node. Research widened the scope:
 - partial acceptance (HTTP 200 with `node_errors`) is silently ignored today;
 - runtime `execution_error` shows no message;

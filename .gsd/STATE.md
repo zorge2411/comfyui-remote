@@ -4,7 +4,8 @@
 
 - **Milestone**: 4 (Workflow compatibility): all 5 must-haves delivered in code
 - **Phase**: 92 (Full Server Validation Error Reporting)
-- **Status**: ✅ Code done. Device checks pending for Phases 90, 91, 92, 95 and 96; Room DB now at version 11.
+- **Status**: ✅ Phases 90, 91 and 92 verified on the phone (2026-09-26, wireless adb); Room DB migrated to version 11 in place. Device checks still open for 95 and 96.
+- **Note**: local-master versions of Phases 90/91, built in parallel, were superseded by the agent's. See merge `a9c45ec`, with a backup on branch `backup/local-phase-90-91`.
 
 ## Achievements (Milestone 4)
 
