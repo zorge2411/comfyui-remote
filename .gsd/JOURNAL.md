@@ -64,3 +64,8 @@ Implemented a persistent local queue and significant improvements to graph-to-AP
 
 - Bypass, subgraph instance modes and virtual nodes now resolve like the frontend's `ExecutableNodeDTO`. The corpus known-failures list is empty; 565 of 572 templates convert cleanly.
 - Lesson: bypassing a subgraph node skips its whole interior. Expanding it first was the source of most unresolved inputs.
+
+## 2026-09-26: Phase 91 Complete (code)
+
+- The app now checks a prompt against the live server before queueing, in the server's own words. The dialog warns and never blocks.
+- Moving the checker into the app turned up a converter bug: list widget values must be wrapped as `{"__value__": [...]}`, or the server reads them as links.

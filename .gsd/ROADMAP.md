@@ -9,7 +9,7 @@
 - [x] Regression corpus of representative graph workflows that the converter test suite runs on every build (Phase 89)
 - [x] Frontend-only / virtual nodes (Reroute, PrimitiveNode, SetNode/GetNode, Note) convert correctly, with type-aware passthrough (Phase 90)
 - [x] Every corpus fixture passes: `known-failures.json` is empty (Phases 90, 93–95); 565 of 572 official templates clean, the other 7 not converter bugs
-- [ ] Pre-flight check against `/object_info` before queueing (missing node types, missing required inputs, invalid combo values), with no false "missing node" warnings for nodes the converter removes
+- [x] Pre-flight check against `/object_info` before queueing (missing node types, missing required inputs, invalid combo values), with no false "missing node" warnings for nodes the converter removes (Phase 91; device check pending)
 - [ ] All server `node_errors` shown to the user, per node, not just the first one
 
 ## Nice-to-Haves
@@ -38,7 +38,7 @@
 
 ### Phase 91: Pre-flight Compatibility Check
 
-**Status**: 📝 Planned (`.gsd/phases/91/`: 91-CONTEXT, 91-01-PLAN, 91-02-PLAN)
+**Status**: ✅ Done (code); device check pending (`.gsd/phases/91/91-SUMMARY.md`)
 **Objective**: Before queueing, validate the converted prompt against the server's `/object_info`: report missing node types, missing required inputs and invalid combo values in the app. Replace the current missing-node list, which can include nodes the converter already removed (e.g. Reroute).
 **Depends on**: Phase 90
 

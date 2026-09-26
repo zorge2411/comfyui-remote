@@ -4,10 +4,11 @@
 
 - **Milestone**: 4 (Workflow compatibility)
 - **Phase**: 91 (Pre-flight Compatibility Check)
-- **Task**: Planning complete: 2 plans in 2 waves (`.gsd/phases/91/`)
-- **Status**: Ready for execution. Phase 90 code done; device checks pending for 90, 95 and 96.
+- **Status**: ✅ Code done. PromptValidator in main code; pre-flight dialog on Generate/Queue; live missing-node banner. Android build and device checks pending for 90, 91, 95 and 96.
 
 ## Achievements (Milestone 4)
+
+- [x] Implemented Phase 91 (pre-flight): PromptValidator mirrors ComfyUI's validate_prompt (reachable nodes, required inputs, links, types, ranges, lists incl. model files); dialog with Queue anyway / Cancel; live banner. Also fixed list-valued widgets to be sent as `{"__value__": [...]}`. See `.gsd/phases/91/91-SUMMARY.md`.
 
 - [x] Implemented Phase 90 (virtual nodes): frontend bypass rule with target type; muted/bypassed subgraph instances not expanded; PrimitiveNode/Reroute/Set/Get/Note resolved and never sent; promoted socket targets. 17 tests; C3/C7 across templates → 0. See `.gsd/phases/90/90-SUMMARY.md`.
 
@@ -120,11 +121,11 @@
 ## Next Steps
 
 1. **Build and device checks**: `gradlew.bat testDebugUnitTest`, `assembleDebug`, `installDebug`, then:
-   - Phase 90: "SDXL Simple" or an ACE-Step template (PrimitiveNode);
-   - Phase 95: Gemini/Grok/SaveVideo values;
-   - Phase 96: template browser;
-   - MiniMax H3 regression.
-2. **Execute Phase 91** (`/execute 91`): Plan 91.1 (PromptValidator in main code), then Plan 91.2 (pre-flight dialog and live banner; ends with a device check). Phase 92 follows.
+   - Phase 91: a workflow with a model missing on the server → warning dialog; a normal workflow → no dialog; Queue anyway works; stale banner gone.
+   - Phase 90: a PrimitiveNode template.
+   - Phase 95: Gemini/Grok/SaveVideo values.
+   - Phase 96: template browser.
+2. **Next phase**: Phase 92 (show every server `node_errors` entry): the last Milestone 4 must-have.
 3. **Optional device checks carried over from Milestone 3**:
    - Phase 82: confirm the positive prompt field appears first in a real workflow (unit-tested only).
    - Phase 80: confirm themed-icon retinting under Android 13+ Material You.
