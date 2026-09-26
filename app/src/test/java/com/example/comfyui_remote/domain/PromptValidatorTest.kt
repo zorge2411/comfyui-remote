@@ -73,7 +73,9 @@ class PromptValidatorTest {
 
     @Test
     fun `value not in list, and missing model files only when file checks are on`() {
-        assertEquals(listOf(Kind.VALUE_NOT_IN_LIST), kinds(prompt(sampler = "\"steps\": 30, \"cfg\": 7.5, \"sampler_name\": \"Euler A\"")))
+        val badSampler = PromptValidator.validate(prompt(sampler = "\"steps\": 30, \"cfg\": 7.5, \"sampler_name\": \"Euler A\""), objectInfo)
+        assertEquals(listOf(Kind.VALUE_NOT_IN_LIST), badSampler.map { it.kind })
+        assertEquals(PromptValidator.Severity.WARNING, badSampler.single().severity)
         val missingModel = prompt(ckpt = "juggernaut.safetensors")
         assertEquals(listOf(Kind.VALUE_NOT_IN_LIST), kinds(missingModel))
         assertEquals(emptyList<Kind>(), kinds(missingModel, checkFiles = false))
@@ -94,7 +96,8 @@ class PromptValidatorTest {
         val issues = PromptValidator.validate(prompt(ckpt = "missing.safetensors", sampler = "\"cfg\": 7.5, \"sampler_name\": \"euler\""), objectInfo)
         assertEquals(PromptValidator.Severity.ERROR, issues.single { it.kind == Kind.REQUIRED_INPUT_MISSING }.severity)
         val model = issues.single { it.kind == Kind.VALUE_NOT_IN_LIST }
-        assertEquals(PromptValidator.Severity.WARNING, model.severity)
+        assertEquals(PromptValidator.Severity.ERROR, model.severity)
+        assertEquals("File not on the server: 'missing.safetensors' not in [sd_xl_base.safetensors, flux1-dev.safetensors]", model.message)
         assertEquals("Load Checkpoint", model.nodeTitle)
         assertEquals("Sampler", issues.single { it.kind == Kind.REQUIRED_INPUT_MISSING }.nodeTitle)
     }

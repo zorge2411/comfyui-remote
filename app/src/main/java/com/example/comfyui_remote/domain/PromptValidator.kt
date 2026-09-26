@@ -10,6 +10,8 @@ import com.google.gson.JsonObject
  *
  * The server skips range and list checks for inputs a node validates itself, which /object_info does not
  * reveal, so those findings are warnings; structural problems the server always rejects are errors.
+ * A file name (model, image...) missing from the server's list is an error too: loaders use the list
+ * check, and nodes that validate files themselves (LoadImage) reject a missing file anyway.
  */
 object PromptValidator {
 
@@ -32,9 +34,9 @@ object PromptValidator {
         val nodeTitle: String,
         val kind: Kind,
         val inputName: String?,
-        val message: String
+        val message: String,
+        val severity: Severity = kind.severity
     ) {
-        val severity: Severity get() = kind.severity
         override fun toString() = "${kind.name} node $nodeId ($classType)${inputName?.let { ".$it" } ?: ""}: $message"
     }
 
@@ -66,8 +68,8 @@ object PromptValidator {
         fun classOf(node: JsonObject) = node.get("class_type")?.takeIf { it.isJsonPrimitive }?.asString ?: "<none>"
         fun titleOf(node: JsonObject) =
             node.getAsJsonObject("_meta")?.get("title")?.takeIf { it.isJsonPrimitive }?.asString ?: classOf(node)
-        fun issue(id: String, node: JsonObject, kind: Kind, input: String?, message: String) {
-            issues += Issue(id, classOf(node), titleOf(node), kind, input, message)
+        fun issue(id: String, node: JsonObject, kind: Kind, input: String?, message: String, severity: Severity = kind.severity) {
+            issues += Issue(id, classOf(node), titleOf(node), kind, input, message, severity)
         }
 
         // Missing node types are reported for every node: the server rejects the whole prompt
@@ -138,9 +140,14 @@ object PromptValidator {
                 if (valueChecks) valueIssue(spec, value)?.let { (kind, message) -> issue(id, n, kind, key, message) }
                 val options = GraphToApiConverter.comboOptions(spec) ?: continue
                 val text = value.asString
-                if (options.isNotEmpty() && text !in options && (checkFileValues || !FILE_VALUE.containsMatchIn(text))) {
+                val isFile = FILE_VALUE.containsMatchIn(text)
+                if (options.isNotEmpty() && text !in options && (checkFileValues || !isFile)) {
                     val shown = options.take(5).joinToString(", ") + if (options.size > 5) ", …" else ""
-                    issue(id, n, Kind.VALUE_NOT_IN_LIST, key, "Value not in list: '$text' not in [$shown]")
+                    if (isFile) {
+                        issue(id, n, Kind.VALUE_NOT_IN_LIST, key, "File not on the server: '$text' not in [$shown]", Severity.ERROR)
+                    } else {
+                        issue(id, n, Kind.VALUE_NOT_IN_LIST, key, "Value not in list: '$text' not in [$shown]")
+                    }
                 }
             }
 
