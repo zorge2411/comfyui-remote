@@ -3,11 +3,13 @@
 ## Current Position
 
 - **Milestone**: 4 (Workflow compatibility): all 5 must-haves delivered in code
-- **Phase**: 97 (Download Missing Models to the Server): planning complete, ready for `/execute 97`
-- **Status**: Phase 97 has 3 plans (97.1 and 97.2 in wave 1, 97.3 in wave 2). ✅ Phases 90, 91 and 92 verified on the phone (2026-09-26, wireless adb); Room DB migrated to version 11 in place. Device checks still open for 95 and 96.
+- **Phase**: 97 (Download Missing Models to the Server): done in code; device check pending
+- **Status**: Phase 97 code complete (192 JVM tests + 9 Python tests green, `assembleDebug` OK). Device check open for 97: install `server/comfyui_remote_helper` on the server, then the steps in `97-03-PLAN.md` Task 3. ✅ Phases 90, 91 and 92 verified on the phone (2026-09-26). Device checks still open for 95 and 96.
 - **Note**: local-master versions of Phases 90/91, built in parallel, were superseded by the agent's. See merge `a9c45ec`, with a backup on branch `backup/local-phase-90-91`.
 
 ## Achievements (Milestone 4)
+
+- [x] Implemented Phase 97 (download missing models): model download links kept at import (`ModelSources`, Room 11 → 12); companion ComfyUI extension `server/comfyui_remote_helper` (Hugging Face / GitHub only, safe file types, progress events, cancel, HF_TOKEN); Missing Models card with Download / progress / Cancel / Copy link. ComfyUI-Manager rejected after research (see `97-RESEARCH.md`). See `.gsd/phases/97/97-VERIFICATION.md`.
 
 - [x] Implemented Phase 92 (server errors): ServerErrorReport parser; every failing node and reason shown by title with Copy; partial acceptance ("Some outputs were skipped"); runtime execution_error message; local-queue failure reasons (Room 10 → 11). See `.gsd/phases/92/92-SUMMARY.md`.
 
