@@ -69,3 +69,8 @@ Implemented a persistent local queue and significant improvements to graph-to-AP
 
 - The app now checks a prompt against the live server before queueing, in the server's own words. The dialog warns and never blocks.
 - Moving the checker into the app turned up a converter bug: list widget values must be wrapped as `{"__value__": [...]}`, or the server reads them as links.
+
+## 2026-09-26: Phase 92 Complete (code) — Milestone 4 must-haves all delivered
+
+- Server errors are shown per node, by title, everywhere: Generate, partial acceptance, runtime errors and the local queue.
+- Lesson: the database uses `fallbackToDestructiveMigration`, so every schema bump needs an explicit migration, or users lose their workflows.

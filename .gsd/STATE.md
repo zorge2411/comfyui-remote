@@ -2,12 +2,13 @@
 
 ## Current Position
 
-- **Milestone**: 4 (Workflow compatibility)
+- **Milestone**: 4 (Workflow compatibility): all 5 must-haves delivered in code
 - **Phase**: 92 (Full Server Validation Error Reporting)
-- **Task**: Planning complete: 2 plans in 2 waves (`.gsd/phases/92/`)
-- **Status**: Ready for execution. Last Milestone 4 must-have. Android build and device checks pending for 90, 91, 95 and 96.
+- **Status**: ✅ Code done. Device checks pending for Phases 90, 91, 92, 95 and 96; Room DB now at version 11.
 
 ## Achievements (Milestone 4)
+
+- [x] Implemented Phase 92 (server errors): ServerErrorReport parser; every failing node and reason shown by title with Copy; partial acceptance ("Some outputs were skipped"); runtime execution_error message; local-queue failure reasons (Room 10 → 11). See `.gsd/phases/92/92-SUMMARY.md`.
 
 - [x] Implemented Phase 91 (pre-flight): PromptValidator mirrors ComfyUI's validate_prompt (reachable nodes, required inputs, links, types, ranges, lists incl. model files); dialog with Queue anyway / Cancel; live banner. Also fixed list-valued widgets to be sent as `{"__value__": [...]}`. See `.gsd/phases/91/91-SUMMARY.md`.
 
@@ -122,11 +123,10 @@
 ## Next Steps
 
 1. **Build and device checks**: `gradlew.bat testDebugUnitTest`, `assembleDebug`, `installDebug`, then:
-   - Phase 91: a workflow with a model missing on the server → warning dialog; a normal workflow → no dialog; Queue anyway works; stale banner gone.
-   - Phase 90: a PrimitiveNode template.
-   - Phase 95: Gemini/Grok/SaveVideo values.
-   - Phase 96: template browser.
-2. **Execute Phase 92** (`/execute 92`): Plan 92.1 (ServerErrorReport parser), then Plan 92.2 (form, partial acceptance, runtime errors, local queue with Room 10 → 11; ends with a device check).
+   - Phase 92: two broken nodes (Queue anyway) → full per-node card and Copy; a runtime failure → node and exception; a failed queue item → reason shown; DB upgrade 10 → 11 keeps data.
+   - Phase 91: missing model → pre-flight warning; normal workflow → no dialog; stale banner gone.
+   - Phase 90: a PrimitiveNode template. Phase 95: Gemini/Grok/SaveVideo values. Phase 96: template browser.
+2. **Then**: `/audit-milestone` and `/complete-milestone` for Milestone 4 once the device checks pass.
 3. **Optional device checks carried over from Milestone 3**:
    - Phase 82: confirm the positive prompt field appears first in a real workflow (unit-tested only).
    - Phase 80: confirm themed-icon retinting under Android 13+ Material You.

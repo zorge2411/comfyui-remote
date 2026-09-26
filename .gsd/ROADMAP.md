@@ -1,6 +1,6 @@
 # ROADMAP.md
 
-> **Current Milestone**: Milestone 4 (Planned)
+> **Current Milestone**: Milestone 4 (all must-haves delivered in code; device checks pending)
 > **Goal**: Workflow compatibility — more real-world ComfyUI workflows run unmodified from the phone, and when one can't, the app says exactly why before or after queueing.
 > **Previous**: Milestone 3 archived in `.gsd/milestones/Milestone 3/` (summary: `Milestone 3-SUMMARY.md`)
 
@@ -10,7 +10,7 @@
 - [x] Frontend-only / virtual nodes (Reroute, PrimitiveNode, SetNode/GetNode, Note) convert correctly, with type-aware passthrough (Phase 90)
 - [x] Every corpus fixture passes: `known-failures.json` is empty (Phases 90, 93–95); 565 of 572 official templates clean, the other 7 not converter bugs
 - [x] Pre-flight check against `/object_info` before queueing (missing node types, missing required inputs, invalid combo values), with no false "missing node" warnings for nodes the converter removes (Phase 91; device check pending)
-- [ ] All server `node_errors` shown to the user, per node, not just the first one
+- [x] All server `node_errors` shown to the user, per node, not just the first one (Phase 92; device check pending)
 
 ## Nice-to-Haves
 
@@ -44,7 +44,7 @@
 
 ### Phase 92: Full Server Validation Error Reporting
 
-**Status**: 📝 Planned (`.gsd/phases/92/`: 92-CONTEXT, 92-01-PLAN, 92-02-PLAN)
+**Status**: ✅ Done (code); device check pending (`.gsd/phases/92/92-SUMMARY.md`)
 **Objective**: When `/prompt` returns `node_errors`, show every failing node with its title and type, and all of its errors, instead of only the first error of the first node. Research widened the scope:
 - partial acceptance (HTTP 200 with `node_errors`) is silently ignored today;
 - runtime `execution_error` shows no message;
