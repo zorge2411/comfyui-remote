@@ -56,6 +56,8 @@ object GraphToApiConverter {
 
         // Map: PhantomNodeID -> List<InputLinkID>
         val phantomNodeInputs = mutableMapOf<Int, List<Int>>()
+        // Frontend-only nodes (isVirtualNode): never sent, resolved like the frontend does
+        val virtualNodes = mutableMapOf<Int, JsonObject>()
         val nodesArray = graph.getAsJsonArray("nodes") ?: JsonArray()
         
         nodesArray.forEach { nodeElement ->
@@ -68,6 +70,10 @@ object GraphToApiConverter {
             // Muted/bypassed nodes are never sent, so they are neither phantoms nor missing
             val nodeMode = node.get("mode")?.takeIf { it.isJsonPrimitive }?.asInt ?: 0
             if (nodeMode == 2 || nodeMode == 4) return@forEach
+            if (type in VIRTUAL_TYPES) {
+                virtualNodes[id] = node
+                return@forEach
+            }
 
             // Check if it's a Phantom Node
             if (nodeDef == null) {
@@ -161,7 +167,12 @@ object GraphToApiConverter {
         }
 
         // Helper function to resolve real source recursively
-        fun resolveRealSource(initialLinkId: Int, targetType: String = "*", visited: MutableSet<Int> = mutableSetOf()): Pair<Int, Int>? {
+        fun inputLinkAt(node: JsonObject, slot: Int): Int? =
+            node.get("inputs")?.takeIf { it.isJsonArray }?.asJsonArray
+                ?.takeIf { slot < it.size() }?.get(slot)?.asJsonObject
+                ?.get("link")?.takeIf { !it.isJsonNull }?.asInt
+
+        fun resolveRealSource(initialLinkId: Int, targetType: String = "*", visited: MutableSet<Int> = mutableSetOf()): Source? {
             if (visited.contains(initialLinkId)) return null // Cycle detected
             visited.add(initialLinkId)
 
@@ -178,6 +189,36 @@ object GraphToApiConverter {
                 return if (replacement != null) resolveRealSource(replacement, targetType, visited) else null
             }
 
+            // Frontend-only nodes (ExecutableNodeDTO.resolveOutput, isVirtualNode)
+            virtualNodes[sourceId]?.let { virtual ->
+                val widgets = virtual.get("widgets_values")?.takeIf { it.isJsonArray }?.asJsonArray
+                val next: Int? = when (virtual.get("type").asString) {
+                    // PrimitiveNode.applyToGraph copies its first widget value into every target widget
+                    "PrimitiveNode" -> {
+                        val value = widgets?.takeIf { it.size() > 0 }?.get(0)?.takeIf { !it.isJsonNull } ?: return null
+                        val replace = virtual.getAsJsonObject("properties")?.get("Run widget replace on values")
+                        if (replace != null && replace.isJsonPrimitive && replace.asJsonPrimitive.isBoolean && replace.asBoolean) {
+                            println("CONVERT_DEBUG: PrimitiveNode $sourceId: text replacement is not applied")
+                        }
+                        return Source.Literal(value)
+                    }
+                    // KJNodes GetNode: the SetNode with the same name supplies the link (setgetnodes.js)
+                    "GetNode" -> {
+                        val name = widgets?.takeIf { it.size() > 0 }?.get(0)?.takeIf { it.isJsonPrimitive }?.asString
+                        val setter = virtualNodes.values.firstOrNull {
+                            it.get("type").asString == "SetNode" &&
+                                it.get("widgets_values")?.takeIf { w -> w.isJsonArray }?.asJsonArray
+                                    ?.takeIf { w -> w.size() > 0 }?.get(0)?.takeIf { w -> w.isJsonPrimitive }?.asString == name
+                        }
+                        if (setter == null) println("CONVERT_DEBUG: GetNode $sourceId: no SetNode named '$name'")
+                        setter?.let { inputLinkAt(it, sourceSlot) }
+                    }
+                    // Reroute and other virtual nodes pass through the input at the same slot
+                    else -> inputLinkAt(virtual, sourceSlot)
+                }
+                return next?.let { resolveRealSource(it, targetType, visited) }
+            }
+
             // Is the source a phantom node?
             if (phantomNodeInputs.containsKey(sourceId)) {
                 val inputs = phantomNodeInputs[sourceId]
@@ -192,7 +233,7 @@ object GraphToApiConverter {
             }
 
             // It's a real node (or at least one we are preserving)
-            return sourceId to sourceSlot
+            return Source.Link(sourceId, sourceSlot)
         }
 
         // 3. Process Nodes
@@ -202,6 +243,7 @@ object GraphToApiConverter {
             val id = idStr.toIntOrNull() ?: 0
             val type = node.get("type").asString
             
+            if (virtualNodes.containsKey(id)) return@forEach
             if (mutedNodes.contains(id) || bypassedNodes.containsKey(id)) {
                 println("CONVERT_DEBUG: Node $id ($type): skipping generation (muted/bypassed)")
                 return@forEach
@@ -372,16 +414,15 @@ object GraphToApiConverter {
                     return com.google.gson.JsonPrimitive(resolved)
                 }
 
-                fun addLink(key: String, linkId: Int, targetType: String) {
-                    val resolved = resolveRealSource(linkId, targetType)
-                    if (resolved != null) {
-                        val linkArray = JsonArray()
-                        linkArray.add(resolved.first.toString())
-                        linkArray.add(resolved.second)
-                        inputs.add(key, linkArray)
-                    } else {
-                        // Could not resolve (maybe link to missing node that has no input?)
-                        println("CONVERT_DEBUG: Warn: Node $id: key '$key' link $linkId resolved to null (broken chain?)")
+                fun addLink(key: String, linkId: Int, targetType: String, spec: JsonArray? = null) {
+                    when (val resolved = resolveRealSource(linkId, targetType)) {
+                        is Source.Link -> inputs.add(key, JsonArray().apply { add(resolved.nodeId.toString()); add(resolved.slot) })
+                        // A PrimitiveNode's value becomes the target's literal value
+                        is Source.Literal -> inputs.add(key, resolveComboValue(key, spec, resolved.value))
+                        null -> {
+                            // Could not resolve (maybe link to missing node that has no input?)
+                            println("CONVERT_DEBUG: Warn: Node $id: key '$key' link $linkId resolved to null (broken chain?)")
+                        }
                     }
                 }
 
@@ -419,7 +460,7 @@ object GraphToApiConverter {
                     val slot = graphSlot(path)
                     val linkId = linkOf(slot)
                     if (linkId != null) {
-                        addLink(path, linkId, slotType(slot))
+                        addLink(path, linkId, slotType(slot), spec)
                         // A widget converted to an input keeps its slot in widgets_values even when linked.
                         if (slot?.has("widget") == true) {
                             findNextCompatibleWidget(spec)
@@ -485,13 +526,10 @@ object GraphToApiConverter {
                         val linkId = if (slot.has("link") && !slot.get("link").isJsonNull) slot.get("link").asInt else null
                         
                         if (linkId != null) {
-                            val resolved = resolveRealSource(linkId, slot.get("type")?.takeIf { it.isJsonPrimitive }?.asString ?: "*")
-                            if (resolved != null) {
-                                val (sourceId, sourceSlot) = resolved
-                                val linkArray = JsonArray()
-                                linkArray.add(sourceId.toString())
-                                linkArray.add(sourceSlot)
-                                inputs.add(key, linkArray)
+                            when (val resolved = resolveRealSource(linkId, slot.get("type")?.takeIf { it.isJsonPrimitive }?.asString ?: "*")) {
+                                is Source.Link -> inputs.add(key, JsonArray().apply { add(resolved.nodeId.toString()); add(resolved.slot) })
+                                is Source.Literal -> inputs.add(key, resolved.value)
+                                null -> {}
                             }
                         }
                     }
@@ -523,6 +561,19 @@ object GraphToApiConverter {
             }
 
             api.add(idStr, apiNode)
+        }
+
+        // Sockets fed by a promoted widget with no saved value take that widget's emitted value (Phase 90)
+        nodesArray.forEach { nodeElement ->
+            val node = nodeElement.asJsonObject
+            val refs = node.getAsJsonObject(PROMOTED_FROM) ?: return@forEach
+            val target = api.getAsJsonObject(node.get("id").asString)?.getAsJsonObject("inputs") ?: return@forEach
+            refs.entrySet().forEach { (inputName, ref) ->
+                if (target.has(inputName)) return@forEach
+                val pair = ref.asJsonArray
+                val value = api.getAsJsonObject(pair[0].asString)?.getAsJsonObject("inputs")?.get(pair[1].asString)
+                if (value != null && value.isJsonPrimitive) target.add(inputName, value)
+            }
         }
 
         // Remove bypassed nodes from missing nodes list so we don't warn user unnecessarily
@@ -798,10 +849,15 @@ object GraphToApiConverter {
                     if (currentId != remappedInputId && currentId != remappedOutputId) {
                         // Update this node's input links
                         val updatedNode = updateNodeInputLinks(internalNode, linkIdRemapper)
-                        promotedOverrides[currentId]?.let { overrides ->
+                        promotedOverrides.values[currentId]?.let { overrides ->
                             val merged = updatedNode.getAsJsonObject(PROMOTED_WIDGETS) ?: JsonObject()
                             overrides.entrySet().forEach { (name, value) -> merged.add(name, value) }
                             updatedNode.add(PROMOTED_WIDGETS, merged)
+                        }
+                        promotedOverrides.references[currentId]?.let { refs ->
+                            val merged = updatedNode.getAsJsonObject(PROMOTED_FROM) ?: JsonObject()
+                            refs.entrySet().forEach { (name, ref) -> merged.add(name, ref) }
+                            updatedNode.add(PROMOTED_FROM, merged)
                         }
                         newNodes.add(updatedNode)
                     }
@@ -928,6 +984,16 @@ object GraphToApiConverter {
 
     private const val DYNAMIC_COMBO = "COMFY_DYNAMICCOMBO_V3"
 
+    /** Where a link really comes from once frontend-only nodes are resolved. */
+    private sealed class Source {
+        data class Link(val nodeId: Int, val slot: Int) : Source()
+        /** A PrimitiveNode's value, applied to the target as a literal. */
+        data class Literal(val value: JsonElement) : Source()
+    }
+
+    /** Frontend-only node types (isVirtualNode in the ComfyUI frontend and KJNodes); never sent to the server. */
+    private val VIRTUAL_TYPES = setOf("Reroute", "PrimitiveNode", "SetNode", "GetNode", "Note", "MarkdownNote")
+
     private const val IMAGE_COMPARE = "IMAGECOMPARE"
     private val SEED_NAMES = setOf("seed", "noise_seed")
     private val CONTROL_VALUES = setOf("fixed", "increment", "decrement", "randomize", "increment-wrap")
@@ -1028,6 +1094,9 @@ object GraphToApiConverter {
     /** Graph-node property holding widget values promoted from an enclosing subgraph instance. Never sent to the API. */
     private const val PROMOTED_WIDGETS = "__promoted_widgets"
 
+    /** Graph-node property: socket inputs that take another interior widget's emitted value. Never sent. */
+    private const val PROMOTED_FROM = "__promoted_from"
+
     /**
      * Widget values a subgraph instance supplies to its interior nodes, keyed by remapped interior node ID,
      * then input name. Mirrors the ComfyUI frontend (SubgraphNode._setWidget/_applyPromotedWidgetValues and
@@ -1041,7 +1110,7 @@ object GraphToApiConverter {
         definition: SubgraphDefinition,
         slotMap: Map<Int, Int>,
         idRemapper: Map<Int, Int>
-    ): Map<Int, JsonObject> {
+    ): PromotedValues {
         val linksById = definition.links.associateBy { it[0].asInt }
         val nodesById = definition.nodes.associateBy { intId(it) }
         val instanceWidgets = instance.get("widgets_values")?.takeIf { it.isJsonArray }?.asJsonArray
@@ -1062,6 +1131,7 @@ object GraphToApiConverter {
         }
 
         val result = mutableMapOf<Int, JsonObject>()
+        val references = mutableMapOf<Int, JsonObject>()
         var valueIndex = 0
         definition.inputs.forEachIndexed { index, subgraphInput ->
             // Every interior input fed by this subgraph input: (node ID, input name, has a widget)
@@ -1077,15 +1147,32 @@ object GraphToApiConverter {
             val positional = instanceWidgets?.let { if (valueIndex < it.size()) it[valueIndex] else null }
             valueIndex++
             val value = inheritedValues?.get(subgraphInput.name) ?: quarantine[subgraphInput.name] ?: positional
-            if (value == null || value.isJsonNull || index in externallyLinked) return@forEachIndexed
+            if (index in externallyLinked) return@forEachIndexed
+            if (value == null || value.isJsonNull) {
+                // No saved value: the promoted widget keeps the first interior widget's value (_setWidget), and
+                // resolveInput gives that to every interior target, sockets included. Point sockets at it.
+                val (widgetNode, widgetInput, _) = targets.first { it.third }
+                val source = JsonArray().apply { add(idRemapper[widgetNode] ?: widgetNode); add(widgetInput) }
+                targets.filter { !it.third }.forEach { (targetId, inputName, _) ->
+                    references.getOrPut(idRemapper[targetId] ?: targetId) { JsonObject() }.add(inputName, source)
+                }
+                return@forEachIndexed
+            }
             // The frontend resolves every interior input of this subgraph input to the promoted value
             targets.forEach { (targetId, inputName, _) ->
                 val remapped = idRemapper[targetId] ?: targetId
                 result.getOrPut(remapped) { JsonObject() }.add(inputName, value)
             }
         }
-        return result
+        return PromotedValues(result, references)
     }
+
+    /**
+     * [values]: remapped interior node ID -> input name -> promoted value.
+     * [references]: remapped interior node ID -> socket input name -> [widget node ID, widget input name] whose
+     * emitted value the socket takes (promoted input without a saved value).
+     */
+    internal data class PromotedValues(val values: Map<Int, JsonObject>, val references: Map<Int, JsonObject>)
 
     /**
      * Maps each instance input slot to its subgraph input index, like the ComfyUI frontend
