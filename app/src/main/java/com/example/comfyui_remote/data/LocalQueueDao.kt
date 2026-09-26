@@ -22,6 +22,9 @@ interface LocalQueueDao {
 
     @Query("UPDATE local_queue SET status = :status WHERE id = :id")
     suspend fun updateStatus(id: Long, status: QueueStatus)
+
+    @Query("UPDATE local_queue SET status = :status, errorMessage = :errorMessage WHERE id = :id")
+    suspend fun updateStatusAndError(id: Long, status: QueueStatus, errorMessage: String?)
     
     @Query("DELETE FROM local_queue WHERE status = 'COMPLETED'")
     suspend fun clearCompleted()

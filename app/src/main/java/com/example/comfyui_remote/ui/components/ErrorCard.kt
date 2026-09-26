@@ -1,5 +1,9 @@
 package com.example.comfyui_remote.ui.components
 
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -38,7 +42,9 @@ fun ErrorCard(
     message: String,
     onDismiss: (() -> Unit)? = null,
     onRetry: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** When set, the full message is shown (scrolling past a max height) with a Copy button. */
+    onCopy: (() -> Unit)? = null
 ) {
     Card(
         colors = CardDefaults.cardColors(
@@ -76,12 +82,29 @@ fun ErrorCard(
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                maxLines = 3
-            )
+            if (onCopy == null) {
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    maxLines = 3
+                )
+            } else {
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier
+                        .heightIn(max = 240.dp)
+                        .verticalScroll(rememberScrollState())
+                )
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    TextButton(onClick = onCopy) {
+                        Text("Copy", color = MaterialTheme.colorScheme.onErrorContainer)
+                    }
+                }
+            }
             if (onRetry != null) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(

@@ -100,7 +100,7 @@ class QueueViewModel(
 
     private suspend fun processQueueItem(item: LocalQueueItem) {
         _currentExecutingItemId.value = item.id
-        localQueueRepository.updateStatus(item.id, QueueStatus.EXECUTING)
+        localQueueRepository.updateStatusAndError(item.id, QueueStatus.EXECUTING, null)
 
         try {
             val api = buildApiService()
@@ -161,9 +161,19 @@ class QueueViewModel(
             
             localQueueRepository.updateStatus(item.id, QueueStatus.COMPLETED)
 
+        } catch (e: retrofit2.HttpException) {
+            // Every failing node and reason, as the server reported them (Phase 92)
+            val body = e.response()?.errorBody()?.string()
+            val sentPrompt = try {
+                com.google.gson.JsonParser.parseString(item.workflowJson).asJsonObject
+            } catch (ex: Exception) {
+                null
+            }
+            val report = com.example.comfyui_remote.domain.ServerErrorReport.fromPromptError(e.code(), body, sentPrompt)
+            localQueueRepository.updateStatusAndError(item.id, QueueStatus.FAILED, report.format())
         } catch (e: Exception) {
             e.printStackTrace()
-            localQueueRepository.updateStatus(item.id, QueueStatus.FAILED)
+            localQueueRepository.updateStatusAndError(item.id, QueueStatus.FAILED, e.message ?: e.javaClass.simpleName)
         } finally {
             _currentExecutingItemId.value = null
         }

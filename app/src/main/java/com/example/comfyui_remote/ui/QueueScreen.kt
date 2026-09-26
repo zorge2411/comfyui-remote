@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.PendingActions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.foundation.clickable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -160,6 +161,22 @@ fun QueueItemCard(
                     text = "Batch: ${item.batchCount} • Status: ${item.status.name}",
                     style = MaterialTheme.typography.bodySmall
                 )
+                // Why it failed, as the server reported it (Phase 92); tap to expand
+                if (item.status == QueueStatus.FAILED && !item.errorMessage.isNullOrBlank()) {
+                    var expanded by androidx.compose.runtime.saveable.rememberSaveable(item.id) {
+                        androidx.compose.runtime.mutableStateOf(false)
+                    }
+                    Text(
+                        text = item.errorMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        maxLines = if (expanded) Int.MAX_VALUE else 3,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .padding(top = 4.dp)
+                            .clickable { expanded = !expanded }
+                    )
+                }
                 Text(
                     text = DATE_FORMATTER.withZone(java.time.ZoneId.systemDefault()).format(java.time.Instant.ofEpochMilli(item.createdAt)),
                     style = MaterialTheme.typography.labelSmall,

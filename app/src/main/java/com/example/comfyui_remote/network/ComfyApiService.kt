@@ -66,5 +66,6 @@ interface ComfyApiService {
 }
 
 data class PromptRequest(val prompt: JsonObject, val client_id: String? = null)
-data class PromptResponse(val prompt_id: String)
+/** node_errors is non-empty on a 200 when the server skipped outputs that failed validation. */
+data class PromptResponse(val prompt_id: String, val node_errors: JsonObject? = null)
 data class ImageUploadResponse(val name: String, val subfolder: String, val type: String)

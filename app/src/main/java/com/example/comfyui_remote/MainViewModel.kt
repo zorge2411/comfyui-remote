@@ -555,6 +555,14 @@ class MainViewModel(
         }
     }
 
+    // The server accepted a prompt but skipped outputs that depend on failing nodes (Phase 92)
+    private val _serverWarning = MutableStateFlow<String?>(null)
+    val serverWarning: StateFlow<String?> = _serverWarning.asStateFlow()
+
+    fun clearServerWarning() {
+        _serverWarning.value = null
+    }
+
     fun reportError(message: String) {
         _errorMessage.value = message
         _executionStatus.value = ExecutionStatus.ERROR
@@ -625,6 +633,7 @@ class MainViewModel(
         viewModelScope.launch {
             _executionStatus.value = ExecutionStatus.QUEUED
             _errorMessage.value = null
+            _serverWarning.value = null
 
             // Warning for missing nodes
             if (!workflow.missingNodes.isNullOrBlank()) {
@@ -666,6 +675,12 @@ class MainViewModel(
 
                     // CACHE INPUT for History
                     _executionCache[response.prompt_id] = updatedJson
+
+                    // Accepted, but outputs depending on these nodes were skipped (Phase 92)
+                    com.example.comfyui_remote.domain.ServerErrorReport.fromPartialAcceptance(
+                        response.node_errors,
+                        try { com.google.gson.JsonParser.parseString(updatedJson).asJsonObject } catch (ex: Exception) { null }
+                    )?.let { _serverWarning.value = it.format() }
                     
                     android.util.Log.d("BatchGen", "Queued batch item ${iteration + 1}/$batchCount (Prompt ID: ${response.prompt_id})")
                 }
@@ -674,38 +689,18 @@ class MainViewModel(
                  _executionStatus.value = ExecutionStatus.EXECUTING
 
             } catch (e: retrofit2.HttpException) {
-                // ... (existing error handling)
                 val errorBody = e.response()?.errorBody()?.string()
                 android.util.Log.e("API_ERROR", "HTTP ${e.code()}: $errorBody")
-                
-                val message = try {
-                    val obj = com.google.gson.JsonParser.parseString(errorBody).asJsonObject
-                    if (obj.has("node_errors")) {
-                        val nodeErrors = obj.getAsJsonObject("node_errors")
-                        val firstEntry = nodeErrors.entrySet().firstOrNull()
-                        if (firstEntry != null) {
-                            val nodeId = firstEntry.key
-                            val nodeError = firstEntry.value.asJsonObject
-                            val classType = nodeError.get("class_type").asString
-                            val errors = nodeError.getAsJsonArray("errors")
-                            val firstError = errors.get(0).asJsonObject
-                            val errMsg = firstError.get("message").asString
-                            val details = if (firstError.has("details")) firstError.get("details").asString else ""
-                            
-                            val detailsStr = if (details.isNotBlank()) "\nDetails: $details" else ""
-                            "Validation Error on Node $nodeId ($classType):\n$errMsg$detailsStr"
-                        } else {
-                            "Validation failed: ${obj.get("error").asJsonObject.get("message").asString}"
-                        }
-                    } else if (obj.has("error")) {
-                        val err = obj.get("error")
-                        if (err.isJsonObject) err.asJsonObject.get("message").asString else err.asString
-                    } else {
-                        "HTTP ${e.code()}: ${e.message()}"
-                    }
+                // Every failing node and reason, by title (Phase 92); titles come from the prompt we sent
+                val sentPrompt = try {
+                    com.google.gson.JsonParser.parseString(
+                        workflowExecutionService.buildPrompt(workflow.jsonContent, emptyMap(), inputs)
+                    ).asJsonObject
                 } catch (ex: Exception) {
-                    "HTTP ${e.code()}: ${e.message()}"
+                    null
                 }
+                val message = com.example.comfyui_remote.domain.ServerErrorReport
+                    .fromPromptError(e.code(), errorBody, sentPrompt).format()
                 
                 _errorMessage.value = message
                 _executionStatus.value = ExecutionStatus.ERROR
@@ -955,6 +950,16 @@ class MainViewModel(
                     _executionProgress.value = ExecutionProgress()
                 }
                 "execution_error" -> {
+                    // Which node failed and why (Phase 92)
+                    val data = obj.getAsJsonObject("data")
+                    if (data != null) {
+                        val promptId = data.get("prompt_id")?.takeIf { it.isJsonPrimitive }?.asString
+                        val sentPrompt = promptId?.let { _executionCache[it] }?.let {
+                            try { com.google.gson.JsonParser.parseString(it).asJsonObject } catch (e: Exception) { null }
+                        }
+                        _errorMessage.value = com.example.comfyui_remote.domain.ServerErrorReport
+                            .fromExecutionError(data, sentPrompt).format()
+                    }
                     _executionStatus.value = ExecutionStatus.ERROR
                     _executionProgress.value = ExecutionProgress()
                 }

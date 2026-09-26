@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -121,6 +122,7 @@ fun DynamicFormScreen(
     }
     val missingNodesText = liveMissingNodes?.joinToString(", ") ?: workflow.missingNodes
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val serverWarning by viewModel.serverWarning.collectAsState()
 
     Scaffold { paddingValues ->
         Column(
@@ -172,11 +174,46 @@ fun DynamicFormScreen(
 
             // Detailed Error Message
             if (executionStatus == ExecutionStatus.ERROR && errorMessage != null) {
+                val clipboard = LocalClipboardManager.current
                 ErrorCard(
                     title = "Execution Error",
                     message = errorMessage!!,
-                    onDismiss = { viewModel.clearErrorMessage() }
+                    onDismiss = { viewModel.clearErrorMessage() },
+                    onCopy = { clipboard.setText(AnnotatedString(errorMessage!!)) }
                 )
+            }
+
+            // The server accepted the prompt but skipped outputs that depend on failing nodes (Phase 92)
+            serverWarning?.let { warning ->
+                androidx.compose.material3.Card(
+                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    ),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "⚠️ Some outputs were skipped",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(onClick = { viewModel.clearServerWarning() }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Dismiss",
+                                    tint = MaterialTheme.colorScheme.onTertiaryContainer)
+                            }
+                        }
+                        Text(
+                            warning,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier
+                                .heightIn(max = 240.dp)
+                                .verticalScroll(rememberScrollState())
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))

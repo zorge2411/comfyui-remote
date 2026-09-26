@@ -18,5 +18,7 @@ data class LocalQueueItem(
     val inputValuesJson: String, // Snapshot of user inputs
     val batchCount: Int = 1,
     val status: QueueStatus = QueueStatus.PENDING,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    /** Why the item failed, as the server reported it (Phase 92); null otherwise. */
+    val errorMessage: String? = null
 )

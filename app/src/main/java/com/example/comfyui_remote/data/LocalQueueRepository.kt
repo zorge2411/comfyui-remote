@@ -33,6 +33,10 @@ class LocalQueueRepository(
         localQueueDao.updateStatus(id, status)
     }
 
+    suspend fun updateStatusAndError(id: Long, status: QueueStatus, errorMessage: String?) {
+        localQueueDao.updateStatusAndError(id, status, errorMessage)
+    }
+
     suspend fun delete(item: LocalQueueItem) {
         localQueueDao.delete(item)
     }
