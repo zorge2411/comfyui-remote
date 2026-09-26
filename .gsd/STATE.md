@@ -108,6 +108,8 @@
 
 ## Roadmap Evolution
 
+- **2026-09-26**: Phase 98 added (pre-flight misses missing input files, e.g. `LoadVideo` `gan_input.mp4`; found in the Phase 97 device check).
+
 - **2026-09-26**: Phase 97 added (download missing models to the server through ComfyUI-Manager, using the download links stored in workflows).
 
 - **2026-09-25**: Phases 93–95 added from the Phase 89 corpus baseline (subgraph input mapping by name, `COMFY_DYNAMICCOMBO_V3`, V3 widget-mapping gaps); Phase 90 scope extended (PrimitiveNode, bypass fallback).

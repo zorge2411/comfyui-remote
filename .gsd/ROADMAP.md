@@ -108,3 +108,27 @@
 
 **Verification**:
 - `testDebugUnitTest`, Python unit tests, device check in 97.3
+
+### Phase 98: Pre-flight Misses Missing Input Files
+
+**Status**: ⬜ Not Started
+**Objective**: The pre-flight check should warn before queueing when an input file (video, audio, image) that a loader node names isn't on the server. Found in the Phase 97 device check (2026-09-26):
+- The template "Video Upscale: Real-ESRGAN" names `LoadVideo.file = gan_input.mp4`, which isn't in the server's input folder. The server's `/object_info` lists 5 other files for that input.
+- Generate showed no pre-flight dialog. The prompt went to the server, which rejected it: "Invalid video file: gan_input.mp4".
+- `PromptValidator` should report this as "File not on the server" (VALUE_NOT_IN_LIST, error), so either `MainViewModel.preflight` returned null (the node list couldn't be fetched, or the check threw) and queued without checking, or the value or options it compared differ from what was sent.
+
+**Scope**:
+- Reproduce with a JVM test: the Real-ESRGAN template, plus a `LoadVideo` spec with a file list that doesn't include `gan_input.mp4`.
+- Find the cause and fix it.
+- Make sure input files for audio, video and image loaders are all checked. Keep skipping LoadImage inputs whose picked image is still waiting to upload.
+- Log whenever the pre-flight check is skipped, so a silent skip is visible.
+- The template's sample inputs aren't on the server, so the warning should say to pick or upload a file.
+
+**Depends on**: Phase 91
+**Requested**: 2026-09-26
+
+**Tasks**:
+- [ ] TBD (run /plan 98 to create)
+
+**Verification**:
+- TBD
