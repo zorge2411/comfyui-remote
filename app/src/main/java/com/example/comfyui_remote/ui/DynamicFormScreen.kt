@@ -803,6 +803,20 @@ private fun MissingModelsCard(
     var confirmingAll by remember { mutableStateOf<List<ModelSource>?>(null) }
     var allProbes by remember { mutableStateOf<List<Pair<Long?, Boolean>?>?>(null) }
     val downloadable = models.filter { downloads["${it.directory}/${it.name}"]?.active != true }
+    // Download progress is shown as a notification; Android 13+ needs the permission asked for at run time
+    val context = LocalContext.current
+    var askedNotifications by remember { mutableStateOf(false) }
+    val notificationPermission = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { }
+    fun askForNotifications() {
+        if (askedNotifications || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) return
+        askedNotifications = true
+        val permission = android.Manifest.permission.POST_NOTIFICATIONS
+        if (androidx.core.content.ContextCompat.checkSelfPermission(context, permission) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) notificationPermission.launch(permission)
+    }
 
     androidx.compose.material3.Card(
         colors = androidx.compose.material3.CardDefaults.cardColors(
@@ -938,6 +952,7 @@ private fun MissingModelsCard(
                     onClick = {
                         onDownloadAll(all)
                         confirmingAll = null
+                        askForNotifications()
                     },
                     enabled = probes != null
                 ) { Text("Download all") }
@@ -981,6 +996,7 @@ private fun MissingModelsCard(
                     onClick = {
                         onDownload(model)
                         confirming = null
+                        askForNotifications()
                     },
                     enabled = !probing
                 ) { Text("Download") }
