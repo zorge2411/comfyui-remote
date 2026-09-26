@@ -786,12 +786,12 @@ private fun formatBytes(bytes: Long): String =
 @Composable
 private fun MissingModelsCard(
     models: List<ModelSource>,
-    downloads: Map<String, MainViewModel.ModelDownload>,
+    downloads: Map<String, com.example.comfyui_remote.domain.ModelDownload>,
     helperAvailable: Boolean?,
     helperHasToken: Boolean,
     onProbe: suspend (ModelSource) -> Pair<Long?, Boolean>?,
     onDownload: (ModelSource) -> Unit,
-    onCancel: (MainViewModel.ModelDownload) -> Unit
+    onCancel: (com.example.comfyui_remote.domain.ModelDownload) -> Unit
 ) {
     val clipboard = LocalClipboardManager.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()

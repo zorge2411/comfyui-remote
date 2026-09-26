@@ -74,6 +74,16 @@ interface ComfyApiService {
     @POST("remote_helper/models/downloads/{id}/cancel")
     suspend fun cancelModelDownload(@Path("id") id: String): JsonObject
 
+    // Phase 99: extension version 2 queue control
+    @POST("remote_helper/models/downloads/{id}/move")
+    suspend fun moveModelDownload(@Path("id") id: String, @Body body: JsonObject): retrofit2.Response<com.google.gson.JsonElement>
+
+    @POST("remote_helper/models/downloads/{id}/retry")
+    suspend fun retryModelDownload(@Path("id") id: String): retrofit2.Response<com.google.gson.JsonElement>
+
+    @POST("remote_helper/models/downloads/clear")
+    suspend fun clearModelDownloads(): retrofit2.Response<com.google.gson.JsonElement>
+
     @Multipart
     @POST("upload/image")
     suspend fun uploadImage(
