@@ -41,6 +41,15 @@ class WorkflowExecutionService(
     }
 
     /**
+     * The prompt exactly as it will be queued: the workflow with uploaded image names patched in and the
+     * form values injected. Also used for the pre-flight check (Phase 91).
+     */
+    fun buildPrompt(workflowJson: String, uploadedFilenames: Map<String, String>, inputs: List<InputField>): String {
+        val patchedJson = WorkflowPatchingService.patchWorkflow(workflowJson, uploadedFilenames)
+        return workflowExecutor.injectValues(patchedJson, inputs)
+    }
+
+    /**
      * Patches the workflow JSON with uploaded images, injects input values, and queues the prompt.
      * Returns a Pair of (InjectedJSON, PromptResponse)
      */
@@ -51,11 +60,8 @@ class WorkflowExecutionService(
         uploadedFilenames: Map<String, String>,
         inputs: List<InputField>
     ): Pair<String, PromptResponse> = withContext(Dispatchers.Default) {
-        // 1. Patch Workflow with uploaded images
-        val patchedJson = WorkflowPatchingService.patchWorkflow(workflowJson, uploadedFilenames)
-
-        // 2. Inject Values
-        val injectedJson = workflowExecutor.injectValues(patchedJson, inputs)
+        // 1-2. Patch uploaded images and inject form values
+        val injectedJson = buildPrompt(workflowJson, uploadedFilenames, inputs)
         val promptJsonObject = JsonParser.parseString(injectedJson).asJsonObject
 
         // 3. Queue Prompt

@@ -573,6 +573,54 @@ class MainViewModel(
         _inputImages.value = current
     }
 
+    /**
+     * Checks the prompt that Generate / Add to Queue would send against the server's live /object_info
+     * (Phase 91). Returns null when the server's node list can't be obtained; the caller then queues
+     * without a check. Images picked for upload get their server names only at queue time, so list checks
+     * on those LoadImage inputs are skipped.
+     */
+    suspend fun preflight(
+        workflow: WorkflowEntity,
+        inputs: List<com.example.comfyui_remote.domain.InputField>
+    ): List<com.example.comfyui_remote.domain.PromptValidator.Issue>? {
+        val metadata = _nodeMetadata.value ?: try {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { buildApiService().getObjectInfo() }
+                .also { _nodeMetadata.value = it }
+        } catch (e: Exception) {
+            android.util.Log.w("PREFLIGHT", "No /object_info, queueing without a check: ${e.message}")
+            return null
+        }
+        val pendingUploads = _inputImages.value.filterValues { it != null }.keys
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            try {
+                val prompt = com.google.gson.JsonParser.parseString(
+                    workflowExecutionService.buildPrompt(workflow.jsonContent, emptyMap(), inputs)
+                ).asJsonObject
+                com.example.comfyui_remote.domain.PromptValidator.validate(prompt, metadata).filterNot {
+                    it.kind == com.example.comfyui_remote.domain.PromptValidator.Kind.VALUE_NOT_IN_LIST &&
+                        it.inputName == "image" && it.nodeId in pendingUploads
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("PREFLIGHT", "Pre-flight check failed, queueing without it", e)
+                null
+            }
+        }
+    }
+
+    /** Node types of this workflow the connected server doesn't have, or null without live metadata. */
+    fun missingNodeTypes(workflow: WorkflowEntity): List<String>? {
+        val metadata = _nodeMetadata.value ?: return null
+        return try {
+            val prompt = com.google.gson.JsonParser.parseString(workflow.jsonContent).asJsonObject
+            com.example.comfyui_remote.domain.PromptValidator.validate(prompt, metadata)
+                .filter { it.kind == com.example.comfyui_remote.domain.PromptValidator.Kind.MISSING_NODE_TYPE }
+                .map { it.classType }
+                .distinct()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     fun executeWorkflow(workflow: WorkflowEntity, inputs: List<com.example.comfyui_remote.domain.InputField>, batchCount: Int = 1) {
         viewModelScope.launch {
             _executionStatus.value = ExecutionStatus.QUEUED

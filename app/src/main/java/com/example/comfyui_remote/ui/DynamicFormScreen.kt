@@ -63,6 +63,7 @@ import androidx.core.net.toUri
 import com.example.comfyui_remote.MainViewModel
 import com.example.comfyui_remote.data.WorkflowEntity
 import com.example.comfyui_remote.domain.InputField
+import com.example.comfyui_remote.domain.PromptValidator
 import com.example.comfyui_remote.domain.displayName
 import com.example.comfyui_remote.network.ExecutionStatus
 import com.example.comfyui_remote.ui.components.ErrorCard
@@ -94,6 +95,31 @@ fun DynamicFormScreen(
     var showNodeSheet by remember { mutableStateOf(false) }
 
     val executionStatus by viewModel.executionStatus.collectAsState()
+    val nodeMetadata by viewModel.nodeMetadata.collectAsState()
+    // Phase 91: pre-flight check before Generate / Queue
+    val preflightScope = androidx.compose.runtime.rememberCoroutineScope()
+    var preflightIssues by remember { mutableStateOf<List<PromptValidator.Issue>?>(null) }
+    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var checking by remember { mutableStateOf(false) }
+    fun withPreflight(action: () -> Unit) {
+        if (checking) return
+        checking = true
+        preflightScope.launch {
+            val issues = viewModel.preflight(workflow, inputs)
+            checking = false
+            if (issues.isNullOrEmpty()) {
+                action()
+            } else {
+                preflightIssues = issues
+                pendingAction = action
+            }
+        }
+    }
+    // Missing nodes against the connected server; the list stored at import may be stale
+    val liveMissingNodes by androidx.compose.runtime.produceState<List<String>?>(null, workflow, nodeMetadata) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { viewModel.missingNodeTypes(workflow) }
+    }
+    val missingNodesText = liveMissingNodes?.joinToString(", ") ?: workflow.missingNodes
     val errorMessage by viewModel.errorMessage.collectAsState()
 
     Scaffold { paddingValues ->
@@ -122,7 +148,7 @@ fun DynamicFormScreen(
             }
             
             // Missing Nodes Warning
-            if (!workflow.missingNodes.isNullOrBlank()) {
+            if (!missingNodesText.isNullOrBlank()) {
                 androidx.compose.material3.Card(
                     colors = androidx.compose.material3.CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer
@@ -136,7 +162,7 @@ fun DynamicFormScreen(
                             color = MaterialTheme.colorScheme.onErrorContainer
                         )
                         Text(
-                            workflow.missingNodes,
+                            missingNodesText,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onErrorContainer
                         )
@@ -464,14 +490,29 @@ fun DynamicFormScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    preflightIssues?.let { issues ->
+                        PreflightDialog(
+                            issues = issues,
+                            onQueueAnyway = {
+                                val action = pendingAction
+                                preflightIssues = null
+                                pendingAction = null
+                                action?.invoke()
+                            },
+                            onCancel = {
+                                preflightIssues = null
+                                pendingAction = null
+                            }
+                        )
+                    }
+
                     // Add to Queue (Secondary)
                     androidx.compose.material3.OutlinedButton(
                         onClick = {
-                            viewModel.addToQueue(workflow, inputs, batchCount)
-                            // Optional: Show feedback
+                            withPreflight { viewModel.addToQueue(workflow, inputs, batchCount) }
                         },
                         modifier = Modifier.weight(1f),
-                        enabled = (executionStatus == ExecutionStatus.IDLE || executionStatus == ExecutionStatus.FINISHED) && pendingImageUploads.isEmpty()
+                        enabled = (executionStatus == ExecutionStatus.IDLE || executionStatus == ExecutionStatus.FINISHED) && pendingImageUploads.isEmpty() && !checking
                     ) {
                          Icon(Icons.Default.Add, contentDescription = null)
                          Spacer(Modifier.width(8.dp))
@@ -481,10 +522,10 @@ fun DynamicFormScreen(
                     // Generate (Primary)
                     Button(
                         onClick = {
-                            viewModel.executeWorkflow(workflow, inputs, batchCount)
+                            withPreflight { viewModel.executeWorkflow(workflow, inputs, batchCount) }
                         },
                         modifier = Modifier.weight(1f),
-                        enabled = (executionStatus == ExecutionStatus.IDLE || executionStatus == ExecutionStatus.FINISHED) && pendingImageUploads.isEmpty()
+                        enabled = (executionStatus == ExecutionStatus.IDLE || executionStatus == ExecutionStatus.FINISHED) && pendingImageUploads.isEmpty() && !checking
                     ) {
                         if (executionStatus == ExecutionStatus.EXECUTING || executionStatus == ExecutionStatus.QUEUED) {
                             CircularProgressIndicator(
@@ -615,4 +656,56 @@ fun DynamicFormScreen(
             }
         }
     }
+}
+
+/** Phase 91: what the server would likely reject, grouped by node; nothing is blocked. */
+@Composable
+private fun PreflightDialog(
+    issues: List<PromptValidator.Issue>,
+    onQueueAnyway: () -> Unit,
+    onCancel: () -> Unit
+) {
+    val errors = issues.count { it.severity == PromptValidator.Severity.ERROR }
+    val warnings = issues.size - errors
+    val byNode = issues
+        .sortedBy { if (it.severity == PromptValidator.Severity.ERROR) 0 else 1 }
+        .groupBy { it.nodeTitle to it.classType }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text(if (errors > 0) "Server will likely reject this prompt" else "Server may reject this prompt") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    listOfNotNull(
+                        if (errors > 0) "$errors error${if (errors == 1) "" else "s"}" else null,
+                        if (warnings > 0) "$warnings warning${if (warnings == 1) "" else "s"}" else null
+                    ).joinToString(", "),
+                    style = MaterialTheme.typography.labelLarge
+                )
+                byNode.forEach { (node, nodeIssues) ->
+                    val (title, classType) = node
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        if (classType.isNotEmpty() && classType != title) "$title ($classType)" else title,
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    nodeIssues.forEach { issue ->
+                        val prefix = if (issue.severity == PromptValidator.Severity.ERROR) "✖" else "⚠"
+                        Text(
+                            "$prefix ${issue.inputName?.let { "$it: " } ?: ""}${issue.message}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (issue.severity == PromptValidator.Severity.ERROR) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = onQueueAnyway) { Text("Queue anyway") }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onCancel) { Text("Cancel") }
+        }
+    )
 }
