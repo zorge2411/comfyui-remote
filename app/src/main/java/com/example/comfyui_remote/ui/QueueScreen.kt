@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.PendingActions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.runtime.getValue
@@ -25,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.comfyui_remote.QueueViewModel
 import com.example.comfyui_remote.data.LocalQueueItem
+import com.example.comfyui_remote.data.ModelDownloadRepository
 import com.example.comfyui_remote.data.QueueStatus
 import com.example.comfyui_remote.ui.components.EmptyState
 
@@ -35,14 +37,25 @@ private val DATE_FORMATTER = java.time.format.DateTimeFormatter.ofPattern("MMM d
 @Composable
 fun QueueScreen(
     viewModel: QueueViewModel,
+    downloads: ModelDownloadRepository,
     onBack: () -> Unit
 ) {
     val queueItems by viewModel.queueItems.collectAsState()
+    // Phase 99: the server's model download queue
+    val modelDownloads by downloads.downloads.collectAsState()
+    val helperVersion by downloads.helperVersion.collectAsState()
+    val queueControl = helperVersion >= 2
+    val queuedCount = modelDownloads.count { it.status == "queued" }
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(downloads) {
+        downloads.errors.collect { snackbarHostState.showSnackbar(it) }
+    }
     val isRunning by viewModel.isQueueRunning.collectAsState()
     val currentItemId by viewModel.currentExecutingItemId.collectAsState()
     var showDeleteDialog by remember { mutableStateOf<LocalQueueItem?>(null) }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Local Queue") },
@@ -78,7 +91,7 @@ fun QueueScreen(
             }
         }
     ) { padding ->
-        if (queueItems.isEmpty()) {
+        if (queueItems.isEmpty() && modelDownloads.isEmpty()) {
             EmptyState(
                 icon = Icons.Default.PendingActions,
                 title = "Queue is Empty",
@@ -93,6 +106,28 @@ fun QueueScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                if (modelDownloads.isNotEmpty()) {
+                    item(key = "model-downloads-header") {
+                        SectionHeader("Model downloads") {
+                            if (queueControl && modelDownloads.any { it.finished && it.id != null }) {
+                                TextButton(onClick = { downloads.clearFinished() }) { Text("Clear finished") }
+                            }
+                        }
+                    }
+                    items(modelDownloads, key = { it.id ?: "pending-${it.key}" }) { download ->
+                        ModelDownloadCard(
+                            download = download,
+                            queuedCount = queuedCount,
+                            queueControl = queueControl,
+                            onMove = { position -> downloads.move(download, position) },
+                            onCancel = { downloads.cancel(download) },
+                            onRetry = { downloads.retry(download) }
+                        )
+                    }
+                    if (queueItems.isNotEmpty()) {
+                        item(key = "local-queue-header") { SectionHeader("Local queue") {} }
+                    }
+                }
                 items(queueItems, key = { it.id }) { item ->
                     QueueItemCard(
                         item = item,
@@ -128,6 +163,17 @@ fun QueueScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun SectionHeader(title: String, action: @Composable () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+        action()
     }
 }
 

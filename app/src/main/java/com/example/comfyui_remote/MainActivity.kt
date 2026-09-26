@@ -270,7 +270,10 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable("queue") {
-                            com.example.comfyui_remote.ui.QueueScreen(queueViewModel) {
+                            com.example.comfyui_remote.ui.QueueScreen(
+                                queueViewModel,
+                                (application as ComfyApplication).modelDownloadRepository
+                            ) {
                                 // Back action for Queue Screen inside Tab Nav?
                                 // Usually BottomNav screens don't have back unless they go deeper.
                                 // But QueueScreen takes an onBack lambda.
