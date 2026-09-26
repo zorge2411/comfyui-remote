@@ -3,11 +3,13 @@
 ## Current Position
 
 - **Milestone**: 4 (Workflow compatibility): all 5 must-haves delivered in code
-- **Phase**: 99 (Model Download Queue): planning complete, ready for `/execute 99` (3 plans: 99.1 and 99.2 in wave 1, 99.3 in wave 2). Phase 98 is also planned, not yet executed.
+- **Phase**: 99 (Model Download Queue): done in code; device check pending (server needs `comfyui_remote_helper` v2). Phase 98 planned, not executed. Fix `233a4fd` (Copy link after minimize) not yet device-checked.
 - **Status**: ✅ Phase 97 verified on the phone (2026-09-26): Room 11 → 12 in place, download / progress / cancel / Copy link fallback all work against the real server with `comfyui_remote_helper`. ✅ Phases 90, 91 and 92 verified on the phone. Device checks still open for 95 and 96.
 - **Note**: local-master versions of Phases 90/91, built in parallel, were superseded by the agent's. See merge `a9c45ec`, with a backup on branch `backup/local-phase-90-91`.
 
 ## Achievements (Milestone 4)
+
+- [x] Implemented Phase 99 (model download queue): extension v2 (ordered queue, move, retry, clear, `remote_helper.queue` event); app-scoped `ModelDownloadRepository`; Download all; a Model downloads section on the Queue screen; progress and finished notifications. 197 JVM tests and 16 Python tests green. See `.gsd/phases/99/`.
 
 - [x] Implemented Phase 97 (download missing models): model download links kept at import (`ModelSources`, Room 11 → 12); companion ComfyUI extension `server/comfyui_remote_helper` (Hugging Face / GitHub only, safe file types, progress events, cancel, HF_TOKEN); Missing Models card with Download / progress / Cancel / Copy link. ComfyUI-Manager rejected after research (see `97-RESEARCH.md`). See `.gsd/phases/97/97-VERIFICATION.md`.
 
