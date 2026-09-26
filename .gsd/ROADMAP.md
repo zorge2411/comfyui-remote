@@ -38,7 +38,7 @@
 
 ### Phase 91: Pre-flight Compatibility Check
 
-**Status**: ⬜ Not Started
+**Status**: 📝 Planned (`.gsd/phases/91/`: 91-CONTEXT, 91-01-PLAN, 91-02-PLAN)
 **Objective**: Before queueing, validate the converted prompt against the server's `/object_info`: report missing node types, missing required inputs and invalid combo values in the app. Replace the current missing-node list, which can include nodes the converter already removed (e.g. Reroute).
 **Depends on**: Phase 90
 
