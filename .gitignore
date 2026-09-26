@@ -78,8 +78,7 @@ build_log*.txt
 # Python
 __pycache__/
 
-# GSD (Get Shit Done) planning/workflow tooling
-.gsd/
+# GSD (Get Shit Done) tooling files (planning in .gsd/ stays versioned)
 CHANGELOG.md
 GSD-STYLE.md
 VERSION

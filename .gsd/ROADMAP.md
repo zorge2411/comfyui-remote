@@ -26,10 +26,14 @@
 
 ### Phase 90: Frontend-Only and Virtual Node Support
 
-**Status**: ⬜ Not Started
-**Objective**: Handle nodes that exist only in the editor. Phantom-node passthrough currently takes the first input link without checking its type (`GraphToApiConverter.resolveRealSource`); make it type-aware like the Phase 88 bypass logic, and resolve SetNode/GetNode pairs, which are linked by name rather than by a graph link. Resolve PrimitiveNode into its targets' widget values. Also fix the Phase 88 bypass fallback: when no input matches the output type, drop the link instead of wiring the same-index input (corpus: `3d_hunyuan3d_multiview_to_model`).
-**Corpus fixtures to fix**: `3d_hunyuan3d_multiview_to_model`, `audio_ace_step_1_5_checkpoint`, `hidream_e1_1`, `utility_topaz_illustration_upscale`
-**Also investigate (from the Phase 95 all-template run)**: unresolved link sources around bypassed/muted groups: `video_wan2_2_14B_s2v` (23 missing inputs), `flux1_dev_uso_reference_image_gen`, `image_ernie_image(_turbo)` (`PreviewAny.source`), `image_qwen_image_instantx_inpainting_controlnet`; 29 C7 PrimitiveNode across templates.
+**Status**: 📝 Planned (`.gsd/phases/90/`: 90-CONTEXT, 90-01-PLAN, 90-02-PLAN)
+**Objective**: Resolve the graph the way the ComfyUI frontend does before it builds the prompt:
+- bypass follows `_getBypassSlotIndex` exactly (target type, drop when nothing matches);
+- bypassed/muted **subgraph instances** aren't expanded (they pass through or produce nothing);
+- virtual nodes are never sent: PrimitiveNode values become target literals, Reroute passes through the same slot, KJNodes GetNode resolves via the SetNode with the same name, Note/MarkdownNote are skipped;
+- Phase 93 follow-up: interior socket inputs fed by a promoted widget get that widget's value.
+**Corpus fixtures to fix**: `3d_hunyuan3d_multiview_to_model`, `audio_ace_step_1_5_checkpoint`, `hidream_e1_1`, `utility_topaz_illustration_upscale` (then `known-failures.json` is empty)
+**Template-wide targets (Phase 95 run)**: 29 C7 (PrimitiveNode); 4 C3 (bypass); C4 in `video_wan2_2_14B_s2v` (23), `flux1_dev_uso_reference_image_gen`, `image_qwen_image_instantx_inpainting_controlnet` (bypassed subgraph instances), `image_ernie_image(_turbo)` (`PreviewAny.source`, promoted socket)
 **Depends on**: Phase 89
 
 ### Phase 91: Pre-flight Compatibility Check
