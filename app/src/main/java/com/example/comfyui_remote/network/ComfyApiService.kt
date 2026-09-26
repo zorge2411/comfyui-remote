@@ -57,6 +57,23 @@ interface ComfyApiService {
     @GET("{path}")
     suspend fun getFileContent(@Path("path", encoded = true) path: String): com.google.gson.JsonElement
 
+    // Phase 97: comfyui_remote_helper extension (server/comfyui_remote_helper), downloads models to the server
+    @GET("remote_helper/info")
+    suspend fun getHelperInfo(): JsonObject
+
+    @POST("remote_helper/models/probe")
+    suspend fun probeModel(@Body body: JsonObject): JsonObject
+
+    // Response, so the {"error"} body of a 400/403/409 can be shown
+    @POST("remote_helper/models/download")
+    suspend fun startModelDownload(@Body body: JsonObject): retrofit2.Response<JsonObject>
+
+    @GET("remote_helper/models/downloads")
+    suspend fun getModelDownloads(): com.google.gson.JsonArray
+
+    @POST("remote_helper/models/downloads/{id}/cancel")
+    suspend fun cancelModelDownload(@Path("id") id: String): JsonObject
+
     @Multipart
     @POST("upload/image")
     suspend fun uploadImage(

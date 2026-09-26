@@ -747,6 +747,142 @@ class MainViewModel(
         }
     }
 
+    // Phase 97: model downloads through the server's comfyui_remote_helper extension
+    data class ModelDownload(
+        val id: String?,
+        val filename: String,
+        val directory: String,
+        val total: Long?,
+        val done: Long,
+        val status: String, // queued, downloading, done, error, cancelled
+        val error: String?
+    ) {
+        val key get() = "$directory/$filename"
+        val active get() = status == "queued" || status == "downloading"
+    }
+
+    /** null until checked after connecting; false when the server doesn't have the extension. */
+    private val _helperAvailable = MutableStateFlow<Boolean?>(null)
+    val helperAvailable: StateFlow<Boolean?> = _helperAvailable.asStateFlow()
+
+    private val _helperHasToken = MutableStateFlow(false)
+    val helperHasToken: StateFlow<Boolean> = _helperHasToken.asStateFlow()
+
+    /** Keyed by "directory/filename". */
+    private val _modelDownloads = MutableStateFlow<Map<String, ModelDownload>>(emptyMap())
+    val modelDownloads: StateFlow<Map<String, ModelDownload>> = _modelDownloads.asStateFlow()
+
+    /** Bumped when a download finishes, so screens recompute their missing models. */
+    private val _modelsVersion = MutableStateFlow(0)
+    val modelsVersion: StateFlow<Int> = _modelsVersion.asStateFlow()
+
+    private val modelListCache = java.util.concurrent.ConcurrentHashMap<String, List<String>>()
+
+    private fun parseModelDownload(o: com.google.gson.JsonObject): ModelDownload {
+        fun str(k: String) = o.get(k)?.takeIf { !it.isJsonNull }?.asString
+        return ModelDownload(
+            id = str("id"),
+            filename = str("filename") ?: "",
+            directory = str("directory") ?: "",
+            total = o.get("total")?.takeIf { !it.isJsonNull }?.asLong,
+            done = o.get("done")?.takeIf { !it.isJsonNull }?.asLong ?: 0L,
+            status = str("status") ?: "error",
+            error = str("error")
+        )
+    }
+
+    private fun updateModelDownload(download: ModelDownload) {
+        val previous = _modelDownloads.value[download.key]
+        _modelDownloads.value = _modelDownloads.value + (download.key to download)
+        if (download.status == "done" && previous?.status != "done") {
+            modelListCache.remove(download.directory)
+            fetchNodeMetadata()
+            _modelsVersion.value++
+        }
+    }
+
+    private fun checkModelHelper() {
+        viewModelScope.launch {
+            try {
+                val api = buildApiService()
+                val info = api.getHelperInfo()
+                _helperHasToken.value = info.get("hf_token")?.asBoolean == true
+                _helperAvailable.value = true
+                api.getModelDownloads().forEach { updateModelDownload(parseModelDownload(it.asJsonObject)) }
+            } catch (e: Exception) {
+                _helperAvailable.value = false
+            }
+        }
+    }
+
+    /** Models this workflow's stored download links name that the server's model lists don't have. */
+    suspend fun missingModels(workflow: WorkflowEntity): List<com.example.comfyui_remote.domain.ModelSource> {
+        val sources = com.example.comfyui_remote.domain.ModelSources.fromJson(workflow.modelSources)
+        if (sources.isEmpty()) return emptyList()
+        val available = HashMap<String, List<String>>()
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            for (dir in sources.map { it.directory }.distinct()) {
+                val files = modelListCache[dir] ?: try {
+                    buildApiService().getModels(dir).also { modelListCache[dir] = it }
+                } catch (e: Exception) {
+                    null // unknown folder: its models aren't reported
+                }
+                if (files != null) available[dir] = files
+            }
+        }
+        return com.example.comfyui_remote.domain.ModelSources.missing(sources, available)
+    }
+
+    /** (size in bytes or null, gated) from the server's HEAD request, or null when the probe failed. */
+    suspend fun probeModel(source: com.example.comfyui_remote.domain.ModelSource): Pair<Long?, Boolean>? = try {
+        val body = com.google.gson.JsonObject().apply { addProperty("url", source.url) }
+        val r = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { buildApiService().probeModel(body) }
+        Pair(r.get("size")?.takeIf { !it.isJsonNull }?.asLong, r.get("gated")?.asBoolean == true)
+    } catch (e: Exception) {
+        null
+    }
+
+    fun downloadModel(source: com.example.comfyui_remote.domain.ModelSource) {
+        val pending = ModelDownload(null, source.name, source.directory, null, 0, "queued", null)
+        updateModelDownload(pending)
+        viewModelScope.launch {
+            try {
+                val body = com.google.gson.JsonObject().apply {
+                    addProperty("url", source.url)
+                    addProperty("directory", source.directory)
+                    addProperty("filename", source.name)
+                }
+                val response = buildApiService().startModelDownload(body)
+                val job = response.body()
+                if (response.isSuccessful && job != null) {
+                    // A websocket event may already have moved the job on; keep the newer state
+                    val current = _modelDownloads.value[pending.key]
+                    if (current == null || current.id == null) updateModelDownload(parseModelDownload(job))
+                } else {
+                    val message = try {
+                        com.google.gson.JsonParser.parseString(response.errorBody()?.string()).asJsonObject.get("error").asString
+                    } catch (e: Exception) {
+                        "HTTP ${response.code()}"
+                    }
+                    updateModelDownload(pending.copy(status = "error", error = message))
+                }
+            } catch (e: Exception) {
+                updateModelDownload(pending.copy(status = "error", error = e.message ?: e.javaClass.simpleName))
+            }
+        }
+    }
+
+    fun cancelModelDownload(download: ModelDownload) {
+        val id = download.id ?: return
+        viewModelScope.launch {
+            try {
+                updateModelDownload(parseModelDownload(buildApiService().cancelModelDownload(id)))
+            } catch (e: Exception) {
+                android.util.Log.w("MODEL_DOWNLOAD", "Cancel failed: ${e.message}")
+            }
+        }
+    }
+
     private val _serverWorkflows = MutableStateFlow<List<ServerWorkflowFile>>(emptyList())
     val serverWorkflows: StateFlow<List<ServerWorkflowFile>> = _serverWorkflows.asStateFlow()
 
@@ -890,6 +1026,9 @@ class MainViewModel(
             val type = obj.get("type").asString
             
             when (type) {
+                "remote_helper.download" -> {
+                    updateModelDownload(parseModelDownload(obj.getAsJsonObject("data")))
+                }
                 "execution_start" -> {
                     // Confirm execution has begun
                     _executionStatus.value = ExecutionStatus.EXECUTING
@@ -1726,6 +1865,9 @@ class MainViewModel(
                     // the user manually disconnects and reconnects.
                     fetchNodeMetadata()
                     fetchAvailableModels()
+                    // Phase 97: model folders may have changed while disconnected
+                    modelListCache.clear()
+                    checkModelHelper()
                 }
             }
         }
