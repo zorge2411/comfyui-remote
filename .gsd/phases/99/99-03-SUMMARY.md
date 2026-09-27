@@ -31,11 +31,7 @@
 ## Verification
 
 - `testDebugUnitTest`: 197 tests, 0 failures. `assembleDebug` OK.
-- **Device check pending:**
-  - the server still runs extension version 1 (`/remote_helper/info` → `"1"`);
-  - the phone isn't on adb.
-
-  Steps are in 99-03-PLAN.md Task 3.
+- Device check: passed 2026-09-27 (below).
 
 ## Device check (2026-09-27)
 
