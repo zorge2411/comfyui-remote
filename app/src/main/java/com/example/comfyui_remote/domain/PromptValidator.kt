@@ -12,6 +12,8 @@ import com.google.gson.JsonObject
  * reveal, so those findings are warnings; structural problems the server always rejects are errors.
  * A file name (model, image...) missing from the server's list is an error too: loaders use the list
  * check, and nodes that validate files themselves (LoadImage) reject a missing file anyway.
+ * An empty list means the server has no such files (Phase 98): that is reported for file values and upload
+ * inputs (image/video/audio_upload), but not for other combos, whose lists may be filled in dynamically.
  */
 object PromptValidator {
 
@@ -49,6 +51,16 @@ object PromptValidator {
         """[\\/]|\.(safetensors|ckpt|pt|pth|bin|gguf|onnx|sft|png|jpe?g|webp|gif|mp4|webm|mov|wav|mp3|flac|glb|gltf|fbx|obj|ply|stl|usdz|spz|splat)$""",
         RegexOption.IGNORE_CASE
     )
+
+    private val UPLOAD_FLAGS = listOf("image_upload", "video_upload", "audio_upload")
+
+    /** A file input the frontend offers an upload button for, in the legacy `[[files], {...}]` or V3 `["COMBO", {...}]` form. */
+    private fun isUploadInput(spec: JsonArray): Boolean {
+        val config = spec.takeIf { it.size() > 1 }?.get(1)?.takeIf { it.isJsonObject }?.asJsonObject ?: return false
+        return UPLOAD_FLAGS.any { flag ->
+            config.get(flag)?.takeIf { it.isJsonPrimitive }?.let { it.asJsonPrimitive.isBoolean && it.asBoolean } == true
+        }
+    }
 
     /**
      * @param checkFileValues check file-name values (model, image...) against the server's lists
@@ -140,11 +152,15 @@ object PromptValidator {
                 if (valueChecks) valueIssue(spec, value)?.let { (kind, message) -> issue(id, n, kind, key, message) }
                 val options = GraphToApiConverter.comboOptions(spec) ?: continue
                 val text = value.asString
-                val isFile = FILE_VALUE.containsMatchIn(text)
-                if (options.isNotEmpty() && text !in options && (checkFileValues || !isFile)) {
+                val isUpload = isUploadInput(spec)
+                val isFile = FILE_VALUE.containsMatchIn(text) || isUpload
+                val listKnown = options.isNotEmpty() || (isFile && checkFileValues)
+                if (listKnown && text !in options && (checkFileValues || !isFile)) {
                     val shown = options.take(5).joinToString(", ") + if (options.size > 5) ", …" else ""
                     if (isFile) {
-                        issue(id, n, Kind.VALUE_NOT_IN_LIST, key, "File not on the server: '$text' not in [$shown]", Severity.ERROR)
+                        val where = if (options.isEmpty()) "(the server has none for this input)" else "not in [$shown]"
+                        val hint = if (isUpload) "; pick another file or upload it" else ""
+                        issue(id, n, Kind.VALUE_NOT_IN_LIST, key, "File not on the server: '$text' $where$hint", Severity.ERROR)
                     } else {
                         issue(id, n, Kind.VALUE_NOT_IN_LIST, key, "Value not in list: '$text' not in [$shown]")
                     }

@@ -108,4 +108,49 @@ class PromptValidatorTest {
             getAsJsonObject("3").getAsJsonObject("inputs").add("extra", JsonParser.parseString("""{"__value__": ["", ""]}"""))
         }))
     }
+
+    // Phase 98: the server lists no files for an input (e.g. no videos in its input folder)
+    private val emptyListInfo = obj("""
+        {
+          "LoadVideo": { "input": { "required": { "file": ["COMBO", {"multiselect": false, "options": [], "video_upload": true}] } },
+                         "output": ["VIDEO"], "output_node": false },
+          "LoadImg": { "input": { "required": { "image": [[], {"image_upload": true}] } }, "output": ["IMAGE"], "output_node": false },
+          "Pick": { "input": { "required": { "mode": ["COMBO", {"options": []}] } }, "output": ["INT"], "output_node": false },
+          "Out": { "input": { "required": { "video": ["VIDEO", {}], "image": ["IMAGE", {}], "n": ["INT", {}] } },
+                   "output": [], "output_node": true }
+        }
+    """)
+
+    private fun emptyListPrompt(video: String = "gan_input.mp4", image: String = "example.png", mode: String = "fast") = obj("""
+        {
+          "1": {"class_type": "LoadVideo", "inputs": {"file": "$video"}},
+          "2": {"class_type": "LoadImg", "inputs": {"image": "$image"}},
+          "3": {"class_type": "Pick", "inputs": {"mode": "$mode"}},
+          "4": {"class_type": "Out", "inputs": {"video": ["1", 0], "image": ["2", 0], "n": ["3", 0]}}
+        }
+    """)
+
+    @Test
+    fun `a file value is missing when the server lists no files for the input`() {
+        val issues = PromptValidator.validate(emptyListPrompt(), emptyListInfo)
+        assertEquals(setOf("1", "2"), issues.map { it.nodeId }.toSet())
+        val video = issues.single { it.nodeId == "1" }
+        assertEquals(Kind.VALUE_NOT_IN_LIST, video.kind)
+        assertEquals(PromptValidator.Severity.ERROR, video.severity)
+        assertEquals(
+            "File not on the server: 'gan_input.mp4' (the server has none for this input); pick another file or upload it",
+            video.message
+        )
+    }
+
+    @Test
+    fun `a non-file value on an empty non-upload list is not reported`() {
+        val issues = PromptValidator.validate(emptyListPrompt(), emptyListInfo)
+        assertTrue(issues.none { it.nodeId == "3" })
+    }
+
+    @Test
+    fun `empty lists are not checked when file checks are off`() {
+        assertEquals(emptyList<Kind>(), PromptValidator.validate(emptyListPrompt(), emptyListInfo, checkFileValues = false).map { it.kind })
+    }
 }
