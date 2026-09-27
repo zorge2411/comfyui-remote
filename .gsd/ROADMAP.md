@@ -67,7 +67,7 @@
 
 ### Phase 95: Widget Mapping Gaps for V3 Nodes
 
-**Status**: ✅ Done (code) (`.gsd/phases/95/95-SUMMARY.md`)
+**Status**: ✅ Done, device-verified 2026-09-27 (`.gsd/phases/95/95-SUMMARY.md`)
 **Objective**: Read `widgets_values` the way the frontend writes them:
 - skip control widgets (`control_after_generate`: 1 slot for INT/FLOAT, 2 for COMBO including the filter list);
 - don't let unlinked socket inputs consume widget values;
@@ -79,7 +79,7 @@
 
 ### Phase 96: In-App Template Browser
 
-**Status**: ✅ Done (code); device check pending
+**Status**: ✅ Done, device-verified 2026-09-27
 **Objective**: Show the connected server's workflow templates in the app without downloading files by hand. ComfyUI serves the `comfyui-workflow-templates` library at `/templates/` (`index.json` = 11 categories / 572 templates; thumbnails `/templates/<name>-1.<mediaSubtype>`; workflows `/templates/<name>.json`; checked in ComfyUI v0.37.2 `server.py` and frontend `useTemplateWorkflows.ts`).
 **Delivered**:
 - `WorkflowTemplateIndex` parser (4 tests; parses the real 572-template index);
@@ -88,6 +88,11 @@
 - `TemplatesScreen`: thumbnail grid, search, category chips, "Local only" filter hiding API-node templates, "API" badge. Tapping a template imports it through the normal converter and opens the form;
 - entry points: grid icon in the Workflows top bar, and a "Browse Templates" button on the empty workflow list.
 **Requested**: 2026-09-25 (user: "make the templates visible in the app without all the downloading stuff")
+**Device check (2026-09-27)**:
+- The grid icon in the Workflows top bar opens the browser, with thumbnails, titles, model names and "API" badges; 566 templates, matching the server's `index.json`.
+- Category chips work: Image gives 184, matching the index category. "Local only" plus Image gives 103, with no API badges. All gives 566.
+- Search and import work: Real-ESRGAN, HiDream E1.1 and Z-Image-Turbo were each imported and opened in the form. Z-Image-Turbo then ran successfully (see the Phase 95 device check).
+- Not checked: the "Browse Templates" button on an empty workflow list (the phone has workflows).
 
 ### Phase 97: Download Missing Models to the Server
 

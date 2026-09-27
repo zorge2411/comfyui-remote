@@ -60,3 +60,14 @@ The remaining 37 C4 are in 9 templates:
 
 - Plain-JVM suite: 89/89 pass.
 - Pending (user): `gradlew.bat testDebugUnitTest`, `assembleDebug`, `installDebug`. On the phone, a Gemini, Grok or SaveVideo workflow should run with the values shown in ComfyUI.
+
+## Device check (2026-09-27)
+
+Passed on the Fairphone 6 against ComfyUI 0.37.0. The template "Z-Image-Turbo: Text to Image" (`image_z_image_turbo`) was imported from the in-app template browser and run with Generate. The pre-flight check showed no dialog, and the run finished with status `success` (prompt `dd37867b`), output SaveImage.
+
+What the server received, compared with the template's `widgets_values`:
+- KSampler `[0, 'randomize', 8, 1, 'res_multistep', 'simple', 1]` became `steps 8, cfg 1.0, sampler_name res_multistep, scheduler simple, denoise 1.0`, with a random seed. The `control_after_generate` slot was skipped and later values weren't shifted.
+- ModelSamplingAuraFlow `[3]` became `shift 3.0` plus `sampling 'flow'`, a widget added after the template was saved, filled with its default.
+- EmptySD3LatentImage 1024×1024×1, the loaders (`qwen_3_4b` / `lumina2` / `default`, `ae`, `z_image_turbo_bf16` / `default`), the prompt text and the SaveImage prefix all match.
+
+Not run: Gemini or Grok, which are paid API nodes. SaveVideo was not run either.

@@ -4,7 +4,7 @@
 
 - **Milestone**: 4 (Workflow compatibility): all 5 must-haves delivered in code
 - **Phase**: 98 and 99 ✅ done and device-verified (2026-09-27). No planned phases left in the roadmap.
-- **Status**: ✅ Phase 97 verified on the phone (2026-09-26): Room 11 → 12 in place, download / progress / cancel / Copy link fallback all work against the real server with `comfyui_remote_helper`. ✅ Phases 90, 91 and 92 verified on the phone. Device checks still open for 95 and 96.
+- **Status**: ✅ Every Milestone 4 phase (89–99) is done. Device checks passed for 90–92 and 97 (2026-09-26), and for 95, 96, 98 and 99 (2026-09-27). Nothing is waiting on a device check.
 - **Note**: local-master versions of Phases 90/91, built in parallel, were superseded by the agent's. See merge `a9c45ec`, with a backup on branch `backup/local-phase-90-91`.
 
 ## Achievements (Milestone 4)
