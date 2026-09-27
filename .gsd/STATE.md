@@ -2,9 +2,13 @@
 
 ## Current Position
 
-- **Milestone**: none active. Milestone 4 (Workflow Compatibility) completed 2026-09-27 and archived in `.gsd/milestones/Milestone 4/` (`Milestone 4-SUMMARY.md`, tag `milestone-4`).
-- **Phase**: none. The next phase number is 100.
-- **Status**: ✅ Phases 89–99 done and device-verified. 200 JVM tests and 16 Python tests (`server/comfyui_remote_helper`) green.
+- **Milestone**: 5, UI/UX Overhaul (created 2026-09-27). Phases 100–105.
+- **Phase**: not started. Next: Phase 100 (UI Audit and Shared Components).
+- **Status**: Milestone planned. Milestone 4 is archived in `.gsd/milestones/Milestone 4/` (tag `milestone-4`).
+
+## Achievements (Milestone 5)
+
+- (none yet)
 
 ## Achievements (Milestone 4)
 
@@ -111,6 +115,8 @@
 
 ## Roadmap Evolution
 
+- **2026-09-27**: Milestone 5 created: UI/UX Overhaul, Phases 100–105. Scope: form, navigation, gallery, workflow list and templates; polish Material 3; phone portrait (landscape must not break). The compatibility badge carried over from Milestone 4 is in Phase 103.
+
 - **2026-09-27**: Milestone 4 completed and archived (`.gsd/milestones/Milestone 4/`, `Milestone 4-SUMMARY.md`). Phases 89–99: 5 must-haves, the template browser, plus model downloads to the server (97, 99) and the empty-list pre-flight fix (98).
 
 - **2026-09-26**: Phase 99 added (model download queue: Download all, Queue-screen section, reorder/remove, retry, notifications; memory-only queue).
@@ -136,7 +142,7 @@
 
 ## Next Steps
 
-1. `/new-milestone` to start Milestone 5. A candidate carried over is the compatibility badge on the workflow list (nice-to-have from Milestone 4).
-2. Optional checks, not yet done on the device:
+1. `/plan 100`: UI audit (on-device screenshots, light and dark) and shared components.
+2. Optional checks carried over, not yet done on the device:
    - Milestone 4: queue controls hidden on a helper v1 server; "Browse Templates" on an empty workflow list; a Gemini, Grok or SaveVideo run.
    - Milestone 3: Phase 82 prompt-first ordering on a real workflow; Phase 80 themed icon under Android 13+ Material You.
