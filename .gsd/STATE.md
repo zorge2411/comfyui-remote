@@ -2,10 +2,9 @@
 
 ## Current Position
 
-- **Milestone**: 4 (Workflow compatibility): all 5 must-haves delivered in code
-- **Phase**: 98 and 99 ✅ done and device-verified (2026-09-27). No planned phases left in the roadmap.
-- **Status**: ✅ Every Milestone 4 phase (89–99) is done. Device checks passed for 90–92 and 97 (2026-09-26), and for 95, 96, 98 and 99 (2026-09-27). Nothing is waiting on a device check.
-- **Note**: local-master versions of Phases 90/91, built in parallel, were superseded by the agent's. See merge `a9c45ec`, with a backup on branch `backup/local-phase-90-91`.
+- **Milestone**: none active. Milestone 4 (Workflow Compatibility) completed 2026-09-27 and archived in `.gsd/milestones/Milestone 4/` (`Milestone 4-SUMMARY.md`, tag `milestone-4`).
+- **Phase**: none. The next phase number is 100.
+- **Status**: ✅ Phases 89–99 done and device-verified. 200 JVM tests and 16 Python tests (`server/comfyui_remote_helper`) green.
 
 ## Achievements (Milestone 4)
 
@@ -112,6 +111,8 @@
 
 ## Roadmap Evolution
 
+- **2026-09-27**: Milestone 4 completed and archived (`.gsd/milestones/Milestone 4/`, `Milestone 4-SUMMARY.md`). Phases 89–99: 5 must-haves, the template browser, plus model downloads to the server (97, 99) and the empty-list pre-flight fix (98).
+
 - **2026-09-26**: Phase 99 added (model download queue: Download all, Queue-screen section, reorder/remove, retry, notifications; memory-only queue).
 
 - **2026-09-26**: Phase 98 added (pre-flight misses missing input files, e.g. `LoadVideo` `gan_input.mp4`; found in the Phase 97 device check).
@@ -135,11 +136,7 @@
 
 ## Next Steps
 
-1. **Build and device checks**: `gradlew.bat testDebugUnitTest`, `assembleDebug`, `installDebug`, then:
-   - Phase 92: two broken nodes (Queue anyway) → full per-node card and Copy; a runtime failure → node and exception; a failed queue item → reason shown; DB upgrade 10 → 11 keeps data.
-   - Phase 91: missing model → pre-flight warning; normal workflow → no dialog; stale banner gone.
-   - Phase 90: a PrimitiveNode template. Phase 95: Gemini/Grok/SaveVideo values. Phase 96: template browser.
-2. **Then**: `/audit-milestone` and `/complete-milestone` for Milestone 4 once the device checks pass.
-3. **Optional device checks carried over from Milestone 3**:
-   - Phase 82: confirm the positive prompt field appears first in a real workflow (unit-tested only).
-   - Phase 80: confirm themed-icon retinting under Android 13+ Material You.
+1. `/new-milestone` to start Milestone 5. A candidate carried over is the compatibility badge on the workflow list (nice-to-have from Milestone 4).
+2. Optional checks, not yet done on the device:
+   - Milestone 4: queue controls hidden on a helper v1 server; "Browse Templates" on an empty workflow list; a Gemini, Grok or SaveVideo run.
+   - Milestone 3: Phase 82 prompt-first ordering on a real workflow; Phase 80 themed icon under Android 13+ Material You.
