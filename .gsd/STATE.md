@@ -3,11 +3,13 @@
 ## Current Position
 
 - **Milestone**: 4 (Workflow compatibility): all 5 must-haves delivered in code
-- **Phase**: 99 (Model Download Queue): ✅ done, device-verified 2026-09-27. Next: Phase 98 (planned, not executed).
+- **Phase**: 98 and 99 ✅ done and device-verified (2026-09-27). No planned phases left in the roadmap.
 - **Status**: ✅ Phase 97 verified on the phone (2026-09-26): Room 11 → 12 in place, download / progress / cancel / Copy link fallback all work against the real server with `comfyui_remote_helper`. ✅ Phases 90, 91 and 92 verified on the phone. Device checks still open for 95 and 96.
 - **Note**: local-master versions of Phases 90/91, built in parallel, were superseded by the agent's. See merge `a9c45ec`, with a backup on branch `backup/local-phase-90-91`.
 
 ## Achievements (Milestone 4)
+
+- [x] Implemented Phase 98 (pre-flight missed missing input files): an empty server file list no longer hides a missing file, and upload inputs get a "pick another file or upload it" hint. Device-verified with the Real-ESRGAN template.
 
 - [x] Implemented Phase 99 (model download queue): extension v2 (ordered queue, move, retry, clear, `remote_helper.queue` event); app-scoped `ModelDownloadRepository`; Download all; a Model downloads section on the Queue screen; progress and finished notifications. 197 JVM tests and 16 Python tests green. See `.gsd/phases/99/`.
 
