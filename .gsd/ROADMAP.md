@@ -136,7 +136,7 @@
 
 ### Phase 99: Model Download Queue
 
-**Status**: ✅ Done (code); device check pending (`.gsd/phases/99/`)
+**Status**: ✅ Done, device-verified 2026-09-27 (`.gsd/phases/99/`)
 **Objective**: Turn Phase 97's per-model downloads into a managed queue that downloads one model at a time. The server extension already runs downloads one at a time, first in first out; this phase adds control and visibility. Scope agreed with the user on 2026-09-26:
 - **Download all missing**: one button on the Missing Models card queues every missing model of the workflow, after a confirm step showing the count and total size (probed per model).
 - **Model downloads on the Queue screen**: a "Model downloads" section on the existing Queue screen, next to prompt jobs. It lists every server download from all workflows (queued, downloading, done, failed or cancelled) with progress, position and Cancel.
@@ -151,7 +151,7 @@
 **Tasks**:
 - [x] 99.1 Extension v2 queue: order, move, retry, clear, `remote_helper.queue` event (wave 1)
 - [x] 99.2 App-scoped `ModelDownloadRepository` (wave 1)
-- [x] 99.3 Download all, Queue-screen section, notifications (wave 2); device check pending
+- [x] 99.3 Download all, Queue-screen section, notifications (wave 2); device check passed
 
 **Verification**:
 - `testDebugUnitTest`, Python unit tests (validation and downloader), device check in 99.3
