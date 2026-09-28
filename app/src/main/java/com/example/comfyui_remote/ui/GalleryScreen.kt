@@ -143,7 +143,7 @@ fun GalleryScreen(
                     actions = {
                         IconButton(onClick = {
                             val itemsToDelete = mediaList.filter { it.id in selectedIds }
-                            viewModel.deleteMedia(itemsToDelete)
+                            viewModel.removeFromGallery(itemsToDelete.map { it.id })
                             selectedIds.clear()
                         }) {
                             Icon(androidx.compose.material.icons.Icons.Default.Delete, contentDescription = "Delete")
@@ -458,7 +458,7 @@ fun GalleryScreen(
             onDismiss = { showFilterDialog = false },
             onSyncWithFilter = { filter ->
                 showFilterDialog = false
-                viewModel.syncGalleryWithFilter(filter)
+                viewModel.setGalleryFilter(filter)
             },
             onSaveAsList = { filter ->
                 showFilterDialog = false

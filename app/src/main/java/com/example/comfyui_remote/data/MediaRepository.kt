@@ -36,6 +36,14 @@ class MediaRepository(private val mediaDao: GeneratedMediaDao) {
         mediaDao.deleteAll()
     }
 
+    suspend fun deleteVisible() = mediaDao.deleteVisible()
+
+    suspend fun hide(ids: List<Long>) = mediaDao.hide(ids)
+
+    suspend fun unhideAll() = mediaDao.unhideAll()
+
+    val hiddenCount: Flow<Int> = mediaDao.hiddenCount()
+
     suspend fun getAllPromptIds(): List<String> {
         android.util.Log.d("MEDIA_REPO", "Fetching all prompt IDs")
         val result = mediaDao.getAllPromptIds()

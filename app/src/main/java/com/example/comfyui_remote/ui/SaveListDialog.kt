@@ -155,7 +155,7 @@ fun SaveListDialog(
                     if (isValidName) {
                         isSaving = true
                         coroutineScope.launch {
-                            viewModel.saveCurrentGalleryList(listName, listType)
+                            viewModel.saveCurrentGalleryList(listName, filter)
                             isSaving = false
                             onSave(listName, listType)
                         }

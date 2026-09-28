@@ -301,7 +301,7 @@ fun MediaDetailScreen(
                             onClick = {
                                 showDeleteConfirm = false
                                 currentMedia?.let { item ->
-                                    viewModel.deleteMedia(listOf(item))
+                                    viewModel.removeFromGallery(listOf(item.id))
                                     handleBack()
                                 }
                             }

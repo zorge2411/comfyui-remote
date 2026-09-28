@@ -45,11 +45,19 @@ class GallerySyncFilterTest {
     }
 
     @Test
-    fun `filter isActive when serverFilter is set returns true`() {
+    fun `serverFilter from old saved lists no longer makes the filter active`() {
         val filter = GallerySyncFilter(
             serverFilter = "192.168.1.100:8188"
         )
-        assertTrue("Filter should be active when serverFilter is set", filter.isActive())
+        assertFalse("serverFilter is ignored since Phase 104", filter.isActive())
+    }
+
+    @Test
+    fun `sort alone is not active but is sorted`() {
+        val filter = GallerySyncFilter(sortOrder = GallerySyncFilter.SortOrder.OLDEST_FIRST)
+        assertFalse(filter.isActive())
+        assertTrue(filter.isSorted())
+        assertFalse(GallerySyncFilter.default().isSorted())
     }
 
     @Test
@@ -132,21 +140,18 @@ class GallerySyncFilterTest {
     }
 
     @Test
-    fun `filter getSummary includes server when set`() {
+    fun `filter getSummary leaves out the unused server and max items`() {
         val filter = GallerySyncFilter(
-            serverFilter = "192.168.1.100:8188"
+            serverFilter = "192.168.1.100:8188",
+            maxItems = 500
         )
-        val summary = filter.getSummary()
-        assertTrue("Summary should include server", summary.contains("Server: 192.168.1.100:8188"))
+        assertEquals("No filters", filter.getSummary())
     }
 
     @Test
-    fun `filter getSummary includes max items when not default`() {
-        val filter = GallerySyncFilter(
-            maxItems = 500
-        )
-        val summary = filter.getSummary()
-        assertTrue("Summary should include max items", summary.contains("Max: 500"))
+    fun `filter getSummary includes a non-default sort`() {
+        val filter = GallerySyncFilter(sortOrder = GallerySyncFilter.SortOrder.NAME_ASC)
+        assertTrue(filter.getSummary().contains("By name"))
     }
 
     @Test

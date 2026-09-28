@@ -20,5 +20,7 @@ data class GeneratedMediaEntity(
     val mediaType: String = "IMAGE", // "IMAGE" or "VIDEO"
     val promptJson: String? = null, // The JSON used to generate this item
     val promptId: String? = null, // ComfyUI Execution ID
-    val serverType: String = "output" // "output" (default) or "input"
+    val serverType: String = "output", // "output" (default) or "input"
+    // Phase 104: removed from the gallery; the row stays so syncs don't add the item again
+    @ColumnInfo(defaultValue = "0") val hidden: Boolean = false
 )
