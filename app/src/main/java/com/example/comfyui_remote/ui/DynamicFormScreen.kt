@@ -1,80 +1,86 @@
 package com.example.comfyui_remote.ui
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.width
-import androidx.compose.ui.Alignment
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.AccountTree
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.async
-import kotlinx.coroutines.launch
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.net.toUri
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import com.example.comfyui_remote.MainViewModel
 import com.example.comfyui_remote.data.WorkflowEntity
+import com.example.comfyui_remote.domain.FormLayout
+import com.example.comfyui_remote.domain.FormValues
 import com.example.comfyui_remote.domain.InputField
+import com.example.comfyui_remote.domain.LabelledField
 import com.example.comfyui_remote.domain.ModelSource
 import com.example.comfyui_remote.domain.PromptValidator
-import com.example.comfyui_remote.domain.displayName
+import com.example.comfyui_remote.domain.key
 import com.example.comfyui_remote.network.ExecutionStatus
+import com.example.comfyui_remote.ui.components.AppCard
+import com.example.comfyui_remote.ui.components.AppTopBar
+import com.example.comfyui_remote.ui.components.ConfirmDialog
+import com.example.comfyui_remote.ui.components.Dimens
 import com.example.comfyui_remote.ui.components.ErrorCard
+import com.example.comfyui_remote.ui.components.SectionHeader
+import com.example.comfyui_remote.ui.components.StatusBanner
+import com.example.comfyui_remote.ui.components.StatusKind
 import com.example.comfyui_remote.ui.components.formatBytes
-import kotlin.random.Random
+import com.example.comfyui_remote.ui.form.FormActionBar
+import com.example.comfyui_remote.ui.form.MainSettings
+import com.example.comfyui_remote.ui.form.NodeSection
+import com.example.comfyui_remote.ui.form.NumberField
+import com.example.comfyui_remote.ui.form.PromptField
+import com.example.comfyui_remote.ui.form.SeedField
+import com.example.comfyui_remote.ui.form.SelectionField
+import com.example.comfyui_remote.ui.form.TextInputField
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 
-@Suppress("DEPRECATION")
+/**
+ * The workflow form (Phase 101): a status area (warnings, progress, latest result), the prompt, main
+ * settings, and every other input in collapsed per-node sections, with Queue and Generate in a fixed bar.
+ */
+@Suppress("DEPRECATION", "UNUSED_PARAMETER")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DynamicFormScreen(
@@ -84,32 +90,44 @@ fun DynamicFormScreen(
     onViewInGallery: (Long) -> Unit,
     onViewQueue: () -> Unit
 ) {
-    // We need to parse inputs once
-    var inputs by remember { mutableStateOf<List<InputField>>(emptyList()) }
-    // Initialize parsed inputs
-    LaunchedEffect(workflow) {
-        inputs = viewModel.parseWorkflowInputs(workflow.jsonContent)
+    val nodeMetadata by viewModel.nodeMetadata.collectAsState()
+    // Field values, keyed by nodeId/fieldName. Re-parsed when the workflow or the server's node list changes,
+    // keeping remembered values (Phase 101.2) and anything edited on this screen.
+    var inputs by remember(workflow.id) { mutableStateOf<List<InputField>>(emptyList()) }
+    LaunchedEffect(workflow.id, nodeMetadata) {
+        inputs = FormValues.overlay(viewModel.parseWorkflowInputs(workflow), inputs)
     }
+    fun onFieldChange(field: InputField) {
+        inputs = inputs.map { if (it.key == field.key) field else it }
+        viewModel.saveFormValues(workflow, inputs)
+    }
+    val promptIds = remember(workflow.jsonContent) { viewModel.promptNodeIds(workflow.jsonContent) }
+    val form = remember(inputs, promptIds) { FormLayout.build(inputs, promptIds.first, promptIds.second) }
+    var expandedGroups by rememberSaveable(workflow.id) { mutableStateOf(listOf<String>()) }
 
-    // Tracks indices of ImageInput fields with an upload in flight, so Generate/Queue
-    // can be blocked until the selected image's server filename is actually available —
-    // otherwise injectValues() silently skips the field and the workflow runs with
-    // whatever image the node already had (default/placeholder), with no error.
-    var pendingImageUploads by remember { mutableStateOf(setOf<Int>()) }
-
+    // Image fields with an upload in flight, by key: Generate/Queue wait for the server file name, or
+    // injectValues() would skip the field and run with the node's old image.
+    var pendingUploads by remember { mutableStateOf(setOf<String>()) }
     var showNodeSheet by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
+    var confirmReset by remember { mutableStateOf(false) }
+    var batchCount by rememberSaveable { mutableStateOf(1) }
 
     val executionStatus by viewModel.executionStatus.collectAsState()
-    val nodeMetadata by viewModel.nodeMetadata.collectAsState()
+    val executionProgress by viewModel.executionProgress.collectAsState()
+    val lastUsedSeeds by viewModel.lastUsedSeeds.collectAsState()
+    val availableModels by viewModel.availableModels.collectAsState()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val clipboard = LocalClipboardManager.current
+
     // Phase 91: pre-flight check before Generate / Queue
-    val preflightScope = androidx.compose.runtime.rememberCoroutineScope()
     var preflightIssues by remember { mutableStateOf<List<PromptValidator.Issue>?>(null) }
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     var checking by remember { mutableStateOf(false) }
     fun withPreflight(action: () -> Unit) {
         if (checking) return
         checking = true
-        preflightScope.launch {
+        scope.launch {
             val issues = viewModel.preflight(workflow, inputs)
             checking = false
             if (issues.isNullOrEmpty()) {
@@ -120,6 +138,8 @@ fun DynamicFormScreen(
             }
         }
     }
+    fun generate() = withPreflight { viewModel.executeWorkflow(workflow, inputs, batchCount) }
+
     // Missing nodes against the connected server; the list stored at import may be stale
     val liveMissingNodes by androidx.compose.runtime.produceState<List<String>?>(null, workflow, nodeMetadata) {
         value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { viewModel.missingNodeTypes(workflow) }
@@ -136,55 +156,118 @@ fun DynamicFormScreen(
     LaunchedEffect(workflow.id) { viewModel.refreshModelHelper() }
     val errorMessage by viewModel.errorMessage.collectAsState()
     val serverWarning by viewModel.serverWarning.collectAsState()
+    val image by viewModel.generatedImage.collectAsState()
+    val generatedMediaId by viewModel.generatedMediaId.collectAsState()
 
-    Scaffold { paddingValues ->
-        Column(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState())
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                }
-                Text(
-                    text = workflow.name,
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.weight(1f)
+    val running = executionStatus == ExecutionStatus.EXECUTING || executionStatus == ExecutionStatus.QUEUED
+    val idle = executionStatus == ExecutionStatus.IDLE || executionStatus == ExecutionStatus.FINISHED ||
+        executionStatus == ExecutionStatus.ERROR
+
+    val context = LocalContext.current
+    val isSecure by viewModel.isSecure.collectAsState()
+    val currentHost by viewModel.host.collectAsState()
+    val currentPort by viewModel.port.collectAsState()
+
+    val renderField: @Composable (LabelledField, Modifier) -> Unit = { lf, modifier ->
+        when (val f = lf.field) {
+            is InputField.StringInput ->
+                if (lf.key == form.prompt?.key || lf.key == form.negative?.key) PromptField(lf, ::onFieldChange, modifier)
+                else TextInputField(lf, ::onFieldChange, modifier)
+            is InputField.IntInput, is InputField.FloatInput -> NumberField(lf, ::onFieldChange, modifier)
+            is InputField.SeedInput -> SeedField(lf, lastUsedSeeds[lf.key], ::onFieldChange, modifier)
+            is InputField.SelectionInput ->
+                SelectionField(lf, f.options, f.value, { onFieldChange(f.copy(value = it)) }, modifier)
+            is InputField.ModelInput ->
+                SelectionField(lf, availableModels, f.value, { onFieldChange(f.copy(value = it)) }, modifier)
+            is InputField.ImageInput -> {
+                val serverUrl = if (f.localUri == null && f.value != null) {
+                    "${if (isSecure) "https" else "http"}://$currentHost:$currentPort/view?filename=${f.value}&type=input"
+                } else null
+                com.example.comfyui_remote.ui.components.ImageSelector(
+                    label = lf.label,
+                    currentUri = f.localUri,
+                    serverUrl = serverUrl,
+                    onImageSelected = { uri ->
+                        val key = lf.key
+                        val previous = f
+                        // Optimistic update, then upload; Generate/Queue wait for it
+                        inputs = inputs.map { if (it.key == key) f.copy(localUri = uri.toString(), value = null) else it }
+                        pendingUploads = pendingUploads + key
+                        scope.launch {
+                            try {
+                                val response = viewModel.uploadImage(uri, context.contentResolver)
+                                inputs = inputs.map { current ->
+                                    if (current.key != key || current !is InputField.ImageInput) current
+                                    else if (response != null) current.copy(value = response.name)
+                                    else previous
+                                }
+                                if (response == null) viewModel.reportError("Image upload failed — please try again")
+                                else viewModel.saveFormValues(workflow, inputs)
+                            } finally {
+                                pendingUploads = pendingUploads - key
+                            }
+                        }
+                    }
                 )
-                IconButton(onClick = { showNodeSheet = true }) {
-                    Icon(Icons.Default.Info, contentDescription = "Workflow Architecture")
-                }
             }
-            
-            // Missing Nodes Warning
-            if (!missingNodesText.isNullOrBlank()) {
-                androidx.compose.material3.Card(
-                    colors = androidx.compose.material3.CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    ),
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            "⚠️ Missing Nodes on Server",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                        Text(
-                            missingNodesText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            AppTopBar(workflow.name, onBack = onBack) {
+                IconButton(onClick = { showNodeSheet = true }) {
+                    Icon(Icons.Outlined.AccountTree, contentDescription = "Workflow nodes")
+                }
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = "More options")
+                }
+                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Reset to workflow defaults") },
+                        onClick = { showMenu = false; confirmReset = true }
+                    )
+                    if (workflow.id == 0L) {
+                        DropdownMenuItem(
+                            text = { Text("Save as template") },
+                            onClick = {
+                                showMenu = false
+                                viewModel.importWorkflow(workflow.name, workflow.jsonContent, com.example.comfyui_remote.domain.WorkflowSource.LOCAL_IMPORT) {}
+                            }
                         )
                     }
                 }
             }
-
+        },
+        bottomBar = {
+            FormActionBar(
+                batchCount = batchCount,
+                onBatchChange = { batchCount = it.coerceIn(1, 10) },
+                enabled = idle && pendingUploads.isEmpty() && !checking,
+                busyLabel = when {
+                    running -> "Running…"
+                    pendingUploads.isNotEmpty() -> "Uploading…"
+                    checking -> "Checking…"
+                    else -> null
+                },
+                onQueue = { withPreflight { viewModel.addToQueue(workflow, inputs, batchCount) } },
+                onGenerate = { generate() }
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(Dimens.screenPadding),
+            verticalArrangement = Arrangement.spacedBy(Dimens.m)
+        ) {
+            // ---- Status area ----
+            if (!missingNodesText.isNullOrBlank()) {
+                StatusBanner(StatusKind.Error, "Missing nodes on server", message = missingNodesText)
+            }
             if (missingModels.isNotEmpty()) {
                 MissingModelsCard(
                     models = missingModels,
@@ -197,523 +280,155 @@ fun DynamicFormScreen(
                     onCancel = { viewModel.cancelModelDownload(it) }
                 )
             }
-
-            // Detailed Error Message
             if (executionStatus == ExecutionStatus.ERROR && errorMessage != null) {
-                val clipboard = LocalClipboardManager.current
                 ErrorCard(
-                    title = "Execution Error",
+                    title = "Execution error",
                     message = errorMessage!!,
                     onDismiss = { viewModel.clearErrorMessage() },
+                    onRetry = { viewModel.clearErrorMessage(); generate() },
                     onCopy = { clipboard.setText(AnnotatedString(errorMessage!!)) }
                 )
             }
-
             // The server accepted the prompt but skipped outputs that depend on failing nodes (Phase 92)
             serverWarning?.let { warning ->
-                androidx.compose.material3.Card(
-                    colors = androidx.compose.material3.CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                    ),
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                StatusBanner(
+                    StatusKind.Info,
+                    "Some outputs were skipped",
+                    actions = { TextButton(onClick = { viewModel.clearServerWarning() }) { Text("Dismiss") } }
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                "⚠️ Some outputs were skipped",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                modifier = Modifier.weight(1f)
-                            )
-                            IconButton(onClick = { viewModel.clearServerWarning() }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Dismiss",
-                                    tint = MaterialTheme.colorScheme.onTertiaryContainer)
-                            }
-                        }
-                        Text(
-                            warning,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer,
-                            modifier = Modifier
-                                .heightIn(max = 240.dp)
-                                .verticalScroll(rememberScrollState())
-                        )
-                    }
+                    Text(
+                        warning,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.heightIn(max = 240.dp).verticalScroll(rememberScrollState())
+                    )
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            inputs.forEachIndexed { index, inputField ->
-                when (inputField) {
-                    is InputField.StringInput -> {
-                        val clipboardManager = LocalClipboardManager.current
-                        OutlinedTextField(
-                            value = inputField.value,
-                            onValueChange = { newValue ->
-                                inputs = inputs.toMutableList().also {
-                                    it[index] = inputField.copy(value = newValue)
-                                }
-                            },
-                            label = { Text("${inputField.nodeTitle} (${inputField.displayName})") },
-                            minLines = 3,
-                            // Long prompts scroll inside the field instead of stretching the whole form.
-                            maxLines = 8,
-                            trailingIcon = if (inputField.value.isNotEmpty()) {
-                                {
-                                    Row {
-                                        IconButton(onClick = {
-                                            clipboardManager.setText(AnnotatedString(inputField.value))
-                                        }) {
-                                            Icon(Icons.Default.Info, contentDescription = "Copy text")
-                                        }
-                                        IconButton(onClick = {
-                                            inputs = inputs.toMutableList().also {
-                                                it[index] = inputField.copy(value = "")
-                                            }
-                                        }) {
-                                            Icon(Icons.Default.Clear, contentDescription = "Clear text")
-                                        }
-                                    }
-                                }
-                            } else null,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                    is InputField.IntInput -> {
-                         OutlinedTextField(
-                            value = inputField.value.toString(),
-                            onValueChange = { newValue ->
-                                val intVal = newValue.toIntOrNull() ?: 0
-                                inputs = inputs.toMutableList().also {
-                                    it[index] = inputField.copy(value = intVal)
-                                }
-                            },
-                            label = { Text("${inputField.nodeTitle} (${inputField.displayName})") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                    is InputField.FloatInput -> {
-                        OutlinedTextField(
-                            value = inputField.value.toString(),
-                            onValueChange = { newValue ->
-                                val floatVal = newValue.toFloatOrNull() ?: 0f
-                                inputs = inputs.toMutableList().also {
-                                    it[index] = inputField.copy(value = floatVal)
-                                }
-                            },
-                            label = { Text("${inputField.nodeTitle} (${inputField.displayName})") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                    is InputField.SeedInput -> {
-                         OutlinedTextField(
-                            value = inputField.value.toString(),
-                            onValueChange = { newValue ->
-                                val longVal = newValue.toLongOrNull() ?: 0L
-                                inputs = inputs.toMutableList().also {
-                                    it[index] = inputField.copy(value = longVal)
-                                }
-                            },
-                            label = { Text("${inputField.nodeTitle} (Seed)") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                            modifier = Modifier.fillMaxWidth(),
-                            trailingIcon = {
-                                IconButton(onClick = {
-                                    val newSeed = Random.nextLong(1, Long.MAX_VALUE)
-                                    inputs = inputs.toMutableList().also {
-                                        it[index] = inputField.copy(value = newSeed)
-                                    }
-                                }) {
-                                    Icon(Icons.Default.Refresh, contentDescription = "Randomize Seed")
-                                }
-                            }
-                        )
-                    }
-                    is InputField.SelectionInput -> {
-                        var expanded by remember { mutableStateOf(false) }
-
-                        ExposedDropdownMenuBox(
-                            expanded = expanded,
-                            onExpandedChange = { expanded = !expanded },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            OutlinedTextField(
-                                value = inputField.value,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("${inputField.nodeTitle} (${inputField.displayName})") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                                modifier = Modifier.menuAnchor().fillMaxWidth()
-                            )
-                            ExposedDropdownMenu(
-                                expanded = expanded,
-                                onDismissRequest = { expanded = false }
-                            ) {
-                                inputField.options.forEach { option ->
-                                    DropdownMenuItem(
-                                        text = { Text(text = option) },
-                                        onClick = {
-                                            inputs = inputs.toMutableList().also {
-                                                it[index] = inputField.copy(value = option)
-                                            }
-                                            expanded = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    is InputField.ModelInput -> {
-                        val availableModels by viewModel.availableModels.collectAsState()
-                        var expanded by remember { mutableStateOf(false) }
-
-                        ExposedDropdownMenuBox(
-                            expanded = expanded,
-                            onExpandedChange = { expanded = !expanded },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            OutlinedTextField(
-                                value = inputField.value,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("${inputField.nodeTitle} (Model)") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                                modifier = Modifier.menuAnchor().fillMaxWidth()
-                            )
-                            ExposedDropdownMenu(
-                                expanded = expanded,
-                                onDismissRequest = { expanded = false }
-                            ) {
-                                availableModels.forEach { modelName ->
-                                    DropdownMenuItem(
-                                        text = { Text(text = modelName) },
-                                        onClick = {
-                                            inputs = inputs.toMutableList().also {
-                                                it[index] = inputField.copy(value = modelName)
-                                            }
-                                            expanded = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    is InputField.ImageInput -> {
-                        val context = LocalContext.current
-                        val scope = androidx.compose.runtime.rememberCoroutineScope()
-                        val isSecure by viewModel.isSecure.collectAsState()
-                        val currentHost by viewModel.host.collectAsState()
-                        val currentPort by viewModel.port.collectAsState()
-
-                        // Build server URL if localUri is null but value exists
-                        val serverUrl = if (inputField.localUri == null && inputField.value != null) {
-                            val protocol = if (isSecure) "https" else "http"
-                            "$protocol://$currentHost:$currentPort/view?filename=${inputField.value}&type=input"
-                        } else {
-                            null
-                        }
-
-                        com.example.comfyui_remote.ui.components.ImageSelector(
-                            label = "${inputField.nodeTitle} (${inputField.displayName})",
-                            currentUri = inputField.localUri,
-                            serverUrl = serverUrl,
-                            onImageSelected = { uri ->
-                                val previousLocalUri = inputField.localUri
-                                val previousValue = inputField.value
-
-                                // 1. Optimistic Update
-                                inputs = inputs.toMutableList().also {
-                                    it[index] = inputField.copy(localUri = uri.toString(), value = null)
-                                }
-
-                                // 2. Trigger Upload — track in-flight so Generate/Queue stay disabled
-                                pendingImageUploads = pendingImageUploads + index
-                                scope.launch {
-                                    try {
-                                        val uploadResponse = viewModel.uploadImage(uri, context.contentResolver)
-                                        if (uploadResponse != null) {
-                                            // 3. Update with Server Filename
-                                            inputs = inputs.toMutableList().also { list ->
-                                                // Re-fetch item to be safe, though index should be stable
-                                                val current = list[index] as? InputField.ImageInput
-                                                if (current != null) {
-                                                    list[index] = current.copy(value = uploadResponse.name)
-                                                }
-                                            }
-                                        } else {
-                                            // Upload failed — revert the optimistic update and surface the error
-                                            inputs = inputs.toMutableList().also { list ->
-                                                val current = list[index] as? InputField.ImageInput
-                                                if (current != null) {
-                                                    list[index] = current.copy(localUri = previousLocalUri, value = previousValue)
-                                                }
-                                            }
-                                            viewModel.reportError("Image upload failed — please try again")
-                                        }
-                                    } finally {
-                                        pendingImageUploads = pendingImageUploads - index
-                                    }
-                                }
-                            }
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            val executionProgress by viewModel.executionProgress.collectAsState()
-            
-            if (executionStatus == ExecutionStatus.EXECUTING || executionStatus == ExecutionStatus.QUEUED) {
-                Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+            if (running) {
+                AppCard {
                     val hasOverall = executionProgress.overallProgress > 0f
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = if (executionStatus == ExecutionStatus.QUEUED) "Queued..."
-                                   else "Executing: ${executionProgress.currentNodeTitle ?: "Node #${executionProgress.currentNodeId ?: "?"}"}" +
-                                        (if (executionProgress.maxSteps > 0) " (${executionProgress.currentStep}/${executionProgress.maxSteps})" else ""),
+                            text = if (executionStatus == ExecutionStatus.QUEUED) "Queued…"
+                            else "Running: ${executionProgress.currentNodeTitle ?: "node #${executionProgress.currentNodeId ?: "?"}"}" +
+                                (if (executionProgress.maxSteps > 0) " (${executionProgress.currentStep}/${executionProgress.maxSteps})" else ""),
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.Medium,
                             modifier = Modifier.weight(1f)
                         )
                         if (hasOverall) {
-                            Text(
-                                text = "${(executionProgress.overallProgress * 100).toInt()}%",
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                            Text("${(executionProgress.overallProgress * 100).toInt()}%", style = MaterialTheme.typography.bodySmall)
                         }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(Modifier.height(Dimens.s))
                     if (hasOverall) {
-                        LinearProgressIndicator(
-                            progress = { executionProgress.overallProgress },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                        LinearProgressIndicator(progress = { executionProgress.overallProgress }, modifier = Modifier.fillMaxWidth())
                     } else {
-                        LinearProgressIndicator(
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     }
                 }
             }
-
-                // Batch Generation Selector
-                var batchCount by remember { mutableStateOf(1) }
-                val currentBatchCount by remember { mutableStateOf(1) }
-                
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
-                ) {
-                    Text(
-                        text = "Batch Count:",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
-                    
-                    androidx.compose.material3.FilledIconButton(
-                        onClick = { if (batchCount > 1) batchCount-- },
-                        enabled = batchCount > 1,
-                        modifier = Modifier.size(36.dp),
-                        colors = androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    ) {
-                        Icon(Icons.Default.Remove, contentDescription = "Decrease Batch")
-                    }
-                    
-                    Text(
-                        text = "$batchCount",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                    
-                    androidx.compose.material3.FilledIconButton(
-                        onClick = { if (batchCount < 10) batchCount++ },
-                        enabled = batchCount < 10,
-                        modifier = Modifier.size(36.dp),
-                        colors = androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Increase Batch")
-                    }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    preflightIssues?.let { issues ->
-                        PreflightDialog(
-                            issues = issues,
-                            missingModelCount = missingModels.size,
-                            onQueueAnyway = {
-                                val action = pendingAction
-                                preflightIssues = null
-                                pendingAction = null
-                                action?.invoke()
-                            },
-                            onCancel = {
-                                preflightIssues = null
-                                pendingAction = null
-                            }
-                        )
-                    }
-
-                    // Add to Queue (Secondary)
-                    androidx.compose.material3.OutlinedButton(
-                        onClick = {
-                            withPreflight { viewModel.addToQueue(workflow, inputs, batchCount) }
-                        },
-                        modifier = Modifier.weight(1f),
-                        enabled = (executionStatus == ExecutionStatus.IDLE || executionStatus == ExecutionStatus.FINISHED) && pendingImageUploads.isEmpty() && !checking
-                    ) {
-                         Icon(Icons.Default.Add, contentDescription = null)
-                         Spacer(Modifier.width(8.dp))
-                         Text("Queue")
-                    }
-
-                    // Generate (Primary)
-                    Button(
-                        onClick = {
-                            withPreflight { viewModel.executeWorkflow(workflow, inputs, batchCount) }
-                        },
-                        modifier = Modifier.weight(1f),
-                        enabled = (executionStatus == ExecutionStatus.IDLE || executionStatus == ExecutionStatus.FINISHED) && pendingImageUploads.isEmpty() && !checking
-                    ) {
-                        if (executionStatus == ExecutionStatus.EXECUTING || executionStatus == ExecutionStatus.QUEUED) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.height(24.dp).padding(end = 8.dp),
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                            Text("Running...")
-                        } else if (pendingImageUploads.isNotEmpty()) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.height(24.dp).padding(end = 8.dp),
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                            Text("Uploading image...")
-                        } else {
-                            Text("Generate")
-                        }
-                    }
-                }
-                
-                // View Queue Link
-                androidx.compose.material3.TextButton(
-                    onClick = onViewQueue,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("View Queue Manager")
-                }
-
-            // Save as Template Button (only show if it's a temporary/history workflow)
-            if (workflow.id == 0L) {
-                Spacer(modifier = Modifier.height(8.dp))
-                androidx.compose.material3.OutlinedButton(
-                    onClick = {
-                        // We need the injected JSON or just the current state?
-                        // Actually, saving the template means saving the jsonContent.
-                        // But maybe we want to save with the current values?
-                        // For now, save the base jsonContent. 
-                        viewModel.importWorkflow(workflow.name, workflow.jsonContent, com.example.comfyui_remote.domain.WorkflowSource.LOCAL_IMPORT) {
-                            // No navigation needed when saving as template from here
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Save as Template")
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            val image by viewModel.generatedImage.collectAsState()
-            val generatedMediaId by viewModel.generatedMediaId.collectAsState()
-            
             if (image != null) {
-                // Ensure we are in an item block for Composable content if needed, 
-                // but observing strictly, we are replacing an existing block. 
-                // We'll output the content assuming the context allows it (or adding item {} if appropriate, but avoiding nesting risks).
-                // Given the clutter, let's just output the content directly and fix the logic.
-                
-                Text("Result:", style = MaterialTheme.typography.titleMedium)
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Box(contentAlignment = Alignment.BottomEnd, modifier = Modifier.clickable(enabled = generatedMediaId != null) {
-                    generatedMediaId?.let { onViewInGallery(it) }
-                }) {
+                AppCard(onClick = generatedMediaId?.let { id -> { onViewInGallery(id) } }) {
+                    Text("Latest result", style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.height(Dimens.s))
                     coil.compose.AsyncImage(
                         model = image,
-                        contentDescription = "Generated Image",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(300.dp)
+                        contentDescription = "Latest result",
+                        modifier = Modifier.fillMaxWidth().height(200.dp)
                     )
-                    
                     if (generatedMediaId != null) {
-                         androidx.compose.material3.Surface(
-                             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-                             shape = MaterialTheme.shapes.small,
-                             modifier = Modifier.padding(8.dp)
-                         ) {
-                             Row(
-                                 verticalAlignment = Alignment.CenterVertically,
-                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                             ) {
-                                 Icon(
-                                     Icons.Default.Search, 
-                                     contentDescription = null,
-                                     modifier = Modifier.size(16.dp)
-                                 )
-                                 Spacer(modifier = Modifier.width(4.dp))
-                                 Text("Open in Gallery", style = MaterialTheme.typography.labelSmall)
-                             }
-                         }
+                        TextButton(
+                            onClick = { generatedMediaId?.let { onViewInGallery(it) } },
+                            modifier = Modifier.align(Alignment.End)
+                        ) { Text("Open in gallery") }
                     }
                 }
             }
+
+            // ---- Prompt ----
+            form.prompt?.let { renderField(it, Modifier) }
+            form.negative?.let { renderField(it, Modifier) }
+
+            // ---- Main settings ----
+            if (form.main.isNotEmpty()) {
+                SectionHeader("Main settings")
+                MainSettings(form.main) { lf, modifier -> renderField(lf, modifier) }
+            }
+
+            // ---- Everything else, per node ----
+            if (form.groups.isNotEmpty()) {
+                SectionHeader(if (form.prompt == null && form.main.isEmpty()) "Inputs" else "Other inputs")
+                form.groups.forEach { group ->
+                    NodeSection(
+                        group = group,
+                        expanded = group.nodeId in expandedGroups,
+                        onToggle = {
+                            expandedGroups = if (group.nodeId in expandedGroups) expandedGroups - group.nodeId
+                            else expandedGroups + group.nodeId
+                        }
+                    ) { lf -> renderField(lf, Modifier) }
+                }
+            }
+            Spacer(Modifier.height(Dimens.l))
         }
     }
 
+    preflightIssues?.let { issues ->
+        PreflightDialog(
+            issues = issues,
+            missingModelCount = missingModels.size,
+            onQueueAnyway = {
+                val action = pendingAction
+                preflightIssues = null
+                pendingAction = null
+                action?.invoke()
+            },
+            onCancel = {
+                preflightIssues = null
+                pendingAction = null
+            }
+        )
+    }
+
+    if (confirmReset) {
+        ConfirmDialog(
+            title = "Reset to workflow defaults?",
+            text = "Your edited values for this workflow will be replaced by the values saved in the workflow.",
+            confirmLabel = "Reset",
+            destructive = true,
+            onConfirm = {
+                confirmReset = false
+                scope.launch { inputs = viewModel.resetFormValues(workflow) }
+            },
+            onDismiss = { confirmReset = false }
+        )
+    }
+
     if (showNodeSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showNodeSheet = false }
-        ) {
+        ModalBottomSheet(onDismissRequest = { showNodeSheet = false }) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(Dimens.l)
                     .navigationBarsPadding()
             ) {
-                Text("Workflow Architecture", style = MaterialTheme.typography.headlineSmall)
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                val allNodes = viewModel.parseAllNodes(workflow.jsonContent)
+                Text("Workflow nodes", style = MaterialTheme.typography.titleLarge)
+                Spacer(modifier = Modifier.height(Dimens.l))
+                val allNodes = remember(workflow.jsonContent) { viewModel.parseAllNodes(workflow.jsonContent) }
                 LazyColumn {
                     items(allNodes) { node ->
-                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                        Column(modifier = Modifier.padding(vertical = Dimens.xs)) {
                             Row {
                                 Text("#${node.id}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(Dimens.s))
                                 Text(node.title, fontWeight = FontWeight.SemiBold)
                             }
                             Text(
-                                text = "Class: ${node.classType}",
+                                text = node.classType,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.secondary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            HorizontalDivider(modifier = Modifier.padding(top = 8.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                            HorizontalDivider(modifier = Modifier.padding(top = Dimens.s), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
                         }
                     }
                 }
@@ -799,7 +514,7 @@ private fun MissingModelsCard(
     var confirming by remember { mutableStateOf<ModelSource?>(null) }
     var probing by remember { mutableStateOf(false) }
     var probe by remember { mutableStateOf<Pair<Long?, Boolean>?>(null) }
-    val onCard = MaterialTheme.colorScheme.onErrorContainer
+    val onCard = MaterialTheme.colorScheme.onTertiaryContainer
     // Phase 99: Download all; probes of every model to download, null entries while probing
     var confirmingAll by remember { mutableStateOf<List<ModelSource>?>(null) }
     var allProbes by remember { mutableStateOf<List<Pair<Long?, Boolean>?>?>(null) }
@@ -819,34 +534,26 @@ private fun MissingModelsCard(
         ) notificationPermission.launch(permission)
     }
 
-    androidx.compose.material3.Card(
-        colors = androidx.compose.material3.CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer
-        ),
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "⚠️ Missing Models on Server",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = onCard,
-                    modifier = Modifier.weight(1f)
-                )
-                if (helperAvailable == true && downloadable.size >= 2) {
-                    androidx.compose.material3.TextButton(onClick = {
-                        confirmingAll = downloadable
-                        allProbes = null
-                        scope.launch {
-                            allProbes = kotlinx.coroutines.coroutineScope {
-                                downloadable
-                                    .map { source -> async { onProbe(source) } }
-                                    .map { it.await() }
-                            }
+    StatusBanner(
+        StatusKind.Warning,
+        "Missing models on server",
+        actions = {
+            if (helperAvailable == true && downloadable.size >= 2) {
+                TextButton(onClick = {
+                    confirmingAll = downloadable
+                    allProbes = null
+                    scope.launch {
+                        allProbes = kotlinx.coroutines.coroutineScope {
+                            downloadable
+                                .map { source -> async { onProbe(source) } }
+                                .map { it.await() }
                         }
-                    }) { Text("Download all (${downloadable.size})") }
-                }
+                    }
+                }) { Text("Download all (${downloadable.size})") }
             }
+        }
+    ) {
+        Column {
             models.forEach { model ->
                 val download = downloads["${model.directory}/${model.name}"]
                 Spacer(Modifier.height(8.dp))
