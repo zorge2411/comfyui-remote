@@ -449,6 +449,42 @@ class MainViewModel(
         return workflowParser.parse(json, _nodeMetadata.value)
     }
 
+    /** The workflow's inputs with its remembered values applied (Phase 101). */
+    fun parseWorkflowInputs(workflow: WorkflowEntity): List<com.example.comfyui_remote.domain.InputField> =
+        com.example.comfyui_remote.domain.FormValues.overlay(
+            parseWorkflowInputs(workflow.jsonContent),
+            com.example.comfyui_remote.domain.FormValues.decode(workflow.savedInputs)
+        )
+
+    /** Positive and negative prompt source nodes, for the form layout (Phase 101). */
+    fun promptNodeIds(json: String): Pair<String?, String?> =
+        workflowParser.findPositivePromptNodeId(json) to workflowParser.findNegativePromptNodeId(json)
+
+    private var saveFormJob: kotlinx.coroutines.Job? = null
+
+    /** Remembers the form's values for this workflow, at most every 500 ms (each save rewrites the row). */
+    fun saveFormValues(workflow: WorkflowEntity, inputs: List<com.example.comfyui_remote.domain.InputField>) {
+        if (workflow.id == 0L) return // history previews aren't stored workflows
+        saveFormJob?.cancel()
+        saveFormJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            kotlinx.coroutines.delay(500)
+            val current = repository.allWorkflows.first().firstOrNull { it.id == workflow.id } ?: return@launch
+            repository.insert(current.copy(savedInputs = com.example.comfyui_remote.domain.FormValues.encode(inputs)))
+        }
+    }
+
+    /** Forgets the remembered values and returns the workflow's own inputs. */
+    suspend fun resetFormValues(workflow: WorkflowEntity): List<com.example.comfyui_remote.domain.InputField> {
+        saveFormJob?.cancel()
+        if (workflow.id != 0L) {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                val current = repository.allWorkflows.first().firstOrNull { it.id == workflow.id }
+                if (current != null) repository.insert(current.copy(savedInputs = null))
+            }
+        }
+        return parseWorkflowInputs(workflow.jsonContent)
+    }
+
     fun parseAllNodes(json: String): List<com.example.comfyui_remote.domain.NodeInfo> {
         return workflowParser.parseAllNodes(json)
     }
