@@ -47,3 +47,19 @@ Severity: **B** breaks (can't be used, or can't be read), **I** inconsistent, **
 5. Non-mirrored back arrows.
 
 Everything else is in the phase shown above.
+
+## After Phase 100 (2026-09-28, build `65a0b8e`, same device)
+
+| # | Before | After | Status |
+|---|---|---|---|
+| A1 | Status-bar icons wrong in both themes | Light theme: dark icons; dark theme: light icons. Both readable (Connection light, Settings dark) | ✅ fixed |
+| A2 | +37 dp above every top bar (title centre at 316 px) | Title centre at 206 px on Connection, Workflows, Queue, Settings and the form | ✅ fixed |
+| A3 | Landscape: Connect unreachable, switch over the host field; Settings "Change Folder" unreachable | Connection scrolls to "Go to workflows" and "Disconnect"; Settings scrolls to "Change Folder"; nothing overlaps | ✅ fixed for Connection and Settings |
+| – | Connection: `Color.Green` dot, two equal filled buttons, headline instead of a top bar | `AppTopBar`, `ConnectionStatus` chip (primary CloudDone), filled "Go to workflows" plus outlined "Disconnect" | ✅ reference screen |
+| – | Settings: no top bar or back, doesn't scroll | `AppTopBar` with back (returns to History), scrolls, `AppCard` sections | ✅ reference screen |
+| – | Non-mirrored back arrows (4 screens) | AutoMirrored | ✅ |
+
+Still open, assigned to later phases:
+- A3 cramped landscape elsewhere: about 80 dp of tab bar, and the Workflows FAB covering the first card (102/103).
+- A4 tab labels, A5 tab state (102); A6 emoji (101/103/105).
+- The ErrorCard Retry fix is verified in code (it's now a `TextButton`) but wasn't triggered on the device: no failing request was at hand.

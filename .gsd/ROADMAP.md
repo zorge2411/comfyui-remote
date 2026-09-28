@@ -18,7 +18,7 @@
 - [ ] Clear navigation: a tab bar with defined roles for Queue, History and Gallery, and connection state visible without a dedicated screen (Phase 102)
 - [ ] Workflow list cards show what a workflow is and whether it will run: a compatibility badge (carried over from Milestone 4) and the last result (Phase 103)
 - [ ] Gallery and media viewer follow the same conventions (Phase 104)
-- [ ] No screen breaks in landscape; dark mode and touch targets checked on the device (Phases 100, 105)
+- [ ] No screen breaks in landscape; dark mode and touch targets checked on the device (Phases 100, 105). Connection and Settings are fixed; status-bar contrast and insets are fixed app-wide
 
 ## Nice-to-Haves
 
@@ -30,16 +30,16 @@
 
 ### Phase 100: UI Audit and Shared Components
 
-**Status**: 📋 Planned (`.gsd/phases/100/`: 3 plans)
+**Status**: ✅ Done, device-verified 2026-09-28 (`.gsd/phases/100/`: `100-AUDIT.md`, `100-UI-SPEC.md`)
 **Objective**: Build the baseline the other phases rely on.
 - Screenshot every screen and state on the phone (light and dark) and list the inconsistencies: top bars, buttons, dialogs, cards, spacing, empty, loading and error states.
 - Define the conventions in a short UI spec.
 - Build shared composables in `ui/components/`: top bar, section header, card, confirm dialog, empty, loading and error states, spacing tokens. Only the Phase 99 `SectionHeader` and `Format.kt` exist today.
 - Fix landscape hiding the Connect button.
 **Plans**:
-- [ ] 100.1 Device audit and UI spec; the user approves the spec (wave 1)
-- [ ] 100.2 Shared components and theme cleanup (wave 2)
-- [ ] 100.3 Edge-to-edge insets, Connection and Settings as reference screens, device check (wave 3)
+- [x] 100.1 Device audit and UI spec; the user approves the spec (wave 1)
+- [x] 100.2 Shared components and theme cleanup (wave 2)
+- [x] 100.3 Edge-to-edge insets, Connection and Settings as reference screens, device check (wave 3)
 **Depends on**: none
 
 ### Phase 101: Workflow Form Declutter

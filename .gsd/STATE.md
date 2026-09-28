@@ -3,12 +3,16 @@
 ## Current Position
 
 - **Milestone**: 5, UI/UX Overhaul (created 2026-09-27). Phases 100–105.
-- **Phase**: 100 (UI Audit and Shared Components): planning complete, ready for `/execute 100`. 3 plans in waves 1–3; 100.1 ends with the user approving the UI spec.
+- **Phase**: 100 ✅ done (2026-09-28). Next: Phase 101 (Workflow Form Declutter). Phases 101–104 can be planned independently; all build on `100-UI-SPEC.md`.
 - **Status**: Milestone planned. Milestone 4 is archived in `.gsd/milestones/Milestone 4/` (tag `milestone-4`).
 
 ## Achievements (Milestone 5)
 
-- (none yet)
+- [x] Phase 100 (UI audit and shared components):
+  - on-device audit and a UI spec approved by the user;
+  - `ui/components`: Dimens, AppTopBar, SectionHeader, AppCard, StatusBanner, ConfirmDialog, ConnectionStatus;
+  - fixed the inverted status-bar icons, the double top inset (37 dp), and landscape on Connection and Settings;
+  - Connection and Settings rebuilt as reference screens.
 
 ## Achievements (Milestone 4)
 
@@ -142,7 +146,7 @@
 
 ## Next Steps
 
-1. `/execute 100`. The phone must be on wireless adb and unlocked for the audit.
+1. `/plan 101`: workflow form declutter.
 2. Optional checks carried over, not yet done on the device:
    - Milestone 4: queue controls hidden on a helper v1 server; "Browse Templates" on an empty workflow list; a Gemini, Grok or SaveVideo run.
    - Milestone 3: Phase 82 prompt-first ordering on a real workflow; Phase 80 themed icon under Android 13+ Material You.
