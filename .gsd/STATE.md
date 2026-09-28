@@ -3,11 +3,13 @@
 ## Current Position
 
 - **Milestone**: 5, UI/UX Overhaul (created 2026-09-27). Phases 100–105.
-- **Phase**: 101 (Workflow Form Declutter): planning complete, ready for `/execute 101`. 3 plans: 101.1 and 101.2 in wave 1, 101.3 in wave 2.
+- **Phase**: 101 (Workflow Form Declutter) done and device-verified 2026-09-28. Next: 102, 103 or 104 (independent).
 - **Status**: Milestone planned. Milestone 4 is archived in `.gsd/milestones/Milestone 4/` (tag `milestone-4`).
 
 ## Achievements (Milestone 5)
 
+- [x] Fix (2026-09-28, outside a phase): missing models are also detected from the prompt's loader values against `/object_info`, so workflows without embedded download links (server or in-app imports) show them; models without a link get "Add link" (Hugging Face or GitHub, saved with the workflow). 218 JVM tests green; not yet checked on the device.
+- [x] Phase 101 (workflow form declutter): prompt first, Main settings with human labels, other inputs in collapsed node sections; fixed top and bottom bars; status area with progress and the latest result; Random/Fixed seeds (verified in `/history`); form values remembered per workflow with Reset (Room 12 → 13). See `.gsd/phases/101/101-VERIFICATION.md`.
 - [x] Phase 100 (UI audit and shared components):
   - on-device audit and a UI spec approved by the user;
   - `ui/components`: Dimens, AppTopBar, SectionHeader, AppCard, StatusBanner, ConfirmDialog, ConnectionStatus;
@@ -146,7 +148,8 @@
 
 ## Next Steps
 
-1. `/execute 101`. For the device check the phone must be on adb and unlocked; the check runs the small Z-Image-Turbo template twice.
+1. `/plan 102` (navigation), `/plan 103` (workflow list) or `/plan 104` (gallery).
+1a. Device check of the missing-models fix: open `krea-2-turbo-pid` from the server and confirm the banner lists `qwen_image_pid.pth` and `gemma_2_2b_it_elm_bf16.safetensors` with "Add link".
 2. Optional checks carried over, not yet done on the device:
    - Milestone 4: queue controls hidden on a helper v1 server; "Browse Templates" on an empty workflow list; a Gemini, Grok or SaveVideo run.
    - Milestone 3: Phase 82 prompt-first ordering on a real workflow; Phase 80 themed icon under Android 13+ Material You.

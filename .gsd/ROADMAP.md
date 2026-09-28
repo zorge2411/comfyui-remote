@@ -14,7 +14,7 @@
 ## Must-Haves
 
 - [ ] Shared UI building blocks used on every screen: top bar, section header, card, dialog, and empty, loading and error states (Phases 100, 105)
-- [ ] The workflow form shows the prompt and key settings first; everything else is grouped and collapsible; status cards (missing nodes or models, errors, progress) sit in one place (Phase 101)
+- [x] The workflow form shows the prompt and key settings first; everything else is grouped and collapsible; status cards (missing nodes or models, errors, progress) sit in one place (Phase 101)
 - [ ] Clear navigation: a tab bar with defined roles for Queue, History and Gallery, and connection state visible without a dedicated screen (Phase 102)
 - [ ] Workflow list cards show what a workflow is and whether it will run: a compatibility badge (carried over from Milestone 4) and the last result (Phase 103)
 - [ ] Gallery and media viewer follow the same conventions (Phase 104)
@@ -44,7 +44,7 @@
 
 ### Phase 101: Workflow Form Declutter
 
-**Status**: 📋 Planned (`.gsd/phases/101/`: 3 plans)
+**Status**: ✅ Done, device-verified 2026-09-28 (`.gsd/phases/101/`)
 **Objective**: Make `DynamicFormScreen` (about 1,000 lines) quick to use.
 - The positive prompt stays first (Phase 82).
 - Key settings (seed, width and height, steps, cfg, sampler and scheduler, model) go in a main group.
@@ -52,9 +52,9 @@
 - The missing-nodes and missing-models cards, server errors and progress are merged into one status area.
 - The result preview and Generate/Queue actions are easy to reach.
 **Plans**:
-- [ ] 101.1 FormLayout (main settings and groups) and seed policy (Random/Fixed) (wave 1)
-- [ ] 101.2 Remembered form values per workflow, Room 12 → 13 (wave 1)
-- [ ] 101.3 Form UI: fixed top and bottom bars, status area with the result, collapsed node sections; device check (wave 2)
+- [x] 101.1 FormLayout (main settings and groups) and seed policy (Random/Fixed) (wave 1)
+- [x] 101.2 Remembered form values per workflow, Room 12 → 13 (wave 1)
+- [x] 101.3 Form UI: fixed top and bottom bars, status area with the result, collapsed node sections; device check (wave 2)
 **Depends on**: Phase 100
 
 ### Phase 102: Navigation and Structure
