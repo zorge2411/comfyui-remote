@@ -820,23 +820,73 @@ class MainViewModel(
         if (connectionRepository.connectionState.value == WebSocketState.CONNECTED) modelDownloadRepository.refresh()
     }
 
-    /** Models this workflow's stored download links name that the server's model lists don't have. */
-    suspend fun missingModels(workflow: WorkflowEntity): List<com.example.comfyui_remote.domain.ModelSource> {
-        val sources = com.example.comfyui_remote.domain.ModelSources.fromJson(workflow.modelSources)
-        if (sources.isEmpty()) return emptyList()
+    /**
+     * Models this workflow needs that the server doesn't have: those its stored download links name that the
+     * server's model lists lack, plus those the prompt names that /object_info doesn't offer, which may have
+     * no link (url ""). [overrides] holds the form's current values, keyed "nodeId/fieldName".
+     */
+    suspend fun missingModels(
+        workflow: WorkflowEntity,
+        overrides: Map<String, String> = emptyMap()
+    ): List<com.example.comfyui_remote.domain.ModelSource> {
+        val stored = if (workflow.id == 0L) workflow
+        else repository.allWorkflows.first().firstOrNull { it.id == workflow.id } ?: workflow
+        val sources = com.example.comfyui_remote.domain.ModelSources.fromJson(stored.modelSources)
         settingsLoaded.await()
-        val available = HashMap<String, List<String>>()
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val available = HashMap<String, List<String>>()
             for (dir in sources.map { it.directory }.distinct()) {
-                val files = modelListCache[dir] ?: try {
-                    buildApiService().getModels(dir).also { modelListCache[dir] = it }
-                } catch (e: Exception) {
-                    null // unknown folder: its models aren't reported
-                }
-                if (files != null) available[dir] = files
+                modelList(dir)?.let { available[dir] = it } // unknown folder: its models aren't reported
+            }
+            val missing = com.example.comfyui_remote.domain.ModelSources.missing(sources, available).toMutableList()
+            val meta = _nodeMetadata.value ?: return@withContext missing
+            val inPrompt = com.example.comfyui_remote.domain.ModelSources.missingInPrompt(workflow.jsonContent, meta, overrides)
+            var folders: Map<String, List<String>>? = null
+            for (model in inPrompt) {
+                if (missing.any { it.name == model.name }) continue
+                val link = sources.firstOrNull { it.name == model.name }
+                // A linked model the server's folder list has is there: /object_info may just be older
+                if (link != null && available[link.directory]?.any { it == model.name || it.substringAfterLast('/') == model.name } == true) continue
+                val directory = link?.directory ?: model.directory ?: run {
+                    if (folders == null) folders = allModelLists()
+                    com.example.comfyui_remote.domain.ModelSources.guessFolder(model.options, folders!!)
+                } ?: continue // folder unknown: the pre-flight check still reports it
+                missing += com.example.comfyui_remote.domain.ModelSource(model.name, link?.url ?: "", directory)
+            }
+            missing
+        }
+    }
+
+    private suspend fun modelList(dir: String): List<String>? = modelListCache[dir] ?: try {
+        buildApiService().getModels(dir).also { modelListCache[dir] = it }
+    } catch (e: Exception) {
+        null
+    }
+
+    /** Every models folder's file list, for placing inputs whose folder can't be told from their name. */
+    private suspend fun allModelLists(): Map<String, List<String>> {
+        val names = try {
+            buildApiService().getModelFolders()
+        } catch (e: Exception) {
+            return emptyMap()
+        }
+        return names.filter { it != "custom_nodes" && it != "configs" }
+            .mapNotNull { dir -> modelList(dir)?.let { dir to it } }
+            .toMap()
+    }
+
+    /** Saves a download link the user gave for a model with this workflow, so the model can be downloaded. */
+    suspend fun saveModelLink(workflow: WorkflowEntity, source: com.example.comfyui_remote.domain.ModelSource) {
+        if (workflow.id != 0L) {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                val current = repository.allWorkflows.first().firstOrNull { it.id == workflow.id } ?: return@withContext
+                val sources = com.example.comfyui_remote.domain.ModelSources.withSource(
+                    com.example.comfyui_remote.domain.ModelSources.fromJson(current.modelSources), source
+                )
+                repository.insert(current.copy(modelSources = com.example.comfyui_remote.domain.ModelSources.toJson(sources)))
             }
         }
-        return com.example.comfyui_remote.domain.ModelSources.missing(sources, available)
+        _modelsVersion.value++
     }
 
     /** (size in bytes or null, gated) from the server's HEAD request, or null when the probe failed. */

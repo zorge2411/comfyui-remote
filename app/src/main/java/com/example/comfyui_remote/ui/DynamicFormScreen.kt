@@ -147,13 +147,23 @@ fun DynamicFormScreen(
         value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { viewModel.missingNodeTypes(workflow) }
     }
     val missingNodesText = liveMissingNodes?.joinToString(", ") ?: workflow.missingNodes
-    // Phase 97: models named by the workflow's download links that the server doesn't have
+    // Phase 97: models the server doesn't have, from the workflow's download links and from the prompt's
+    // loader values (which follow the form's current model choices)
     val helperAvailable by viewModel.helperAvailable.collectAsState()
     val helperHasToken by viewModel.helperHasToken.collectAsState()
     val modelDownloads by viewModel.modelDownloads.collectAsState()
     val modelsVersion by viewModel.modelsVersion.collectAsState()
-    val missingModels by androidx.compose.runtime.produceState(emptyList<ModelSource>(), workflow, nodeMetadata, modelsVersion) {
-        value = viewModel.missingModels(workflow)
+    val modelChoices = remember(inputs) {
+        inputs.mapNotNull { f ->
+            when (f) {
+                is InputField.ModelInput -> f.key to f.value
+                is InputField.SelectionInput -> f.key to f.value
+                else -> null
+            }
+        }.toMap()
+    }
+    val missingModels by androidx.compose.runtime.produceState(emptyList<ModelSource>(), workflow, nodeMetadata, modelsVersion, modelChoices) {
+        value = viewModel.missingModels(workflow, modelChoices)
     }
     LaunchedEffect(workflow.id) { viewModel.refreshModelHelper() }
     val errorMessage by viewModel.errorMessage.collectAsState()
@@ -277,6 +287,7 @@ fun DynamicFormScreen(
                     helperAvailable = helperAvailable,
                     helperHasToken = helperHasToken,
                     onProbe = { viewModel.probeModel(it) },
+                    onSaveLink = { viewModel.saveModelLink(workflow, it) },
                     onDownload = { viewModel.downloadModel(it) },
                     onDownloadAll = { viewModel.downloadAllModels(it) },
                     onCancel = { viewModel.cancelModelDownload(it) }
@@ -509,6 +520,7 @@ private fun MissingModelsCard(
     helperAvailable: Boolean?,
     helperHasToken: Boolean,
     onProbe: suspend (ModelSource) -> Pair<Long?, Boolean>?,
+    onSaveLink: suspend (ModelSource) -> Unit,
     onDownload: (ModelSource) -> Unit,
     onDownloadAll: (List<ModelSource>) -> Unit,
     onCancel: (com.example.comfyui_remote.domain.ModelDownload) -> Unit
@@ -522,7 +534,18 @@ private fun MissingModelsCard(
     // Phase 99: Download all; probes of every model to download, null entries while probing
     var confirmingAll by remember { mutableStateOf<List<ModelSource>?>(null) }
     var allProbes by remember { mutableStateOf<List<Pair<Long?, Boolean>?>?>(null) }
-    val downloadable = models.filter { downloads["${it.directory}/${it.name}"]?.active != true }
+    val downloadable = models.filter { it.hasLink && downloads["${it.directory}/${it.name}"]?.active != true }
+    // A model found in the prompt without a download link: the user pastes one (saved with the workflow)
+    var addingLink by remember { mutableStateOf<ModelSource?>(null) }
+    fun confirmDownload(model: ModelSource) {
+        confirming = model
+        probe = null
+        probing = true
+        scope.launch {
+            probe = onProbe(model)
+            probing = false
+        }
+    }
     // Download progress is shown as a notification; Android 13+ needs the permission asked for at run time
     val context = LocalContext.current
     var askedNotifications by remember { mutableStateOf(false) }
@@ -564,7 +587,11 @@ private fun MissingModelsCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(model.name, style = MaterialTheme.typography.bodyMedium, color = onCard)
-                        Text("models/${model.directory}", style = MaterialTheme.typography.bodySmall, color = onCard)
+                        Text(
+                            if (model.hasLink) "models/${model.directory}" else "models/${model.directory} · no download link",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = onCard
+                        )
                     }
                     when {
                         download?.active == true ->
@@ -572,17 +599,13 @@ private fun MissingModelsCard(
                                 onClick = { onCancel(download) },
                                 enabled = download.id != null
                             ) { Text("Cancel") }
+                        helperAvailable == true && !model.hasLink ->
+                            TextButton(onClick = { addingLink = model }) { Text("Add link") }
                         helperAvailable == true ->
-                            androidx.compose.material3.TextButton(onClick = {
-                                confirming = model
-                                probe = null
-                                probing = true
-                                scope.launch {
-                                    probe = onProbe(model)
-                                    probing = false
-                                }
-                            }) { Text(if (download?.status == "error") "Retry" else "Download") }
-                        else ->
+                            TextButton(onClick = { confirmDownload(model) }) {
+                                Text(if (download?.status == "error") "Retry" else "Download")
+                            }
+                        model.hasLink ->
                             androidx.compose.material3.TextButton(onClick = {
                                 clipboard.setText(AnnotatedString(model.url))
                             }) { Text("Copy link") }
@@ -675,6 +698,19 @@ private fun MissingModelsCard(
         )
     }
 
+    addingLink?.let { model ->
+        AddModelLinkDialog(
+            model = model,
+            onDismiss = { addingLink = null },
+            onSave = { url ->
+                addingLink = null
+                val linked = model.copy(url = url)
+                scope.launch { onSaveLink(linked) }
+                confirmDownload(linked)
+            }
+        )
+    }
+
     confirming?.let { model ->
         val size = probe?.first
         androidx.compose.material3.AlertDialog(
@@ -718,4 +754,52 @@ private fun MissingModelsCard(
             }
         )
     }
+}
+
+/** Asks for a Hugging Face or GitHub link to a model the workflow names but carries no download link for. */
+@Composable
+private fun AddModelLinkDialog(model: ModelSource, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    val clipboard = LocalClipboardManager.current
+    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+    var text by remember(model) {
+        // Prefill a copied link, the usual way to get one here
+        val copied = clipboard.getText()?.text?.trim().orEmpty()
+        mutableStateOf(if (com.example.comfyui_remote.domain.ModelSources.normalizeUrl(copied) != null) copied else "")
+    }
+    val url = com.example.comfyui_remote.domain.ModelSources.normalizeUrl(text)
+    val linkedName = url?.substringBefore('?')?.substringAfterLast('/')?.let { java.net.URLDecoder.decode(it, "UTF-8") }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Download link") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Dimens.s)) {
+                Text(model.name, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    "Paste a Hugging Face or GitHub link to this file. It's saved with the workflow.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                androidx.compose.material3.OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    label = { Text("Link") },
+                    singleLine = true,
+                    isError = text.isNotBlank() && url == null,
+                    supportingText = when {
+                        text.isNotBlank() && url == null -> { { Text("Use an https link on huggingface.co or github.com") } }
+                        linkedName != null && linkedName != model.name -> { { Text("Will be saved as ${model.name}") } }
+                        else -> null
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                TextButton(onClick = {
+                    val query = java.net.URLEncoder.encode(model.name.substringBeforeLast('.'), "UTF-8")
+                    uriHandler.openUri("https://huggingface.co/search/full-text?q=$query")
+                }) { Text("Search Hugging Face") }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { url?.let(onSave) }, enabled = url != null) { Text("Continue") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
 }

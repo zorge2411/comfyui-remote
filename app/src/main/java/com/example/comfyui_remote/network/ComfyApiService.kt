@@ -23,6 +23,9 @@ interface ComfyApiService {
 
     @GET("history/{prompt_id}")
     suspend fun getHistory(@Path("prompt_id") promptId: String): JsonObject
+    @GET("models")
+    suspend fun getModelFolders(): List<String>
+
     @GET("models/{folder}")
     suspend fun getModels(@Path("folder") folder: String): List<String>
 
