@@ -22,6 +22,7 @@ It needs nothing beyond what ComfyUI already installs (`aiohttp`).
 | Variable | Effect |
 |---|---|
 | `HF_TOKEN` | Hugging Face access token, sent to huggingface.co only. Needed for gated models such as FLUX.1-dev. Accept the model's licence on huggingface.co with the same account first. |
+| `CIVITAI_TOKEN` | Civitai API key (civitai.com, Account settings, API Keys), sent to civitai.com only. Many Civitai models need it. (v3) |
 | `REMOTE_HELPER_ALLOW_PICKLE=1` | Also allow `.ckpt`, `.pt`, `.pth` and `.bin` files. These formats can run code when loaded, so they're off by default. |
 
 ## Routes
@@ -30,7 +31,7 @@ Every route is also served under `/api/...`.
 
 | Route | Body | Returns |
 |---|---|---|
-| `GET /remote_helper/info` | | `{version, hf_token}` (version `"2"`) |
+| `GET /remote_helper/info` | | `{version, hf_token, civitai_token}` (version `"3"`; `civitai_token` from v3) |
 | `POST /remote_helper/models/probe` | `{url}` | `{size, gated}` (size in bytes, or null) |
 | `POST /remote_helper/models/download` | `{url, directory, filename}` | The job. Errors come back as `{error}` with status 400, 403 or 409. |
 | `GET /remote_helper/models/downloads` | | The list (see below) |
@@ -58,12 +59,12 @@ The queue is kept in memory, so restarting ComfyUI clears it.
 
 Version 1 clients ignore `remote_helper.queue` and keep working.
 
-A 401 or 403 from Hugging Face is reported as "Gated or unavailable model": Hugging Face answers 401 for repos that don't exist, as well as for gated ones.
+A 401 or 403 from Hugging Face is reported as "Gated or unavailable model": Hugging Face answers 401 for repos that don't exist, as well as for gated ones. From Civitai, a 401, a 403 or an HTML page (its login page) is reported as needing `CIVITAI_TOKEN`. Civitai links are download links such as `https://civitai.com/api/download/models/<version id>`.
 
 ## Security
 
 ComfyUI has no login, so anyone who can reach the server can call these routes. To limit what that allows, a download is accepted only when:
-- the URL is https, on `huggingface.co` or `github.com` (redirects to their CDNs are followed);
+- the URL is https, on `huggingface.co`, `github.com` or `civitai.com` (redirects to their CDNs are followed);
 - the file name is a plain name, with no folders, `..`, `\` or `:`;
 - the file type is `.safetensors`, `.sft` or `.gguf` (plus pickle formats, only if you opt in);
 - the target is a registered ComfyUI models folder (for example `checkpoints` or `loras`), never `custom_nodes`;

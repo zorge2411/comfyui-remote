@@ -9,6 +9,7 @@ Routes (also served under /api):
   POST /remote_helper/models/downloads/{id}/move    {position}   (version 2)
   POST /remote_helper/models/downloads/{id}/retry                (version 2)
   POST /remote_helper/models/downloads/clear                     (version 2)
+Version 3 also accepts civitai.com links and sends CIVITAI_TOKEN to civitai.com.
 Per-job progress is broadcast as the websocket event "remote_helper.download", and the whole list as
 "remote_helper.queue" whenever jobs or their order change. Downloads run one at a time.
 """
@@ -23,7 +24,7 @@ from server import PromptServer
 from .downloader import Downloader, probe
 from .validation import RequestError, validate_request, validate_url
 
-VERSION = "2"
+VERSION = "3"
 NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
 
@@ -49,7 +50,8 @@ def _folder_map():
 
 @routes.get("/remote_helper/info")
 async def info(request):
-    return web.json_response({"version": VERSION, "hf_token": bool(os.environ.get("HF_TOKEN"))})
+    return web.json_response({"version": VERSION, "hf_token": bool(os.environ.get("HF_TOKEN")),
+                              "civitai_token": bool(os.environ.get("CIVITAI_TOKEN"))})
 
 
 @routes.post("/remote_helper/models/probe")

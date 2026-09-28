@@ -23,15 +23,28 @@ SPARE_BYTES = 1024 ** 3
 # Hugging Face also answers 401 for repos that don't exist, so this can't say "gated" for sure
 GATED_MESSAGE = ("Gated or unavailable model: if it is gated, accept its licence on huggingface.co "
                  "and set HF_TOKEN on the server")
+CIVITAI_LOGIN_MESSAGE = ("Civitai needs a login for this model: set CIVITAI_TOKEN on the server "
+                         "(an API key from civitai.com, Account settings)")
+# Each token goes to its own site only (aiohttp drops it when a redirect leaves that host)
+TOKENS = {"huggingface.co": "HF_TOKEN", "civitai.com": "CIVITAI_TOKEN"}
 
 log = logging.getLogger("remote_helper")
 
 
+def _host(url):
+    return (urlparse(url).hostname or "").lower()
+
+
 def _auth_headers(url):
-    token = os.environ.get("HF_TOKEN")
-    if token and (urlparse(url).hostname or "").lower() == "huggingface.co":
+    variable = TOKENS.get(_host(url))
+    token = os.environ.get(variable) if variable else None
+    if token:
         return {"Authorization": f"Bearer {token}"}
     return {}
+
+
+def _denied_message(url):
+    return CIVITAI_LOGIN_MESSAGE if _host(url) == "civitai.com" else GATED_MESSAGE
 
 
 def _timeout():
@@ -48,7 +61,9 @@ async def probe(url):
                 if value and value.isdigit() and int(value) > 0:
                     size = int(value)
                     break
-            return {"size": size, "gated": resp.status in (401, 403)}
+            # Civitai sends its login page (HTML) instead of a 401 for some models
+            login_page = _host(url) == "civitai.com" and resp.content_type == "text/html"
+            return {"size": None if login_page else size, "gated": resp.status in (401, 403) or login_page}
 
 
 class Downloader:
@@ -158,9 +173,11 @@ class Downloader:
         async with aiohttp.ClientSession(timeout=_timeout()) as session:
             async with session.get(job["url"], headers=_auth_headers(job["url"]), allow_redirects=True) as resp:
                 if resp.status in (401, 403):
-                    return self._fail(job, GATED_MESSAGE)
+                    return self._fail(job, _denied_message(job["url"]))
                 if resp.status != 200:
                     return self._fail(job, f"Download failed: HTTP {resp.status}")
+                if resp.content_type == "text/html":  # a login or error page, not a model file
+                    return self._fail(job, _denied_message(job["url"]))
                 job["total"] = resp.content_length
                 folder = os.path.dirname(job["target"])
                 os.makedirs(folder, exist_ok=True)

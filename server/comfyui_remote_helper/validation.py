@@ -3,7 +3,7 @@
 import os
 from urllib.parse import urlparse
 
-ALLOWED_HOSTS = {"huggingface.co", "github.com"}
+ALLOWED_HOSTS = {"huggingface.co", "github.com", "civitai.com"}
 SAFE_EXTS = {".safetensors", ".sft", ".gguf"}
 PICKLE_EXTS = {".ckpt", ".pt", ".pth", ".bin"}
 BLOCKED_FOLDERS = {"custom_nodes", "configs"}

@@ -43,6 +43,10 @@ class ModelDownloadRepository(
     private val _hasToken = MutableStateFlow(false)
     val hasToken: StateFlow<Boolean> = _hasToken.asStateFlow()
 
+    /** Whether the server has CIVITAI_TOKEN set (helper v3; Civitai links need v3). */
+    private val _hasCivitaiToken = MutableStateFlow(false)
+    val hasCivitaiToken: StateFlow<Boolean> = _hasCivitaiToken.asStateFlow()
+
     /** Ordered as the server lists them: downloading, queued by position, then finished. */
     private val _downloads = MutableStateFlow<List<ModelDownload>>(emptyList())
     val downloads: StateFlow<List<ModelDownload>> = _downloads.asStateFlow()
@@ -89,6 +93,7 @@ class ModelDownloadRepository(
         try {
             val info = api.getHelperInfo()
             _hasToken.value = info.get("hf_token")?.asBoolean == true
+            _hasCivitaiToken.value = info.get("civitai_token")?.asBoolean == true
             _helperVersion.value = info.get("version")?.asString?.toIntOrNull() ?: 1
             _helperAvailable.value = true
             replace(ModelDownloads.parseList(api.getModelDownloads()))

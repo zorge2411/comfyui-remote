@@ -97,8 +97,27 @@ class PromptModelsTest {
             ModelSources.normalizeUrl("https://github.com/o/r/blob/main/m.pth")
         )
         assertNull(ModelSources.normalizeUrl("http://huggingface.co/org/repo/resolve/main/m.safetensors"))
-        assertNull(ModelSources.normalizeUrl("https://civitai.com/api/download/models/1"))
         assertNull(ModelSources.normalizeUrl("not a link"))
+    }
+
+    @Test
+    fun `civitai download links and model pages with a version are accepted`() {
+        assertEquals(
+            "https://civitai.com/api/download/models/1234",
+            ModelSources.normalizeUrl("https://civitai.com/api/download/models/1234")
+        )
+        assertEquals(
+            "https://civitai.com/api/download/models/1234?type=Model&format=SafeTensor",
+            ModelSources.normalizeUrl("https://civitai.com/api/download/models/1234?type=Model&format=SafeTensor")
+        )
+        assertEquals(
+            "https://civitai.com/api/download/models/1234",
+            ModelSources.normalizeUrl("https://civitai.com/models/99/some-lora?modelVersionId=1234")
+        )
+        assertNull(ModelSources.normalizeUrl("https://civitai.com/models/99/some-lora"))
+        assertNull(ModelSources.normalizeUrl("https://civitai.com/images/5"))
+        assertTrue(ModelSources.isCivitai("https://civitai.com/api/download/models/1"))
+        assertTrue(!ModelSources.isCivitai("https://huggingface.co/a"))
     }
 
     @Test

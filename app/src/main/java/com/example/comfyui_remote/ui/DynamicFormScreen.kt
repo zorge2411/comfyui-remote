@@ -55,6 +55,7 @@ import com.example.comfyui_remote.domain.FormValues
 import com.example.comfyui_remote.domain.InputField
 import com.example.comfyui_remote.domain.LabelledField
 import com.example.comfyui_remote.domain.ModelSource
+import com.example.comfyui_remote.domain.ModelSources
 import com.example.comfyui_remote.domain.PromptValidator
 import com.example.comfyui_remote.domain.key
 import com.example.comfyui_remote.network.ExecutionStatus
@@ -151,6 +152,8 @@ fun DynamicFormScreen(
     // loader values (which follow the form's current model choices)
     val helperAvailable by viewModel.helperAvailable.collectAsState()
     val helperHasToken by viewModel.helperHasToken.collectAsState()
+    val helperHasCivitaiToken by viewModel.helperHasCivitaiToken.collectAsState()
+    val helperVersion by viewModel.helperVersion.collectAsState()
     val modelDownloads by viewModel.modelDownloads.collectAsState()
     val modelsVersion by viewModel.modelsVersion.collectAsState()
     val modelChoices = remember(inputs) {
@@ -286,6 +289,8 @@ fun DynamicFormScreen(
                     downloads = modelDownloads,
                     helperAvailable = helperAvailable,
                     helperHasToken = helperHasToken,
+                    helperHasCivitaiToken = helperHasCivitaiToken,
+                    helperVersion = helperVersion,
                     onProbe = { viewModel.probeModel(it) },
                     onSaveLink = { viewModel.saveModelLink(workflow, it) },
                     onDownload = { viewModel.downloadModel(it) },
@@ -519,6 +524,8 @@ private fun MissingModelsCard(
     downloads: Map<String, com.example.comfyui_remote.domain.ModelDownload>,
     helperAvailable: Boolean?,
     helperHasToken: Boolean,
+    helperHasCivitaiToken: Boolean,
+    helperVersion: Int,
     onProbe: suspend (ModelSource) -> Pair<Long?, Boolean>?,
     onSaveLink: suspend (ModelSource) -> Unit,
     onDownload: (ModelSource) -> Unit,
@@ -672,10 +679,20 @@ private fun MissingModelsCard(
                     all.forEach { Text("• ${it.name}", style = MaterialTheme.typography.bodySmall) }
                     if (gated.isNotEmpty()) {
                         Spacer(Modifier.height(8.dp))
+                        val (civitai, hf) = gated.partition { ModelSources.isCivitai(it.url) }
                         Text(
-                            "Gated or unavailable: ${gated.joinToString { it.name }}. " +
-                                if (helperHasToken) "The server's HF_TOKEN account must have accepted their licences."
-                                else "Set HF_TOKEN on the server after accepting their licences, or these will fail.",
+                            listOfNotNull(
+                                hf.takeIf { it.isNotEmpty() }?.let {
+                                    "Gated or unavailable: ${it.joinToString { m -> m.name }}. " +
+                                        if (helperHasToken) "The server's HF_TOKEN account must have accepted their licences."
+                                        else "Set HF_TOKEN on the server after accepting their licences, or these will fail."
+                                },
+                                civitai.takeIf { it.isNotEmpty() }?.let {
+                                    "Civitai login needed: ${it.joinToString { m -> m.name }}. " +
+                                        if (helperHasCivitaiToken) "Check the server's CIVITAI_TOKEN."
+                                        else "Set CIVITAI_TOKEN on the server, or these will fail."
+                                }
+                            ).joinToString("\n"),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error
                         )
@@ -701,6 +718,7 @@ private fun MissingModelsCard(
     addingLink?.let { model ->
         AddModelLinkDialog(
             model = model,
+            civitaiSupported = helperVersion >= 3,
             onDismiss = { addingLink = null },
             onSave = { url ->
                 addingLink = null
@@ -731,8 +749,13 @@ private fun MissingModelsCard(
                     if (probe?.second == true) {
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            if (helperHasToken) "This model is gated: the Hugging Face account of the server's HF_TOKEN must have accepted its licence."
-                            else "This model is gated: accept its licence on huggingface.co and set HF_TOKEN on the server, or the download will fail.",
+                            when {
+                                ModelSources.isCivitai(model.url) ->
+                                    if (helperHasCivitaiToken) "Civitai refused the download: check the server's CIVITAI_TOKEN."
+                                    else "This model needs a Civitai login: set CIVITAI_TOKEN on the server (an API key from civitai.com), or the download will fail."
+                                helperHasToken -> "This model is gated: the Hugging Face account of the server's HF_TOKEN must have accepted its licence."
+                                else -> "This model is gated: accept its licence on huggingface.co and set HF_TOKEN on the server, or the download will fail."
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error
                         )
@@ -756,9 +779,17 @@ private fun MissingModelsCard(
     }
 }
 
-/** Asks for a Hugging Face or GitHub link to a model the workflow names but carries no download link for. */
+/**
+ * Asks for a Hugging Face, GitHub or Civitai link to a model the workflow names but carries no download link
+ * for. Civitai needs helper v3 on the server ([civitaiSupported]).
+ */
 @Composable
-private fun AddModelLinkDialog(model: ModelSource, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+private fun AddModelLinkDialog(
+    model: ModelSource,
+    civitaiSupported: Boolean,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
     val clipboard = LocalClipboardManager.current
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
     var text by remember(model) {
@@ -766,8 +797,12 @@ private fun AddModelLinkDialog(model: ModelSource, onDismiss: () -> Unit, onSave
         val copied = clipboard.getText()?.text?.trim().orEmpty()
         mutableStateOf(if (com.example.comfyui_remote.domain.ModelSources.normalizeUrl(copied) != null) copied else "")
     }
-    val url = com.example.comfyui_remote.domain.ModelSources.normalizeUrl(text)
-    val linkedName = url?.substringBefore('?')?.substringAfterLast('/')?.let { java.net.URLDecoder.decode(it, "UTF-8") }
+    val parsed = com.example.comfyui_remote.domain.ModelSources.normalizeUrl(text)
+    val needsNewerHelper = parsed != null && !civitaiSupported && ModelSources.isCivitai(parsed)
+    val url = parsed?.takeIf { !needsNewerHelper }
+    // The download link's last part is a version id for Civitai, not a file name
+    val showsName = url != null && !ModelSources.isCivitai(url)
+    val linkedName = url?.takeIf { showsName }?.substringBefore('?')?.substringAfterLast('/')?.let { java.net.URLDecoder.decode(it, "UTF-8") }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Download link") },
@@ -775,7 +810,7 @@ private fun AddModelLinkDialog(model: ModelSource, onDismiss: () -> Unit, onSave
             Column(verticalArrangement = Arrangement.spacedBy(Dimens.s)) {
                 Text(model.name, style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    "Paste a Hugging Face or GitHub link to this file. It's saved with the workflow.",
+                    "Paste a Hugging Face, GitHub or Civitai link to this file. It's saved with the workflow.",
                     style = MaterialTheme.typography.bodySmall
                 )
                 androidx.compose.material3.OutlinedTextField(
@@ -785,16 +820,26 @@ private fun AddModelLinkDialog(model: ModelSource, onDismiss: () -> Unit, onSave
                     singleLine = true,
                     isError = text.isNotBlank() && url == null,
                     supportingText = when {
-                        text.isNotBlank() && url == null -> { { Text("Use an https link on huggingface.co or github.com") } }
+                        needsNewerHelper -> { { Text("Civitai links need comfyui_remote_helper version 3 on the server") } }
+                        text.isNotBlank() && url == null -> {
+                            { Text("Use an https link on huggingface.co, github.com or civitai.com (a Civitai page link needs a model version)") }
+                        }
                         linkedName != null && linkedName != model.name -> { { Text("Will be saved as ${model.name}") } }
                         else -> null
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
-                TextButton(onClick = {
-                    val query = java.net.URLEncoder.encode(model.name.substringBeforeLast('.'), "UTF-8")
-                    uriHandler.openUri("https://huggingface.co/search/full-text?q=$query")
-                }) { Text("Search Hugging Face") }
+                val query = java.net.URLEncoder.encode(model.name.substringBeforeLast('.'), "UTF-8")
+                // Wraps on narrow phones instead of squeezing the second label onto two lines
+                @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                androidx.compose.foundation.layout.FlowRow {
+                    TextButton(onClick = { uriHandler.openUri("https://huggingface.co/search/full-text?q=$query") }) {
+                        Text("Search Hugging Face")
+                    }
+                    TextButton(onClick = { uriHandler.openUri("https://civitai.com/search/models?query=$query") }) {
+                        Text("Search Civitai")
+                    }
+                }
             }
         },
         confirmButton = {

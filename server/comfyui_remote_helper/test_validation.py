@@ -33,6 +33,11 @@ class ValidationTest(unittest.TestCase):
         self.assertEqual("https://github.com/o/r/releases/download/v1/m.safetensors",
                          validate_url("https://github.com/o/r/releases/download/v1/m.safetensors"))
 
+    def test_civitai_allowed(self):
+        self.assertEqual("https://civitai.com/api/download/models/123",
+                         validate_url("https://civitai.com/api/download/models/123"))
+        self.assertEqual(403, status_of(lambda: validate_url("https://civitai.com.evil.com/api/download/models/1")))
+
     def test_http_rejected(self):
         self.assertEqual(400, status_of(lambda: validate_url("http://huggingface.co/a.safetensors")))
 

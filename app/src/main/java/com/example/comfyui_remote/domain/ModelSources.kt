@@ -154,7 +154,8 @@ object ModelSources {
 
     /**
      * A link pasted by the user, as a direct download URL (a Hugging Face or GitHub page link becomes its
-     * file link), or null when the server's helper wouldn't accept it (https on huggingface.co or github.com).
+     * file link, a Civitai model page with ?modelVersionId= its download link), or null when the server's
+     * helper wouldn't accept it (https on huggingface.co, github.com or civitai.com).
      */
     fun normalizeUrl(text: String): String? {
         val url = text.trim()
@@ -167,9 +168,24 @@ object ModelSources {
         return when (uri.host?.lowercase()) {
             "huggingface.co" -> url.replaceFirst(Regex("""^(https://huggingface\.co/.+?)/blob/"""), "$1/resolve/")
             "github.com" -> url.replaceFirst(Regex("""^(https://github\.com/[^/]+/[^/]+)/blob/"""), "$1/raw/")
+            "civitai.com" -> when {
+                uri.path.orEmpty().matches(Regex("""/api/download/models/\d+/?""")) -> url
+                uri.path.orEmpty().startsWith("/models/") ->
+                    Regex("""(?:^|&)modelVersionId=(\d+)""").find(uri.rawQuery.orEmpty())
+                        ?.let { "https://civitai.com/api/download/models/${it.groupValues[1]}" }
+                else -> null
+            }
             else -> null
         }
     }
+
+    /** True for a Civitai link, which needs the server's CIVITAI_TOKEN rather than HF_TOKEN when refused. */
+    fun isCivitai(url: String): Boolean =
+        try {
+            java.net.URI(url).host?.lowercase() == "civitai.com"
+        } catch (e: Exception) {
+            false
+        }
 
     /** [sources] with [source] added, replacing any link for a model of the same name. */
     fun withSource(sources: List<ModelSource>, source: ModelSource): List<ModelSource> =

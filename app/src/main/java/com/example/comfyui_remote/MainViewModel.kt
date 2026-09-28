@@ -791,6 +791,8 @@ class MainViewModel(
     /** null until checked after connecting; false when the server doesn't have the extension. */
     val helperAvailable: StateFlow<Boolean?> = modelDownloadRepository.helperAvailable
     val helperHasToken: StateFlow<Boolean> = modelDownloadRepository.hasToken
+    val helperHasCivitaiToken: StateFlow<Boolean> = modelDownloadRepository.hasCivitaiToken
+    val helperVersion: StateFlow<Int> = modelDownloadRepository.helperVersion
 
     /** Keyed by "directory/filename"; an active download wins over older finished ones for the same file. */
     val modelDownloads: StateFlow<Map<String, com.example.comfyui_remote.domain.ModelDownload>> =
