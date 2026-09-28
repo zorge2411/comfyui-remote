@@ -29,6 +29,7 @@ import com.example.comfyui_remote.data.LocalQueueItem
 import com.example.comfyui_remote.data.ModelDownloadRepository
 import com.example.comfyui_remote.data.QueueStatus
 import com.example.comfyui_remote.ui.components.EmptyState
+import com.example.comfyui_remote.ui.components.SectionHeader
 
 // Reusable date formatter to avoid instantiation on every recomposition
 private val DATE_FORMATTER = java.time.format.DateTimeFormatter.ofPattern("MMM dd, HH:mm", java.util.Locale.getDefault())
@@ -163,17 +164,6 @@ fun QueueScreen(
                 }
             }
         )
-    }
-}
-
-@Composable
-private fun SectionHeader(title: String, action: @Composable () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-        action()
     }
 }
 
