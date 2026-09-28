@@ -1,7 +1,9 @@
 package com.example.comfyui_remote.ui
 
 import com.example.comfyui_remote.data.GeneratedMediaListing
+import com.example.comfyui_remote.domain.MediaUrls
 
+/** The item's `/view` URL; https only when it comes from the connected server and that uses https. */
 fun GeneratedMediaListing.constructUrl(
     currentHost: String,
     currentPort: String,
@@ -10,5 +12,5 @@ fun GeneratedMediaListing.constructUrl(
     val portInt = currentPort.toIntOrNull() ?: 8188
     val shouldUseSecure = isSecure && this.serverHost == currentHost && this.serverPort == portInt
     val protocol = if (shouldUseSecure) "https" else "http"
-    return "$protocol://${this.serverHost}:${this.serverPort}/view?filename=${this.fileName}${if (this.subfolder != null) "&subfolder=${this.subfolder}" else ""}&type=${this.serverType}"
+    return MediaUrls.view("$protocol://${this.serverHost}:${this.serverPort}", fileName, subfolder, serverType)
 }

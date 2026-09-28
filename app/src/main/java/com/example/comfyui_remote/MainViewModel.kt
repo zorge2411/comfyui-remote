@@ -369,7 +369,7 @@ class MainViewModel(
         // Fix: Update generated image view to show the last result if available
         if (workflow.lastImageName != null) {
              val protocol = if (_isSecure.value) "https" else "http"
-             val url = "$protocol://${_serverAddress.value}/view?filename=${workflow.lastImageName}&type=output"
+             val url = com.example.comfyui_remote.domain.MediaUrls.view("$protocol://${_serverAddress.value}", workflow.lastImageName!!)
             _generatedImage.value = url
             
             // Phase 60: Fetch ID for navigation
@@ -522,7 +522,7 @@ class MainViewModel(
                 
                 // Set the preview image for the DynamicFormScreen
                 val protocol = if (_isSecure.value) "https" else "http"
-                val url = "$protocol://${_serverAddress.value}/view?filename=${media.fileName}&type=output"
+                val url = com.example.comfyui_remote.domain.MediaUrls.view("$protocol://${_serverAddress.value}", media.fileName, media.subfolder, media.serverType)
                 android.util.Log.d("HISTORY_DEBUG", "Setting preview image URL: $url")
                 _generatedImage.value = url
                 _generatedMediaId.value = media.id
@@ -1151,7 +1151,7 @@ class MainViewModel(
                                     val subfolder = if (mediaObj.has("subfolder")) mediaObj.get("subfolder").asString else null
 
                                     val protocol = if (_isSecure.value) "https" else "http"
-                                    val url = "$protocol://${_serverAddress.value}/view?filename=$filename&type=output"
+                                    val url = com.example.comfyui_remote.domain.MediaUrls.view("$protocol://${_serverAddress.value}", filename, subfolder)
                                     _generatedImage.value = url
 
                                     val hostParts = _serverAddress.value.split(":")

@@ -15,17 +15,16 @@ import java.io.FileOutputStream
 
 object ShareUtils {
 
-    suspend fun downloadAndShare(context: Context, url: String) {
+    /** Downloads [url] as [filename] into the share cache and opens the share sheet; false on failure. */
+    suspend fun downloadAndShare(context: Context, url: String, filename: String): Boolean =
         withContext(Dispatchers.IO) {
             try {
-                val filename = url.substringAfter("filename=").substringBefore("&")
-                val file = downloadFile(context, url, filename)
-                shareFile(context, file)
+                shareFile(context, downloadFile(context, url, filename))
+                true
             } catch (e: Exception) {
-                e.printStackTrace()
+                false
             }
         }
-    }
 
     /**
      * Downloads several items and opens one share sheet for them (Phase 104). [items] are (url, file name).

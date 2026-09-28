@@ -196,7 +196,7 @@ fun DynamicFormScreen(
                 SelectionField(lf, availableModels, f.value, { onFieldChange(f.copy(value = it)) }, modifier)
             is InputField.ImageInput -> {
                 val serverUrl = if (f.localUri == null && f.value != null) {
-                    "${if (isSecure) "https" else "http"}://$currentHost:$currentPort/view?filename=${f.value}&type=input"
+                    com.example.comfyui_remote.domain.MediaUrls.view("${if (isSecure) "https" else "http"}://$currentHost:$currentPort", f.value!!, type = "input")
                 } else null
                 com.example.comfyui_remote.ui.components.ImageSelector(
                     label = lf.label,

@@ -1,55 +1,80 @@
 package com.example.comfyui_remote.ui
 
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import android.app.Activity
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
-import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.*
-import androidx.compose.foundation.gestures.*
-import kotlin.math.*
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.example.comfyui_remote.MainViewModel
-import com.example.comfyui_remote.data.GeneratedMediaEntity
-import com.example.comfyui_remote.ui.components.LoadingIndicator
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.VectorConverter
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.ui.unit.IntSize
-
-import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.SharedTransitionScope
+import com.example.comfyui_remote.data.GeneratedMediaListing
+import com.example.comfyui_remote.domain.MediaInfo
+import com.example.comfyui_remote.ui.components.ConfirmDialog
+import com.example.comfyui_remote.ui.components.Dimens
+import com.example.comfyui_remote.ui.components.SectionHeader
+import com.example.comfyui_remote.utils.ShareUtils
+import com.example.comfyui_remote.utils.StorageUtils
+import com.example.comfyui_remote.utils.WallpaperUtils
+import kotlinx.coroutines.launch
+import kotlin.math.*
 
 // Reusable date formatter to avoid instantiation on every recomposition
-private val DATE_TIME_FORMATTER = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
+private val DATE_TIME_FORMATTER = java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm", java.util.Locale.getDefault())
     .withZone(java.time.ZoneId.systemDefault())
 
+// Media viewers may use black and white (UI spec §9)
+private val ViewerScrim = Color.Black.copy(alpha = 0.5f)
+private val OnViewer = Color.White
+
+/**
+ * Full-screen media viewer (Phase 104): black and edge to edge with light system-bar icons; one tap shows or
+ * hides the bars. The pager follows the gallery's filtered order when the item is in it.
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun MediaDetailScreen(
@@ -59,11 +84,20 @@ fun MediaDetailScreen(
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
-    val mediaList by viewModel.allMedia.collectAsState(initial = emptyList())
-    
-    // Only proceed if we have the list
+    LightSystemBarIcons()
+
+    val gallery by viewModel.galleryMedia.collectAsState()
+    val all by viewModel.allMedia.collectAsState(initial = null)
+    val allMedia = all
+    if (allMedia == null) {
+        Box(Modifier.fillMaxSize().background(Color.Black))
+        return
+    }
+    // Opened from the form, the item may be outside the gallery's filter: then page through everything
+    val useGallery = remember(mediaId) { gallery.any { it.id == mediaId } }
+    val mediaList = if (useGallery) gallery else allMedia
     if (mediaList.isEmpty()) {
-        LoadingIndicator(message = "Loading media...")
+        Box(Modifier.fillMaxSize().background(Color.Black))
         return
     }
 
@@ -71,267 +105,285 @@ fun MediaDetailScreen(
     val pagerState = rememberPagerState(initialPage = initialIndex) { mediaList.size }
     val currentMedia = mediaList.getOrNull(pagerState.currentPage)
 
-    // Swipe to dismiss state
+    // Swipe down to dismiss
     var offsetY by remember { mutableStateOf(0f) }
     val dismissThreshold = 300f
     val alpha = 1f - (offsetY / 800f).coerceIn(0f, 1f)
-    
-    // Zoom state (to lock pager)
     var isZoomed by remember { mutableStateOf(false) }
+    var chromeVisible by rememberSaveable { mutableStateOf(true) }
 
-    // Metadata sheet state
-    var showInfoSheet by remember { mutableStateOf(false) }
+    var showInfo by remember { mutableStateOf(false) }
+    var confirmRemove by remember { mutableStateOf(false) }
 
-    @OptIn(ExperimentalMaterial3Api::class)
-    val sheetState = rememberModalBottomSheetState()
-    
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val isSecure by viewModel.isSecure.collectAsState()
     val currentHost by viewModel.host.collectAsState()
     val currentPort by viewModel.port.collectAsState()
-
-    // Helper to build URL
-    fun buildMediaUrl(item: com.example.comfyui_remote.data.GeneratedMediaListing): String {
-        val portInt = currentPort.toIntOrNull() ?: 8188
-        val shouldUseSecure = isSecure && item.serverHost == currentHost && item.serverPort == portInt
-        val protocol = if (shouldUseSecure) "https" else "http"
-        return "$protocol://${item.serverHost}:${item.serverPort}/view?filename=${item.fileName}${if (item.subfolder != null) "&subfolder=${item.subfolder}" else ""}&type=${item.serverType}"
-    }
-
     val saveFolderUri by viewModel.saveFolderUri.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
-    
-    // Delete state
-    var showDeleteConfirm by remember { mutableStateOf(false) }
-    
-    // Helper to handle back/dismiss logic
-    val handleBack = {
-        onBack()
+    val snackbar = remember { SnackbarHostState() }
+    fun urlOf(item: GeneratedMediaListing) = item.constructUrl(currentHost, currentPort, isSecure)
+
+    // How the current item was made; null while loading, empty for uploads
+    val info by produceState<MediaInfo?>(null, currentMedia?.id) {
+        value = currentMedia?.let { viewModel.mediaInfo(it.id) }
     }
-    Scaffold(
-        topBar = {
-            // Fade top bar out when dragging
-            if (offsetY < 100f) {
-                var showMenu by remember { mutableStateOf(false) }
-                
-                TopAppBar(
-                    title = { Text(currentMedia?.workflowName ?: "Detail") },
-                    navigationIcon = {
-                        IconButton(onClick = handleBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    },
-                    actions = {
-                        // Share Action
-                        IconButton(onClick = {
-                            currentMedia?.let { item ->
-                                val url = buildMediaUrl(item)
-                                scope.launch {
-                                    com.example.comfyui_remote.utils.ShareUtils.downloadAndShare(context, url)
-                                }
-                            }
-                        }) {
-                            Icon(Icons.Default.Share, contentDescription = "Share")
-                        }
 
-                        // Delete Action
-                        IconButton(onClick = { showDeleteConfirm = true }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete")
-                        }
-
-                        // Info Action
-                        IconButton(onClick = { showInfoSheet = true }) {
-                            Icon(Icons.Default.Info, contentDescription = "Info")
-                        }
-
-                        // Overflow Menu
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "More")
-                        }
-                        
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Set as Wallpaper") },
-                                onClick = {
-                                    showMenu = false
-                                    currentMedia?.let { item ->
-                                        val url = buildMediaUrl(item)
-                                        scope.launch {
-                                            com.example.comfyui_remote.utils.WallpaperUtils.setWallpaper(context, url)
-                                        }
-                                    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = alpha))
+    ) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize().graphicsLayer { translationY = offsetY },
+            userScrollEnabled = !isZoomed
+        ) { page ->
+            val item = mediaList[page]
+            val url = urlOf(item)
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                if (item.mediaType == "VIDEO") {
+                    // The player's own controls take taps; keep the bars' padding clear of them
+                    Box(Modifier.fillMaxSize().systemBarsPadding()) { VideoPlayer(url = url) }
+                } else {
+                    ZoomableImage(
+                        url = url,
+                        contentDescription = "Image from ${item.workflowName}",
+                        onTap = { chromeVisible = !chromeVisible },
+                        onZoomChanged = { zoomed -> isZoomed = zoomed },
+                        onDismissDrag = { dragAmount -> offsetY = (offsetY + dragAmount).coerceAtLeast(0f) },
+                        onDismissEnd = { if (offsetY > dismissThreshold) onBack() else offsetY = 0f },
+                        imageModifier = Modifier.let { modifier ->
+                            if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                                with(sharedTransitionScope) {
+                                    modifier.sharedElement(
+                                        state = rememberSharedContentState(key = "image-${item.id}"),
+                                        animatedVisibilityScope = animatedVisibilityScope
+                                    )
                                 }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Save to Device") },
-                                onClick = {
-                                    showMenu = false
-                                    if (saveFolderUri == null) {
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar("Please select a save folder in Settings")
-                                        }
-                                    } else {
-                                        currentMedia?.let { item ->
-                                            val url = buildMediaUrl(item)
-                                            scope.launch {
-                                                val success = com.example.comfyui_remote.utils. StorageUtils.saveMediaToFolder(
-                                                    context = context,
-                                                    url = url,
-                                                    folderUri = saveFolderUri!!,
-                                                    fileName = item.fileName,
-                                                    mediaType = item.mediaType
-                                                )
-                                                if (success) {
-                                                    snackbarHostState.showSnackbar("Saved to device")
-                                                } else {
-                                                    snackbarHostState.showSnackbar("Failed to save")
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            )
+                            } else modifier
                         }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Black.copy(alpha = 0.6f * alpha),
-                        titleContentColor = Color.White.copy(alpha = alpha),
-                        navigationIconContentColor = Color.White.copy(alpha = alpha),
-                        actionIconContentColor = Color.White.copy(alpha = alpha)
                     )
-                )
-            }
-        },
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-            containerColor = Color.Black.copy(alpha = alpha) // Fade background
-        ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .graphicsLayer {
-                    translationY = offsetY
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize(),
-                userScrollEnabled = !isZoomed // Disable paging when zoomed
-            ) { page ->
-                val item = mediaList[page]
-                val url = buildMediaUrl(item)
-                
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    if (item.mediaType == "VIDEO") {
-                        VideoPlayer(url = url)
-                    } else {
-                        ZoomableImage(
-                            url = url,
-                            onZoomChanged = { zoomed -> isZoomed = zoomed },
-                            onDismissDrag = { dragAmount ->
-                                offsetY = (offsetY + dragAmount).coerceAtLeast(0f)
-                            },
-                            onDismissEnd = {
-                                if (offsetY > dismissThreshold) {
-                                    handleBack()
-                                } else {
-                                    offsetY = 0f // Reset
-                                }
-                            },
-                            imageModifier = Modifier
-                                    .let { modifier ->
-                                        if (sharedTransitionScope != null && animatedVisibilityScope != null) {
-                                            with(sharedTransitionScope) {
-                                                modifier.sharedElement(
-                                                    state = rememberSharedContentState(key = "image-${item.id}"),
-                                                    animatedVisibilityScope = animatedVisibilityScope
-                                                )
-                                            }
-                                        } else modifier
-                                    }
-                        )
-                    }
                 }
-            }
-            
-            if (showInfoSheet) {
-                ModalBottomSheet(
-                    onDismissRequest = { showInfoSheet = false },
-                    sheetState = sheetState
-                ) {
-                    currentMedia?.let { item ->
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                                .navigationBarsPadding()
-                        ) {
-                            Text(
-                                "Details",
-                                style = MaterialTheme.typography.headlineSmall,
-                                modifier = Modifier.padding(bottom = 16.dp)
-                            )
-                            
-                            DetailRow("File Name", item.fileName)
-                            DetailRow("Workflow", item.workflowName)
-                            DetailRow("Type", item.mediaType)
-                            DetailRow("Server", "${item.serverHost}:${item.serverPort}")
-                            DetailRow("Date", DATE_TIME_FORMATTER.format(java.time.Instant.ofEpochMilli(item.timestamp)))
-                            
-                            if (item.subfolder != null) {
-                                DetailRow("Subfolder", item.subfolder)
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (showDeleteConfirm) {
-                AlertDialog(
-                    onDismissRequest = { showDeleteConfirm = false },
-                    title = { Text("Delete Media?") },
-                    text = { Text("Are you sure you want to delete this file? This action cannot be undone.") },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                showDeleteConfirm = false
-                                currentMedia?.let { item ->
-                                    viewModel.removeFromGallery(listOf(item.id))
-                                    handleBack()
-                                }
-                            }
-                        ) {
-                            Text("Delete", color = MaterialTheme.colorScheme.error)
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showDeleteConfirm = false }) {
-                            Text("Cancel")
-                        }
-                    }
-                )
             }
         }
+
+        // Top bar: Back, title, and "Set as wallpaper" for images
+        AnimatedVisibility(
+            visible = chromeVisible && offsetY < 100f,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.TopCenter)
+        ) {
+            var menu by remember { mutableStateOf(false) }
+            TopAppBar(
+                title = { Text(currentMedia?.workflowName ?: "", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+                },
+                actions = {
+                    if (currentMedia?.mediaType == "IMAGE") {
+                        Box {
+                            IconButton(onClick = { menu = true }) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = "More options")
+                            }
+                            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                                DropdownMenuItem(text = { Text("Set as wallpaper") }, onClick = {
+                                    menu = false
+                                    currentMedia.let { item -> scope.launch { WallpaperUtils.setWallpaper(context, urlOf(item)) } }
+                                })
+                            }
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = ViewerScrim,
+                    titleContentColor = OnViewer,
+                    navigationIconContentColor = OnViewer,
+                    actionIconContentColor = OnViewer
+                )
+            )
+        }
+
+        // Bottom actions, labelled
+        Column(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+            SnackbarHost(snackbar)
+            AnimatedVisibility(visible = chromeVisible && offsetY < 100f, enter = fadeIn(), exit = fadeOut()) {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(ViewerScrim)
+                        .navigationBarsPadding()
+                        .padding(vertical = Dimens.xs)
+                ) {
+                    ViewerAction(Icons.Filled.Share, "Share") {
+                        currentMedia?.let { item ->
+                            scope.launch {
+                                if (!ShareUtils.downloadAndShare(context, urlOf(item), item.fileName)) {
+                                    snackbar.showSnackbar("Couldn't download it to share")
+                                }
+                            }
+                        }
+                    }
+                    ViewerAction(Icons.Filled.Download, "Save") {
+                        val folder = saveFolderUri
+                        val item = currentMedia
+                        if (folder == null) {
+                            scope.launch { snackbar.showSnackbar("Choose a save folder in Settings first") }
+                        } else if (item != null) {
+                            scope.launch {
+                                val ok = StorageUtils.saveMediaToFolder(context, urlOf(item), folder, item.fileName, item.mediaType)
+                                snackbar.showSnackbar(if (ok) "Saved to device" else "Couldn't save")
+                            }
+                        }
+                    }
+                    ViewerAction(Icons.Filled.Edit, "Open in form", enabled = info?.isEmpty == false) {
+                        currentMedia?.let { viewModel.loadHistory(it) }
+                    }
+                    ViewerAction(Icons.Filled.Info, "Info") { showInfo = true }
+                    ViewerAction(Icons.Filled.Delete, "Remove") { confirmRemove = true }
+                }
+            }
+        }
+    }
+
+    if (showInfo && currentMedia != null) {
+        MediaInfoSheet(item = currentMedia, info = info, onDismiss = { showInfo = false })
+    }
+
+    if (confirmRemove) {
+        ConfirmDialog(
+            title = "Remove from gallery?",
+            text = "It's removed from this app's gallery. The file stays on the server.",
+            confirmLabel = "Remove",
+            destructive = true,
+            onConfirm = {
+                confirmRemove = false
+                currentMedia?.let { viewModel.removeFromGallery(listOf(it.id)) }
+                onBack()
+            },
+            onDismiss = { confirmRemove = false }
+        )
+    }
+}
+
+/** Light status and navigation bar icons while the black viewer is shown; the theme's setting comes back after. */
+@Composable
+private fun LightSystemBarIcons() {
+    val view = LocalView.current
+    if (view.isInEditMode) return
+    DisposableEffect(view) {
+        val window = (view.context as Activity).window
+        val controller = WindowCompat.getInsetsController(window, view)
+        val status = controller.isAppearanceLightStatusBars
+        val navigation = controller.isAppearanceLightNavigationBars
+        controller.isAppearanceLightStatusBars = false
+        controller.isAppearanceLightNavigationBars = false
+        onDispose {
+            controller.isAppearanceLightStatusBars = status
+            controller.isAppearanceLightNavigationBars = navigation
+        }
+    }
+}
+
+/** An icon with its label under it, at least 48 dp, for the viewer's action row. */
+@Composable
+private fun ViewerAction(icon: ImageVector, label: String, enabled: Boolean = true, onClick: () -> Unit) {
+    val color = if (enabled) OnViewer else OnViewer.copy(alpha = 0.38f)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier
+            .defaultMinSize(minWidth = 64.dp, minHeight = Dimens.minTouch)
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = Dimens.xs, vertical = Dimens.xs)
+    ) {
+        Icon(icon, contentDescription = null, tint = color)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = color, maxLines = 1)
+    }
+}
+
+/** How the item was made (prompt, settings) and its file details. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MediaInfoSheet(item: GeneratedMediaListing, info: MediaInfo?, onDismiss: () -> Unit) {
+    val clipboard = LocalClipboardManager.current
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = Dimens.screenPadding)
+                .navigationBarsPadding()
+                .padding(bottom = Dimens.l),
+            verticalArrangement = Arrangement.spacedBy(Dimens.s)
+        ) {
+            when {
+                info == null -> LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                info.isEmpty -> Text(
+                    "No workflow data for this item (for example, an uploaded image).",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                else -> {
+                    info.prompt?.let { prompt ->
+                        CopyableText("Prompt", prompt) { clipboard.setText(AnnotatedString(prompt)) }
+                    }
+                    info.negative?.let { negative ->
+                        CopyableText("Negative prompt", negative) { clipboard.setText(AnnotatedString(negative)) }
+                    }
+                    if (info.settings.isNotEmpty()) {
+                        SectionHeader("Settings")
+                        info.settings.forEach { (label, value) ->
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.heightIn(min = Dimens.minTouch)) {
+                                Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(112.dp))
+                                Text(value, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                                if (label == "Seed") {
+                                    IconButton(onClick = { clipboard.setText(AnnotatedString(value)) }) {
+                                        Icon(Icons.Filled.ContentCopy, contentDescription = "Copy seed")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            SectionHeader("File")
+            DetailRow("Workflow", item.workflowName)
+            DetailRow("File name", item.fileName)
+            DetailRow("Date", DATE_TIME_FORMATTER.format(java.time.Instant.ofEpochMilli(item.timestamp)))
+            DetailRow("Type", if (item.mediaType == "VIDEO") "Video" else "Image")
+            DetailRow("Server", "${item.serverHost}:${item.serverPort}")
+            item.subfolder?.takeIf { it.isNotEmpty() }?.let { DetailRow("Subfolder", it) }
+        }
+    }
+}
+
+/** A labelled block of text that shows 6 lines until expanded, with Copy. */
+@Composable
+private fun CopyableText(label: String, text: String, onCopy: () -> Unit) {
+    var expanded by rememberSaveable(text) { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        SectionHeader(label, modifier = Modifier.weight(1f))
+        IconButton(onClick = onCopy) { Icon(Icons.Filled.ContentCopy, contentDescription = "Copy ${label.lowercase()}") }
+    }
+    Text(
+        text,
+        style = MaterialTheme.typography.bodyMedium,
+        maxLines = if (expanded) Int.MAX_VALUE else 6,
+        overflow = TextOverflow.Ellipsis
+    )
+    if (!expanded && text.lines().size + text.length / 45 > 6) {
+        TextButton(onClick = { expanded = true }) { Text("Show more") }
     }
 }
 
 @Composable
 fun DetailRow(label: String, value: String) {
-    Column(modifier = Modifier.padding(vertical = 8.dp)) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.secondary
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge
-        )
+    Column(modifier = Modifier.padding(vertical = Dimens.xs)) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodyLarge)
     }
 }
 
@@ -372,6 +424,8 @@ fun VideoPlayer(url: String) {
 @Composable
 fun ZoomableImage(
     url: String,
+    contentDescription: String? = null,
+    onTap: () -> Unit = {},
     onZoomChanged: (Boolean) -> Unit,
     onDismissDrag: (Float) -> Unit,
     onDismissEnd: () -> Unit,
@@ -389,6 +443,7 @@ fun ZoomableImage(
             .onGloballyPositioned { containerSize = it.size }
             .pointerInput(Unit) {
                 detectTapGestures(
+                    onTap = { onTap() },
                     onDoubleTap = { centroid ->
                         scope.launch {
                             if (scale.value > 1.1f) {
@@ -482,7 +537,7 @@ fun ZoomableImage(
     ) {
             AsyncImage(
                 model = url,
-                contentDescription = "Full Screen Content",
+                contentDescription = contentDescription,
                 modifier = imageModifier
                     .fillMaxSize()
                     .graphicsLayer(

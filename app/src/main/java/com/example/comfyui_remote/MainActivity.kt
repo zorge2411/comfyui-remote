@@ -139,7 +139,8 @@ class MainActivity : ComponentActivity() {
                 
                 Scaffold(
                     bottomBar = {
-                        if (currentRoute != "remote_control") { // Hide on dynamic form
+                        // Hidden on the form and in the full-screen media viewer (Phase 104)
+                        if (currentRoute != "remote_control" && currentRoute?.startsWith("media_detail") != true) {
                             NavigationBar {
                                 NavigationBarItem(
                                     icon = { 
@@ -248,66 +249,76 @@ class MainActivity : ComponentActivity() {
                     SharedTransitionLayout {
                         NavHost(
                             navController = navController, 
-                            startDestination = "connection",
-                            // Inner Scaffolds and top bars must not add the system bars again
-                            modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)
+                            startDestination = "connection"
                         ) {
                         composable("connection") {
-                            ConnectionScreen(viewModel) {
-                                navController.navigate("workflows")
+                            PaddedScreen(innerPadding) {
+                                ConnectionScreen(viewModel) {
+                                    navController.navigate("workflows")
+                                }
                             }
                         }
                         composable("workflows") {
-                            WorkflowListScreen(
-                                viewModel = viewModel,
-                                onOpenTemplates = { navController.navigate("templates") }
-                            ) { workflow ->
-                                viewModel.parseWorkflowInputs(workflow.jsonContent)
-                                viewModel.selectWorkflow(workflow)
-                                navController.navigate("remote_control")
-                            }
-                        }
-                        composable("templates") {
-                            com.example.comfyui_remote.ui.TemplatesScreen(
-                                viewModel = viewModel,
-                                onBack = { navController.popBackStack() },
-                                onOpenWorkflow = { workflow ->
+                            PaddedScreen(innerPadding) {
+                                WorkflowListScreen(
+                                    viewModel = viewModel,
+                                    onOpenTemplates = { navController.navigate("templates") }
+                                ) { workflow ->
                                     viewModel.parseWorkflowInputs(workflow.jsonContent)
                                     viewModel.selectWorkflow(workflow)
                                     navController.navigate("remote_control")
                                 }
-                            )
+                            }
+                        }
+                        composable("templates") {
+                            PaddedScreen(innerPadding) {
+                                com.example.comfyui_remote.ui.TemplatesScreen(
+                                    viewModel = viewModel,
+                                    onBack = { navController.popBackStack() },
+                                    onOpenWorkflow = { workflow ->
+                                        viewModel.parseWorkflowInputs(workflow.jsonContent)
+                                        viewModel.selectWorkflow(workflow)
+                                        navController.navigate("remote_control")
+                                    }
+                                )
+                            }
                         }
                         composable("queue") {
-                            com.example.comfyui_remote.ui.QueueScreen(
-                                queueViewModel,
-                                (application as ComfyApplication).modelDownloadRepository
-                            ) {
-                                // Back action for Queue Screen inside Tab Nav?
-                                // Usually BottomNav screens don't have back unless they go deeper.
-                                // But QueueScreen takes an onBack lambda.
-                                // For Top level, maybe no back?
-                                // Or back to Home?
-                                navController.popBackStack() 
+                            PaddedScreen(innerPadding) {
+                                com.example.comfyui_remote.ui.QueueScreen(
+                                    queueViewModel,
+                                    (application as ComfyApplication).modelDownloadRepository
+                                ) {
+                                    // Back action for Queue Screen inside Tab Nav?
+                                    // Usually BottomNav screens don't have back unless they go deeper.
+                                    // But QueueScreen takes an onBack lambda.
+                                    // For Top level, maybe no back?
+                                    // Or back to Home?
+                                    navController.popBackStack() 
+                                }
                             }
                         }
                         composable("history") {
-                            com.example.comfyui_remote.ui.HistoryScreen(
-                                viewModel = viewModel,
-                                onNavigateToSettings = {
-                                    navController.navigate("settings")
-                                }
-                            )
+                            PaddedScreen(innerPadding) {
+                                com.example.comfyui_remote.ui.HistoryScreen(
+                                    viewModel = viewModel,
+                                    onNavigateToSettings = {
+                                        navController.navigate("settings")
+                                    }
+                                )
+                            }
                         }
                         composable("gallery") {
-                            com.example.comfyui_remote.ui.GalleryScreen(
-                                viewModel = viewModel,
-                                onMediaClick = { media ->
-                                    navController.navigate("media_detail/${media.id}")
-                                },
-                                sharedTransitionScope = this@SharedTransitionLayout,
-                                animatedVisibilityScope = this@composable
-                            )
+                            PaddedScreen(innerPadding) {
+                                com.example.comfyui_remote.ui.GalleryScreen(
+                                    viewModel = viewModel,
+                                    onMediaClick = { media ->
+                                        navController.navigate("media_detail/${media.id}")
+                                    },
+                                    sharedTransitionScope = this@SharedTransitionLayout,
+                                    animatedVisibilityScope = this@composable
+                                )
+                            }
                         }
                         composable(
                             route = "media_detail/{mediaId}",
@@ -323,22 +334,26 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable("settings") {
-                            com.example.comfyui_remote.ui.SettingsScreen(viewModel) { navController.popBackStack() }
+                            PaddedScreen(innerPadding) {
+                                com.example.comfyui_remote.ui.SettingsScreen(viewModel) { navController.popBackStack() }
+                            }
                         }
                         composable("remote_control") {
-                            val workflow by viewModel.selectedWorkflow.collectAsState()
-                            if (workflow != null) {
-                                com.example.comfyui_remote.ui.DynamicFormScreen(
-                                    viewModel,
-                                    workflow!!,
-                                    onBack = { navController.popBackStack() },
-                                    onViewInGallery = { mediaId ->
-                                        navController.navigate("media_detail/$mediaId")
-                                    },
-                                    onViewQueue = {
-                                        navController.navigate("queue")
-                                    }
-                                )
+                            PaddedScreen(innerPadding) {
+                                val workflow by viewModel.selectedWorkflow.collectAsState()
+                                if (workflow != null) {
+                                    com.example.comfyui_remote.ui.DynamicFormScreen(
+                                        viewModel,
+                                        workflow!!,
+                                        onBack = { navController.popBackStack() },
+                                        onViewInGallery = { mediaId ->
+                                            navController.navigate("media_detail/$mediaId")
+                                        },
+                                        onViewQueue = {
+                                            navController.navigate("queue")
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -548,3 +563,11 @@ fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
     }
 }
 
+/**
+ * The outer Scaffold's padding (tab bar, system bars) for one destination; the full-screen media viewer
+ * goes without it (Phase 104). Inner Scaffolds and top bars must not add the system bars again.
+ */
+@androidx.compose.runtime.Composable
+private fun PaddedScreen(padding: androidx.compose.foundation.layout.PaddingValues, content: @androidx.compose.runtime.Composable () -> Unit) {
+    androidx.compose.foundation.layout.Box(Modifier.padding(padding).consumeWindowInsets(padding)) { content() }
+}
