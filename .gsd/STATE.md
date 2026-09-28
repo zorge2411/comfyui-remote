@@ -8,7 +8,7 @@
 
 ## Achievements (Milestone 5)
 
-- [x] Fix (2026-09-28, outside a phase): missing models are also detected from the prompt's loader values against `/object_info`, so workflows without embedded download links (server or in-app imports) show them; models without a link get "Add link" (Hugging Face or GitHub, saved with the workflow). 218 JVM tests green; not yet checked on the device.
+- [x] Fix (2026-09-28, outside a phase): missing models are also detected from the prompt's loader values against `/object_info`, so workflows without embedded download links (server or in-app imports) show them; models without a link get "Add link" (Hugging Face or GitHub, saved with the workflow). 218 JVM tests green; device-verified 2026-09-28 on `krea-2-turbo-pid` (both missing models listed with "Add link"; link validation and the "Will be saved as" hint checked; nothing saved).
 - [x] Phase 101 (workflow form declutter): prompt first, Main settings with human labels, other inputs in collapsed node sections; fixed top and bottom bars; status area with progress and the latest result; Random/Fixed seeds (verified in `/history`); form values remembered per workflow with Reset (Room 12 → 13). See `.gsd/phases/101/101-VERIFICATION.md`.
 - [x] Phase 100 (UI audit and shared components):
   - on-device audit and a UI spec approved by the user;
@@ -149,7 +149,6 @@
 ## Next Steps
 
 1. `/plan 102` (navigation), `/plan 103` (workflow list) or `/plan 104` (gallery).
-1a. Device check of the missing-models fix: open `krea-2-turbo-pid` from the server and confirm the banner lists `qwen_image_pid.pth` and `gemma_2_2b_it_elm_bf16.safetensors` with "Add link".
 2. Optional checks carried over, not yet done on the device:
    - Milestone 4: queue controls hidden on a helper v1 server; "Browse Templates" on an empty workflow list; a Gemini, Grok or SaveVideo run.
    - Milestone 3: Phase 82 prompt-first ordering on a real workflow; Phase 80 themed icon under Android 13+ Material You.
