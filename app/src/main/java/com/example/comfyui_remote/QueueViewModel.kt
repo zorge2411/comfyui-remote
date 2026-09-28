@@ -8,13 +8,10 @@ import com.example.comfyui_remote.data.LocalQueueRepository
 import com.example.comfyui_remote.data.QueueStatus
 import com.example.comfyui_remote.domain.WorkflowExecutionService
 import com.example.comfyui_remote.domain.InputField
+import com.example.comfyui_remote.domain.InputFieldDeserializer
 import com.example.comfyui_remote.network.ComfyApiService
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
-import com.google.gson.JsonDeserializationContext
-import com.google.gson.JsonDeserializer
-import com.google.gson.JsonElement
-import com.google.gson.JsonParseException
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -142,13 +139,10 @@ class QueueViewModel(
 
             // Loop Batch Count
             repeat(item.batchCount) {
-                 val runInputs = finalInputs.map { field ->
-                    if (field is InputField.SeedInput) {
-                        field.copy(value = kotlin.random.Random.nextLong(1, Long.MAX_VALUE))
-                    } else {
-                        field
-                    }
-                }
+                 // Phase 101: Fixed seeds are sent as typed; older queued items (fixed = null) stay random
+                 val (runInputs, _) = com.example.comfyui_remote.domain.SeedPolicy.resolve(finalInputs) {
+                    kotlin.random.Random.nextLong(1, Long.MAX_VALUE)
+                 }
 
                 workflowExecutionService.prepareAndQueue(
                     api = api,
@@ -201,24 +195,6 @@ class QueueViewModel(
         viewModelScope.launch {
             val inputsJson = gson.toJson(inputs)
             localQueueRepository.addToQueue(workflowId, workflowName, workflowJson, inputsJson, batchCount)
-        }
-    }
-}
-
-class InputFieldDeserializer : JsonDeserializer<InputField> {
-    override fun deserialize(json: JsonElement, typeOfT: Type, context: JsonDeserializationContext): InputField {
-        val jsonObject = json.asJsonObject
-        val label = jsonObject.get("label")?.asString ?: throw JsonParseException("Missing label")
-
-        return when (label) {
-            "Text" -> context.deserialize(jsonObject, InputField.StringInput::class.java)
-            "Number" -> context.deserialize(jsonObject, InputField.IntInput::class.java)
-            "Seed" -> context.deserialize(jsonObject, InputField.SeedInput::class.java)
-            "Number (Float)" -> context.deserialize(jsonObject, InputField.FloatInput::class.java)
-            "Model" -> context.deserialize(jsonObject, InputField.ModelInput::class.java)
-            "Selection" -> context.deserialize(jsonObject, InputField.SelectionInput::class.java)
-            "Image" -> context.deserialize(jsonObject, InputField.ImageInput::class.java)
-            else -> throw JsonParseException("Unknown InputField label: $label")
         }
     }
 }

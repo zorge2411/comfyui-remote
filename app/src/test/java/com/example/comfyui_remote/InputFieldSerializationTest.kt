@@ -1,6 +1,7 @@
 package com.example.comfyui_remote
 
 import com.example.comfyui_remote.domain.InputField
+import com.example.comfyui_remote.domain.InputFieldDeserializer
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import org.junit.Assert.assertEquals

@@ -146,7 +146,12 @@ class WorkflowParser {
      * multiple sampler-shaped nodes disagree on the positive source (ambiguous) —
      * callers must leave ordering unchanged in either case.
      */
-    private fun findPositivePromptNodeId(jsonContent: String): String? {
+    fun findPositivePromptNodeId(jsonContent: String): String? = findConditioningSourceNodeId(jsonContent, "positive")
+
+    /** The negative-prompt counterpart of [findPositivePromptNodeId] (Phase 101), with the same rules. */
+    fun findNegativePromptNodeId(jsonContent: String): String? = findConditioningSourceNodeId(jsonContent, "negative")
+
+    private fun findConditioningSourceNodeId(jsonContent: String, key: String): String? {
         val positiveSourceIds = mutableSetOf<String>()
         try {
             val jsonObject = JsonParser.parseString(jsonContent).asJsonObject
@@ -157,7 +162,7 @@ class WorkflowParser {
                 val positive = inputsObj.get("positive")
                 val negative = inputsObj.get("negative")
                 if (positive != null && positive.isJsonArray && negative != null && negative.isJsonArray) {
-                    val link = positive.asJsonArray
+                    val link = (if (key == "positive") positive else negative).asJsonArray
                     if (link.size() >= 1) {
                         positiveSourceIds.add(link[0].asString)
                     }

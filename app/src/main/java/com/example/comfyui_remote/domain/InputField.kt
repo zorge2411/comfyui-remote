@@ -25,7 +25,9 @@ sealed class InputField(
         override val nodeId: String,
         override val fieldName: String,
         val value: Long,
-        override val nodeTitle: String
+        override val nodeTitle: String,
+        // Phase 101: true sends the value as typed; null (older saved or queued JSON) or false randomizes each run
+        val fixed: Boolean? = null
     ) : InputField("Seed")
 
     data class FloatInput(
@@ -63,3 +65,7 @@ sealed class InputField(
 /** Field name for display: inputs of a dynamic combo option are dotted ("format.codec" -> "format › codec"). */
 val InputField.displayName: String
     get() = fieldName.replace(".", " › ")
+
+/** Identifies a field across re-parses and regrouping: "nodeId/fieldName". */
+val InputField.key: String
+    get() = "$nodeId/$fieldName"

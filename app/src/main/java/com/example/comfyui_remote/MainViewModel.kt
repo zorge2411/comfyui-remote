@@ -655,14 +655,11 @@ class MainViewModel(
 
                 // Loop for Batch Generation
                 repeat(batchCount) { iteration ->
-                    // Randomize Seed for each run in the batch
-                    val runInputs = inputs.map { field ->
-                        if (field is com.example.comfyui_remote.domain.InputField.SeedInput) {
-                            field.copy(value = kotlin.random.Random.nextLong(1, Long.MAX_VALUE))
-                        } else {
-                            field
-                        }
+                    // Phase 101: random seeds get a new value each run; Fixed seeds are sent as typed
+                    val (runInputs, usedSeeds) = com.example.comfyui_remote.domain.SeedPolicy.resolve(inputs) {
+                        kotlin.random.Random.nextLong(1, Long.MAX_VALUE)
                     }
+                    _lastUsedSeeds.value = usedSeeds
 
                     // Patch & Queue via Service
                     val (updatedJson, response) = workflowExecutionService.prepareAndQueue(
@@ -817,6 +814,10 @@ class MainViewModel(
 
     fun cancelModelDownload(download: com.example.comfyui_remote.domain.ModelDownload) =
         modelDownloadRepository.cancel(download)
+
+    /** Seeds sent by the latest run, keyed "nodeId/fieldName" (Phase 101), so the form can offer to pin one. */
+    private val _lastUsedSeeds = MutableStateFlow<Map<String, Long>>(emptyMap())
+    val lastUsedSeeds: StateFlow<Map<String, Long>> = _lastUsedSeeds.asStateFlow()
 
     private val _serverWorkflows = MutableStateFlow<List<ServerWorkflowFile>>(emptyList())
     val serverWorkflows: StateFlow<List<ServerWorkflowFile>> = _serverWorkflows.asStateFlow()
