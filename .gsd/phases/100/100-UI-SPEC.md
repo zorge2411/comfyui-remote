@@ -1,6 +1,6 @@
 # UI Spec: Milestone 5 Conventions
 
-**Status:** draft for user approval (Plan 100.1, Task 3).
+**Status:** approved by the user on 2026-09-28 (Plan 100.1, Task 3).
 **Scope:** every screen of ComfyUI Remote. Material 3 with dynamic colour; phone portrait first, landscape must stay usable.
 **Implemented in:** `app/src/main/java/com/example/comfyui_remote/ui/components/` (Plan 100.2). Each rule lists its reason and the audit item it fixes (see `100-AUDIT.md`).
 
