@@ -3,11 +3,20 @@
 ## Current Position
 
 - **Milestone**: 5, UI/UX Overhaul (created 2026-09-27). Phases 100–105.
-- **Phase**: 104 (Gallery and Media Viewer): planning complete, ready for `/execute 104`. 3 plans in waves 1, 2 and 3. Phase 101 done; 102 and 103 not started.
+- **Phase**: 104 (Gallery and Media Viewer) done and device-verified 2026-09-28. Phases 100, 101 and 104 done; next: 102 or 103.
 - **Status**: Milestone planned. Milestone 4 is archived in `.gsd/milestones/Milestone 4/` (tag `milestone-4`).
 
 ## Achievements (Milestone 5)
 
+- [x] Phase 104 (gallery and media viewer):
+  - local filter sheet with chips and saved lists as named filters;
+  - "Remove from gallery" that survives syncs (Room 13 → 14);
+  - selection Share, Save and Remove;
+  - full-screen viewer with Share, Save, Open in form (seeds Fixed) and Info (prompt, seed, settings);
+  - encoded `/view` URLs;
+  - Reload keeps the gallery when ComfyUI's history is empty;
+  - adaptive grid in landscape.
+  - See `.gsd/phases/104/104-VERIFICATION.md`. Open item: 6 gallery entries lost in the Reload test can be restored from a prepared database copy if the user approves.
 - [x] Civitai downloads (2026-09-28, outside a phase): helper v3 accepts civitai.com links and sends `CIVITAI_TOKEN` there only; the size probe falls back to a ranged GET (Civitai R2 links refuse HEAD). App: Civitai download links and model pages with `?modelVersionId=`, "Search Civitai", v2-helper notice. Server has v3 (verified: DreamShaper 8 sized 2.13 GB, FLUX.1-dev still gated). Not yet done: a real Civitai download from the phone.
 - [x] Fix (2026-09-28, outside a phase): missing models are also detected from the prompt's loader values against `/object_info`, so workflows without embedded download links (server or in-app imports) show them; models without a link get "Add link" (Hugging Face or GitHub, saved with the workflow). 218 JVM tests green; device-verified 2026-09-28 on `krea-2-turbo-pid` (both missing models listed with "Add link"; link validation and the "Will be saved as" hint checked; nothing saved).
 - [x] Phase 101 (workflow form declutter): prompt first, Main settings with human labels, other inputs in collapsed node sections; fixed top and bottom bars; status area with progress and the latest result; Random/Fixed seeds (verified in `/history`); form values remembered per workflow with Reset (Room 12 → 13). See `.gsd/phases/101/101-VERIFICATION.md`.
@@ -149,8 +158,7 @@
 
 ## Next Steps
 
-1. `/execute 104`. The device check needs the phone on adb and unlocked; it removes and restores one gallery item, and asks for a rotation and a theme switch.
-1b. Then `/plan 102` (navigation) or `/plan 103` (workflow list).
+1. `/plan 102` (navigation; includes the History tab's future) or `/plan 103` (workflow list).
 2. Optional checks carried over, not yet done on the device:
    - Milestone 4: queue controls hidden on a helper v1 server; "Browse Templates" on an empty workflow list; a Gemini, Grok or SaveVideo run.
    - Milestone 3: Phase 82 prompt-first ordering on a real workflow; Phase 80 themed icon under Android 13+ Material You.

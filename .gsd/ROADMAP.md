@@ -17,7 +17,7 @@
 - [x] The workflow form shows the prompt and key settings first; everything else is grouped and collapsible; status cards (missing nodes or models, errors, progress) sit in one place (Phase 101)
 - [ ] Clear navigation: a tab bar with defined roles for Queue, History and Gallery, and connection state visible without a dedicated screen (Phase 102)
 - [ ] Workflow list cards show what a workflow is and whether it will run: a compatibility badge (carried over from Milestone 4) and the last result (Phase 103)
-- [ ] Gallery and media viewer follow the same conventions (Phase 104)
+- [x] Gallery and media viewer follow the same conventions (Phase 104)
 - [ ] No screen breaks in landscape; dark mode and touch targets checked on the device (Phases 100, 105). Connection and Settings are fixed; status-bar contrast and insets are fixed app-wide
 
 ## Nice-to-Haves
@@ -75,15 +75,15 @@
 
 ### Phase 104: Gallery and Media Viewer
 
-**Status**: 📋 Planned (`.gsd/phases/104/`: 3 plans)
+**Status**: ✅ Done, device-verified 2026-09-28 (`.gsd/phases/104/`)
 **Objective**: Align the gallery grid, the filters and saved-lists drawer, the detail viewer (zoom, swipe, video) and sharing with the Phase 100 conventions, and fix the rough edges found in the audit.
 - Filters are simplified and applied locally (no wipe); saved lists are named filters.
 - Delete becomes a confirmed "Remove from gallery" that survives syncs (Room 13 → 14).
 - Full-screen viewer with Share, Save, Open in form, Info (prompt, seed, settings) and Remove; multi-select Share and Save.
 **Plans**:
-- [ ] 104.1 Local filter and sort, Remove from gallery, media info, sync error (wave 1)
-- [ ] 104.2 Grid, filter sheet and saved lists (wave 2)
-- [ ] 104.3 Full-screen viewer, actions, URL builder; device check (wave 3)
+- [x] 104.1 Local filter and sort, Remove from gallery, media info, sync error (wave 1)
+- [x] 104.2 Grid, filter sheet and saved lists (wave 2)
+- [x] 104.3 Full-screen viewer, actions, URL builder; device check (wave 3)
 **Depends on**: Phase 100
 
 ### Phase 105: Consistency Pass and Device Check
