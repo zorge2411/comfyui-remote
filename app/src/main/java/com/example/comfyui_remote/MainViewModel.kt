@@ -1561,6 +1561,20 @@ class MainViewModel(
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 try {
                     android.util.Log.d("SYNC_DEBUG", "Starting full clear and refresh...")
+                    // ComfyUI's history is empty after a server restart: then keep the gallery (Phase 104)
+                    val serverHasHistory = try {
+                        buildApiService().getHistory(maxItems = 1).use { body ->
+                            com.example.comfyui_remote.domain.HistoryCheck.hasEntries(body.charStream())
+                        }
+                    } catch (e: Exception) {
+                        _syncError.value = "Couldn't reach the server, so the gallery was kept: ${e.message ?: e.javaClass.simpleName}"
+                        return@withContext
+                    }
+                    if (!serverHasHistory) {
+                        _syncError.value = "The server's history is empty (ComfyUI clears it when it restarts), so the gallery was kept as it is."
+                        return@withContext
+                    }
+                    _syncError.value = null
                     // Removed items keep their rows, so the sync below skips them (Phase 104)
                     mediaRepository.deleteVisible()
                     

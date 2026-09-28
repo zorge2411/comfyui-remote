@@ -359,7 +359,7 @@ fun GalleryScreen(
     if (confirmReload) {
         ConfirmDialog(
             title = "Reload from server?",
-            text = "The gallery is loaded again from the server's history. Removed items stay removed, and nothing on the server changes.",
+            text = "The gallery is rebuilt from the server's history. Items the server no longer lists disappear from the app (ComfyUI forgets its history when it restarts; if it's empty, the gallery is kept). Removed items stay removed, and nothing on the server changes.",
             confirmLabel = "Reload",
             onConfirm = {
                 viewModel.clearAndRefreshHistory()
