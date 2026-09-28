@@ -30,12 +30,16 @@
 
 ### Phase 100: UI Audit and Shared Components
 
-**Status**: ⬜ Not Started
+**Status**: 📋 Planned (`.gsd/phases/100/`: 3 plans)
 **Objective**: Build the baseline the other phases rely on.
 - Screenshot every screen and state on the phone (light and dark) and list the inconsistencies: top bars, buttons, dialogs, cards, spacing, empty, loading and error states.
 - Define the conventions in a short UI spec.
 - Build shared composables in `ui/components/`: top bar, section header, card, confirm dialog, empty, loading and error states, spacing tokens. Only the Phase 99 `SectionHeader` and `Format.kt` exist today.
 - Fix landscape hiding the Connect button.
+**Plans**:
+- [ ] 100.1 Device audit and UI spec; the user approves the spec (wave 1)
+- [ ] 100.2 Shared components and theme cleanup (wave 2)
+- [ ] 100.3 Edge-to-edge insets, Connection and Settings as reference screens, device check (wave 3)
 **Depends on**: none
 
 ### Phase 101: Workflow Form Declutter
