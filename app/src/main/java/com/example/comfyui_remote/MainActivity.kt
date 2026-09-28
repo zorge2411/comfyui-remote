@@ -2,6 +2,7 @@ package com.example.comfyui_remote
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -10,6 +11,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -18,7 +23,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Wifi
@@ -49,6 +53,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.ui.Alignment
@@ -78,8 +84,10 @@ import androidx.compose.animation.SharedTransitionLayout
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Phase 100: draw behind the system bars; the outer Scaffold pads them once (UI spec §10)
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        
+
         val database = AppDatabase.getDatabase(this)
         val repository = WorkflowRepository(database.workflowDao())
         val mediaRepository = com.example.comfyui_remote.data.MediaRepository(database.generatedMediaDao())
@@ -241,7 +249,8 @@ class MainActivity : ComponentActivity() {
                         NavHost(
                             navController = navController, 
                             startDestination = "connection",
-                            modifier = Modifier.padding(innerPadding)
+                            // Inner Scaffolds and top bars must not add the system bars again
+                            modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)
                         ) {
                         composable("connection") {
                             ConnectionScreen(viewModel) {
@@ -314,7 +323,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable("settings") {
-                            com.example.comfyui_remote.ui.SettingsScreen(viewModel)
+                            com.example.comfyui_remote.ui.SettingsScreen(viewModel) { navController.popBackStack() }
                         }
                         composable("remote_control") {
                             val workflow by viewModel.selectedWorkflow.collectAsState()
@@ -395,23 +404,24 @@ fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
         }
     }
 
+    // Phase 100 reference screen: top bar, scrolls (reachable in landscape and above the keyboard)
+    Column(modifier = Modifier.fillMaxSize()) {
+    com.example.comfyui_remote.ui.components.AppTopBar("Connection")
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .verticalScroll(rememberScrollState())
+            .imePadding()
+            .padding(com.example.comfyui_remote.ui.components.Dimens.screenPadding),
+        verticalArrangement = Arrangement.spacedBy(com.example.comfyui_remote.ui.components.Dimens.s)
     ) {
-        StatusIndicator(connectionState)
-        
-        Spacer(modifier = Modifier.height(32.dp))
+        com.example.comfyui_remote.ui.components.ConnectionStatus(connectionState)
 
         Text(
-            text = "Connect to ComfyUI",
-            style = MaterialTheme.typography.headlineMedium
+            text = "Connect to a ComfyUI server on your network.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
 
         var expanded by remember { mutableStateOf(false) }
 
@@ -429,7 +439,7 @@ fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
                 label = { Text("Host IP (e.g. 192.168.1.10)") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor(),
+                    .menuAnchor(MenuAnchorType.PrimaryEditable),
                 singleLine = true,
                 isError = hostError != null,
                 supportingText = if (hostError != null) { { Text(hostError!!) } } else null,
@@ -486,8 +496,6 @@ fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
             }
         }
         
-        Spacer(modifier = Modifier.height(8.dp))
-        
         OutlinedTextField(
             value = port,
             onValueChange = { 
@@ -502,8 +510,6 @@ fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
-
-        Spacer(modifier = Modifier.height(8.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -523,41 +529,22 @@ fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(com.example.comfyui_remote.ui.components.Dimens.s))
 
-        Button(
-            onClick = connectAction,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(if (connectionState == WebSocketState.CONNECTED) "Disconnect" else "Connect")
-        }
-        
+        // One filled button per screen (UI spec §8): Connect, or Go to workflows once connected
         if (connectionState == WebSocketState.CONNECTED) {
-             Spacer(modifier = Modifier.height(16.dp))
-             Button(onClick = onConnect, modifier = Modifier.fillMaxWidth()) {
-                 Text("Go to Workflows")
-             }
+            Button(onClick = onConnect, modifier = Modifier.fillMaxWidth()) {
+                Text("Go to workflows")
+            }
+            OutlinedButton(onClick = connectAction, modifier = Modifier.fillMaxWidth()) {
+                Text("Disconnect")
+            }
+        } else {
+            Button(onClick = connectAction, modifier = Modifier.fillMaxWidth()) {
+                Text("Connect")
+            }
         }
     }
-}
-
-@Composable
-fun StatusIndicator(state: WebSocketState) {
-    val color = when (state) {
-        WebSocketState.CONNECTED -> Color.Green
-        WebSocketState.CONNECTING -> Color.Yellow
-        WebSocketState.ERROR -> Color.Red
-        WebSocketState.DISCONNECTED -> Color.Gray
-        WebSocketState.RECONNECTING -> Color.Yellow
-    }
-
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            modifier = Modifier
-                .size(24.dp)
-                .background(color, CircleShape)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(text = state.name)
     }
 }
+

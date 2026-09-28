@@ -14,10 +14,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.comfyui_remote.MainViewModel
+import com.example.comfyui_remote.ui.components.AppCard
+import com.example.comfyui_remote.ui.components.AppTopBar
+import com.example.comfyui_remote.ui.components.Dimens
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(viewModel: MainViewModel) {
+fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     val saveFolderUri by viewModel.saveFolderUri.collectAsState()
     
@@ -34,24 +39,19 @@ fun SettingsScreen(viewModel: MainViewModel) {
         }
     }
 
+    // Phase 100 reference screen: top bar with back (pushed from History), scrolls, AppCard sections
+    Column(modifier = Modifier.fillMaxSize()) {
+    AppTopBar("Settings", onBack = onBack)
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .verticalScroll(rememberScrollState())
+            .padding(Dimens.screenPadding),
+        verticalArrangement = Arrangement.spacedBy(Dimens.l)
     ) {
-        Text(
-            text = "Settings",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(bottom = 24.dp)
-        )
 
-        Card(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            )
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+        AppCard(modifier = Modifier.fillMaxWidth()) {
+            Column {
                 Text(
                     text = "Appearance",
                     style = MaterialTheme.typography.titleMedium,
@@ -79,13 +79,8 @@ fun SettingsScreen(viewModel: MainViewModel) {
             }
         }
 
-        Card(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            )
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+        AppCard(modifier = Modifier.fillMaxWidth()) {
+            Column {
                 Text(
                     text = "Synchronization",
                     style = MaterialTheme.typography.titleMedium,
@@ -117,13 +112,8 @@ fun SettingsScreen(viewModel: MainViewModel) {
             }
         }
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            )
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+        AppCard(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = "Storage",
                     style = MaterialTheme.typography.titleMedium,
@@ -155,8 +145,6 @@ fun SettingsScreen(viewModel: MainViewModel) {
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
         // Permission Revocation Warning / Reset
         val hasPermission = try {
             if (saveFolderUri != null) {
@@ -173,8 +161,9 @@ fun SettingsScreen(viewModel: MainViewModel) {
                  onClick = { viewModel.saveSaveFolderUri("") }, // Empty string or null? ViewModel logic needed.
                  modifier = Modifier.align(Alignment.CenterHorizontally)
              ) {
-                 Text("Reset Folder Permission", color = MaterialTheme.colorScheme.error)
+                 Text("Reset folder permission", color = MaterialTheme.colorScheme.error)
              }
         }
+    }
     }
 }

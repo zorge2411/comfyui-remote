@@ -5,7 +5,7 @@ import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Info
@@ -119,7 +119,7 @@ fun MediaDetailScreen(
                     title = { Text(currentMedia?.workflowName ?: "Detail") },
                     navigationIcon = {
                         IconButton(onClick = handleBack) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                     },
                     actions = {
@@ -269,7 +269,7 @@ fun MediaDetailScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp)
-                                .padding(bottom = 32.dp) // Bottom padding for navigation bar
+                                .navigationBarsPadding()
                         ) {
                             Text(
                                 "Details",
