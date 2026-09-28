@@ -52,18 +52,29 @@ def _timeout():
 
 
 async def probe(url):
-    """Returns {"size": int | None, "gated": bool} from a HEAD request that follows redirects."""
+    """
+    Returns {"size": int | None, "gated": bool} from a HEAD request that follows redirects. When HEAD is
+    refused, a one-byte ranged GET is tried: presigned storage links (Civitai's R2 files) are signed for
+    GET only and answer HEAD with 403.
+    """
     async with aiohttp.ClientSession(timeout=_timeout()) as session:
         async with session.head(url, headers=_auth_headers(url), allow_redirects=True) as resp:
+            status, content_type = resp.status, resp.content_type
             size = None
             for r in (list(resp.history) + [resp]) if resp.status < 400 else []:
                 value = r.headers.get("x-linked-size") or (r.headers.get("content-length") if r is resp else None)
                 if value and value.isdigit() and int(value) > 0:
                     size = int(value)
                     break
-            # Civitai sends its login page (HTML) instead of a 401 for some models
-            login_page = _host(url) == "civitai.com" and resp.content_type == "text/html"
-            return {"size": None if login_page else size, "gated": resp.status in (401, 403) or login_page}
+        if status >= 400:
+            headers = {**_auth_headers(url), "Range": "bytes=0-0"}
+            async with session.get(url, headers=headers, allow_redirects=True) as resp:
+                status, content_type = resp.status, resp.content_type
+                total = resp.headers.get("content-range", "").rpartition("/")[2]
+                size = int(total) if status == 206 and total.isdigit() and int(total) > 0 else None
+        # Civitai sends its login page (HTML) instead of a 401 for some models
+        login_page = _host(url) == "civitai.com" and content_type == "text/html"
+        return {"size": None if login_page else size, "gated": status in (401, 403) or login_page}
 
 
 class Downloader:
