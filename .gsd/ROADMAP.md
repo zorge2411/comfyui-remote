@@ -75,8 +75,15 @@
 
 ### Phase 104: Gallery and Media Viewer
 
-**Status**: ⬜ Not Started
+**Status**: 📋 Planned (`.gsd/phases/104/`: 3 plans)
 **Objective**: Align the gallery grid, the filters and saved-lists drawer, the detail viewer (zoom, swipe, video) and sharing with the Phase 100 conventions, and fix the rough edges found in the audit.
+- Filters are simplified and applied locally (no wipe); saved lists are named filters.
+- Delete becomes a confirmed "Remove from gallery" that survives syncs (Room 13 → 14).
+- Full-screen viewer with Share, Save, Open in form, Info (prompt, seed, settings) and Remove; multi-select Share and Save.
+**Plans**:
+- [ ] 104.1 Local filter and sort, Remove from gallery, media info, sync error (wave 1)
+- [ ] 104.2 Grid, filter sheet and saved lists (wave 2)
+- [ ] 104.3 Full-screen viewer, actions, URL builder; device check (wave 3)
 **Depends on**: Phase 100
 
 ### Phase 105: Consistency Pass and Device Check
