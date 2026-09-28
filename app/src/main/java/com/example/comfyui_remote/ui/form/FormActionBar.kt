@@ -1,6 +1,7 @@
 package com.example.comfyui_remote.ui.form
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -41,11 +42,11 @@ fun FormActionBar(
     Surface(tonalElevation = 3.dp) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Dimens.s),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.xs),
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = Dimens.l, vertical = Dimens.s)
+                .padding(horizontal = Dimens.s, vertical = Dimens.s)
         ) {
             IconButton(onClick = { onBatchChange(batchCount - 1) }, enabled = batchCount > 1) {
                 Icon(Icons.Filled.Remove, contentDescription = "Fewer runs")
@@ -54,10 +55,12 @@ fun FormActionBar(
             IconButton(onClick = { onBatchChange(batchCount + 1) }, enabled = batchCount < 10) {
                 Icon(Icons.Filled.Add, contentDescription = "More runs")
             }
-            OutlinedButton(onClick = onQueue, enabled = enabled, modifier = Modifier.weight(1f)) {
+            // Narrow phones: less padding so "Queue" and "Generate" fit next to the batch stepper
+            val buttonPadding = PaddingValues(horizontal = Dimens.m, vertical = Dimens.s)
+            OutlinedButton(onClick = onQueue, enabled = enabled, contentPadding = buttonPadding, modifier = Modifier.weight(1f)) {
                 Text("Queue", maxLines = 1)
             }
-            Button(onClick = onGenerate, enabled = enabled, modifier = Modifier.weight(1.4f)) {
+            Button(onClick = onGenerate, enabled = enabled, contentPadding = buttonPadding, modifier = Modifier.weight(1.3f)) {
                 if (busyLabel != null) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(18.dp).padding(end = Dimens.xs),

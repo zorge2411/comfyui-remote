@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -328,19 +330,21 @@ fun DynamicFormScreen(
                 }
             }
             if (image != null) {
+                // Compact, so the prompt stays near the top
                 AppCard(onClick = generatedMediaId?.let { id -> { onViewInGallery(id) } }) {
-                    Text("Latest result", style = MaterialTheme.typography.titleSmall)
-                    Spacer(Modifier.height(Dimens.s))
-                    coil.compose.AsyncImage(
-                        model = image,
-                        contentDescription = "Latest result",
-                        modifier = Modifier.fillMaxWidth().height(200.dp)
-                    )
-                    if (generatedMediaId != null) {
-                        TextButton(
-                            onClick = { generatedMediaId?.let { onViewInGallery(it) } },
-                            modifier = Modifier.align(Alignment.End)
-                        ) { Text("Open in gallery") }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        coil.compose.AsyncImage(
+                            model = image,
+                            contentDescription = "Latest result",
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier.size(96.dp).clip(MaterialTheme.shapes.small)
+                        )
+                        Column(modifier = Modifier.weight(1f).padding(start = Dimens.m)) {
+                            Text("Latest result", style = MaterialTheme.typography.titleSmall)
+                            if (generatedMediaId != null) {
+                                TextButton(onClick = { generatedMediaId?.let { onViewInGallery(it) } }) { Text("Open in gallery") }
+                            }
+                        }
                     }
                 }
             }
