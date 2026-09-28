@@ -44,13 +44,17 @@
 
 ### Phase 101: Workflow Form Declutter
 
-**Status**: ⬜ Not Started
+**Status**: 📋 Planned (`.gsd/phases/101/`: 3 plans)
 **Objective**: Make `DynamicFormScreen` (about 1,000 lines) quick to use.
 - The positive prompt stays first (Phase 82).
 - Key settings (seed, width and height, steps, cfg, sampler and scheduler, model) go in a main group.
 - The remaining inputs are grouped per node and collapsed by default.
 - The missing-nodes and missing-models cards, server errors and progress are merged into one status area.
 - The result preview and Generate/Queue actions are easy to reach.
+**Plans**:
+- [ ] 101.1 FormLayout (main settings and groups) and seed policy (Random/Fixed) (wave 1)
+- [ ] 101.2 Remembered form values per workflow, Room 12 → 13 (wave 1)
+- [ ] 101.3 Form UI: fixed top and bottom bars, status area with the result, collapsed node sections; device check (wave 2)
 **Depends on**: Phase 100
 
 ### Phase 102: Navigation and Structure

@@ -3,7 +3,7 @@
 ## Current Position
 
 - **Milestone**: 5, UI/UX Overhaul (created 2026-09-27). Phases 100–105.
-- **Phase**: 100 ✅ done (2026-09-28). Next: Phase 101 (Workflow Form Declutter). Phases 101–104 can be planned independently; all build on `100-UI-SPEC.md`.
+- **Phase**: 101 (Workflow Form Declutter): planning complete, ready for `/execute 101`. 3 plans: 101.1 and 101.2 in wave 1, 101.3 in wave 2.
 - **Status**: Milestone planned. Milestone 4 is archived in `.gsd/milestones/Milestone 4/` (tag `milestone-4`).
 
 ## Achievements (Milestone 5)
@@ -146,7 +146,7 @@
 
 ## Next Steps
 
-1. `/plan 101`: workflow form declutter.
+1. `/execute 101`. For the device check the phone must be on adb and unlocked; the check runs the small Z-Image-Turbo template twice.
 2. Optional checks carried over, not yet done on the device:
    - Milestone 4: queue controls hidden on a helper v1 server; "Browse Templates" on an empty workflow list; a Gemini, Grok or SaveVideo run.
    - Milestone 3: Phase 82 prompt-first ordering on a real workflow; Phase 80 themed icon under Android 13+ Material You.
