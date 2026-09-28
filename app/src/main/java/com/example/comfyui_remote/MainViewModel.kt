@@ -515,7 +515,13 @@ class MainViewModel(
                     name = "History: ${DATE_FORMATTER_SHORT.withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(media.timestamp))}",
                     jsonContent = media.promptJson,
                     createdAt = media.timestamp,
-                    lastImageName = media.fileName
+                    lastImageName = media.fileName,
+                    // Phase 104: restored seeds start Fixed, so Generate reproduces the item's settings
+                    savedInputs = com.example.comfyui_remote.domain.FormValues.encode(
+                        parseWorkflowInputs(media.promptJson)
+                            .filterIsInstance<com.example.comfyui_remote.domain.InputField.SeedInput>()
+                            .map { it.copy(fixed = true) }
+                    )
                 )
                 android.util.Log.d("HISTORY_DEBUG", "Temp workflow created: ${tempWorkflow.name}")
                 _selectedWorkflow.value = tempWorkflow

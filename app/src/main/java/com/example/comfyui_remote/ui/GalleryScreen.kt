@@ -478,7 +478,7 @@ private fun MediaGrid(
     // Preload the next two rows of thumbnails while scrolling
     LaunchedEffect(mediaList, currentHost, currentPort, isSecure) {
         var maxPreloadedIndex = -1
-        val targetSize = context.resources.displayMetrics.widthPixels / 3
+        val targetSize = context.resources.displayMetrics.let { minOf(it.widthPixels, it.heightPixels) } / 3
         val loadingUrls = mutableSetOf<String>()
         snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
             .collect { lastIndex ->
@@ -508,7 +508,8 @@ private fun MediaGrid(
 
     LazyVerticalGrid(
         state = gridState,
-        columns = GridCells.Fixed(3),
+        // 3 columns on a portrait phone, more in landscape and on tablets
+        columns = GridCells.Adaptive(minSize = 112.dp),
         modifier = Modifier.fillMaxSize(),
         horizontalArrangement = Arrangement.spacedBy(Dimens.xs),
         verticalArrangement = Arrangement.spacedBy(Dimens.xs),
@@ -571,7 +572,7 @@ fun GalleryItem(
         coil.request.ImageRequest.Builder(context)
             .data(item.constructUrl(currentHost, currentPort, isSecure))
             .crossfade(true)
-            .size(context.resources.displayMetrics.widthPixels / 3)
+            .size(context.resources.displayMetrics.let { minOf(it.widthPixels, it.heightPixels) } / 3)
             .precision(coil.size.Precision.EXACT)
             .bitmapConfig(android.graphics.Bitmap.Config.RGB_565) // 50% memory saving for thumbs
             .build()
