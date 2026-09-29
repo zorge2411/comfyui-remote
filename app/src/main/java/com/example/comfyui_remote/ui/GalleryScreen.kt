@@ -83,6 +83,8 @@ import com.example.comfyui_remote.data.GallerySyncFilter
 import com.example.comfyui_remote.data.GeneratedMediaListing
 import com.example.comfyui_remote.ui.components.AppTopBar
 import com.example.comfyui_remote.ui.components.ConfirmDialog
+import com.example.comfyui_remote.ui.components.ConnectionChip
+import com.example.comfyui_remote.ui.components.NotConnectedBanner
 import com.example.comfyui_remote.ui.components.Dimens
 import com.example.comfyui_remote.ui.components.EmptyState
 import com.example.comfyui_remote.ui.components.StatusBanner
@@ -107,9 +109,12 @@ private val FAB_CLEARANCE = 88.dp
 fun GalleryScreen(
     viewModel: MainViewModel,
     onMediaClick: (GeneratedMediaListing) -> Unit,
+    onOpenConnection: () -> Unit,
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
+    val connectionState by viewModel.connectionState.collectAsState()
+    val isConnected = connectionState == com.example.comfyui_remote.network.WebSocketState.CONNECTED
     val mediaList by viewModel.galleryMedia.collectAsState()
     val allMedia by viewModel.allMedia.collectAsState(initial = emptyList())
     val filter by viewModel.gallerySyncFilter.collectAsState()
@@ -226,21 +231,29 @@ fun GalleryScreen(
                 )
             } else {
                 var more by remember { mutableStateOf(false) }
+                // Phase 102: the connection chip counts as one of the three actions; Saved lists moved into More
                 AppTopBar("Gallery") {
+                    ConnectionChip(connectionState, onClick = onOpenConnection)
                     IconButton(onClick = { showFilter = true }) {
                         BadgedBox(badge = { if (filter.isActive() || filter.isSorted()) Badge() }) {
                             Icon(Icons.Filled.FilterList, contentDescription = "Filter")
                         }
-                    }
-                    IconButton(onClick = { showLists = true }) {
-                        Icon(Icons.Filled.Bookmarks, contentDescription = "Saved lists")
                     }
                     Box {
                         IconButton(onClick = { more = true }) {
                             Icon(Icons.Filled.MoreVert, contentDescription = "More options")
                         }
                         DropdownMenu(expanded = more, onDismissRequest = { more = false }) {
-                            DropdownMenuItem(text = { Text("Reload from server") }, onClick = { more = false; confirmReload = true })
+                            DropdownMenuItem(
+                                text = { Text("Saved lists") },
+                                leadingIcon = { Icon(Icons.Filled.Bookmarks, contentDescription = null) },
+                                onClick = { more = false; showLists = true }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Reload from server") },
+                                enabled = isConnected,
+                                onClick = { more = false; confirmReload = true }
+                            )
                             if (removedCount > 0) {
                                 DropdownMenuItem(
                                     text = { Text("Restore removed items ($removedCount)") },
@@ -253,7 +266,8 @@ fun GalleryScreen(
             }
         },
         floatingActionButton = {
-            if (!selecting) {
+            // Uploading needs the server (Phase 102)
+            if (!selecting && isConnected) {
                 FloatingActionButton(onClick = { showAddDialog = true }) {
                     Icon(Icons.Filled.Add, contentDescription = "Add image")
                 }
@@ -262,6 +276,12 @@ fun GalleryScreen(
         snackbarHost = { SnackbarHost(snackbar) }
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
+            NotConnectedBanner(
+                connectionState,
+                onReconnect = { viewModel.connect() },
+                onOpenConnection = onOpenConnection,
+                modifier = Modifier.padding(horizontal = Dimens.screenPadding, vertical = Dimens.s)
+            )
             val parts = filterParts(filter)
             if (parts.isNotEmpty()) {
                 ActiveFilterRow(filter, onChange = { viewModel.setGalleryFilter(it) })
@@ -281,7 +301,7 @@ fun GalleryScreen(
 
             PullToRefreshBox(
                 isRefreshing = isSyncing,
-                onRefresh = { viewModel.syncHistory() },
+                onRefresh = { if (isConnected) viewModel.syncHistory() },
                 modifier = Modifier.fillMaxSize().weight(1f)
             ) {
                 when {

@@ -64,6 +64,7 @@ import com.example.comfyui_remote.ui.components.AppTopBar
 import com.example.comfyui_remote.ui.components.ConfirmDialog
 import com.example.comfyui_remote.ui.components.Dimens
 import com.example.comfyui_remote.ui.components.ErrorCard
+import com.example.comfyui_remote.ui.components.NotConnectedBanner
 import com.example.comfyui_remote.ui.components.SectionHeader
 import com.example.comfyui_remote.ui.components.StatusBanner
 import com.example.comfyui_remote.ui.components.StatusKind
@@ -91,7 +92,7 @@ fun DynamicFormScreen(
     workflow: WorkflowEntity,
     onBack: () -> Unit,
     onViewInGallery: (Long) -> Unit,
-    onViewQueue: () -> Unit
+    onOpenConnection: () -> Unit
 ) {
     val nodeMetadata by viewModel.nodeMetadata.collectAsState()
     // Field values, keyed by nodeId/fieldName. Re-parsed when the workflow or the server's node list changes,
@@ -174,6 +175,8 @@ fun DynamicFormScreen(
     val image by viewModel.generatedImage.collectAsState()
     val generatedMediaId by viewModel.generatedMediaId.collectAsState()
 
+    val connectionState by viewModel.connectionState.collectAsState()
+    val isConnected = connectionState == com.example.comfyui_remote.network.WebSocketState.CONNECTED
     val running = executionStatus == ExecutionStatus.EXECUTING || executionStatus == ExecutionStatus.QUEUED
     val idle = executionStatus == ExecutionStatus.IDLE || executionStatus == ExecutionStatus.FINISHED ||
         executionStatus == ExecutionStatus.ERROR
@@ -258,7 +261,10 @@ fun DynamicFormScreen(
             FormActionBar(
                 batchCount = batchCount,
                 onBatchChange = { batchCount = it.coerceIn(1, 10) },
-                enabled = idle && pendingUploads.isEmpty() && !checking,
+                enabled = idle && pendingUploads.isEmpty() && !checking && isConnected,
+                // Phase 102: Generate needs the server; Queue only adds to the app's own queue
+                queueEnabled = idle && pendingUploads.isEmpty() && !checking,
+                offlineLabel = if (isConnected) null else "Not connected",
                 busyLabel = when {
                     running -> "Running…"
                     pendingUploads.isNotEmpty() -> "Uploading…"
@@ -280,6 +286,11 @@ fun DynamicFormScreen(
             verticalArrangement = Arrangement.spacedBy(Dimens.m)
         ) {
             // ---- Status area ----
+            NotConnectedBanner(
+                connectionState,
+                onReconnect = { viewModel.connect() },
+                onOpenConnection = onOpenConnection
+            )
             if (!missingNodesText.isNullOrBlank()) {
                 StatusBanner(StatusKind.Error, "Missing nodes on server", message = missingNodesText)
             }

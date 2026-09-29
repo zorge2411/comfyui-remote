@@ -51,6 +51,13 @@ import com.example.comfyui_remote.MainViewModel
 import com.example.comfyui_remote.data.WorkflowEntity
 import com.example.comfyui_remote.network.ServerWorkflowFile
 import com.example.comfyui_remote.ui.components.EmptyState
+import com.example.comfyui_remote.network.WebSocketState
+import com.example.comfyui_remote.ui.components.AppTopBar
+import com.example.comfyui_remote.ui.components.ConnectionChip
+import com.example.comfyui_remote.ui.components.Dimens
+import com.example.comfyui_remote.ui.components.NotConnectedBanner
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.runtime.LaunchedEffect
 
 // Reusable date formatter to avoid instantiation on every recomposition
 private val DATE_FORMATTER = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd", java.util.Locale.getDefault())
@@ -61,47 +68,63 @@ private val DATE_FORMATTER = java.time.format.DateTimeFormatter.ofPattern("yyyy-
 fun WorkflowListScreen(
     viewModel: MainViewModel,
     onOpenTemplates: () -> Unit = {},
+    onOpenConnection: () -> Unit,
     onWorkflowValidation: (WorkflowEntity) -> Unit // Will navigate to detail/run screen
 ) {
     val workflows by viewModel.allWorkflows.collectAsState(initial = emptyList())
     val serverWorkflows by viewModel.serverWorkflows.collectAsState()
     val isSyncing by viewModel.isSyncing.collectAsState()
     val importStatus by viewModel.importStatus.collectAsState()
+    val connectionState by viewModel.connectionState.collectAsState()
+    val isConnected = connectionState == WebSocketState.CONNECTED
     var showImportDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf<WorkflowEntity?>(null) }
     var showDeleteDialog by remember { mutableStateOf<WorkflowEntity?>(null) }
+    // A sync started by pulling shows the pull indicator instead of the overlay
+    var pulled by remember { mutableStateOf(false) }
+    LaunchedEffect(isSyncing) { if (!isSyncing) pulled = false }
 
     Scaffold(
         topBar = {
-             androidx.compose.material3.TopAppBar(
-                 title = { Text("Workflows") },
-                 actions = {
-                     IconButton(onClick = onOpenTemplates) {
-                         Icon(Icons.Default.GridView, contentDescription = "Browse Templates")
-                     }
-                     IconButton(onClick = { 
-                         viewModel.syncHistory() 
-                         viewModel.fetchServerWorkflows()
-                     }) {
-                         Icon(Icons.Default.Refresh, contentDescription = "Sync from Server")
-                     }
-                 }
-             )
+            // Phase 102: "Sync from server" is pull to refresh; the chip counts as one of the three actions
+            AppTopBar("Workflows") {
+                ConnectionChip(connectionState, onClick = onOpenConnection)
+                IconButton(onClick = onOpenTemplates, enabled = isConnected) {
+                    Icon(Icons.Default.GridView, contentDescription = "Browse templates")
+                }
+            }
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showImportDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Import Workflow")
+                Icon(Icons.Default.Add, contentDescription = "Import workflow")
             }
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+        Column(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+        NotConnectedBanner(
+            connectionState,
+            onReconnect = { viewModel.connect() },
+            onOpenConnection = onOpenConnection,
+            modifier = Modifier.padding(horizontal = Dimens.screenPadding, vertical = Dimens.s)
+        )
+        PullToRefreshBox(
+            isRefreshing = pulled && isSyncing,
+            onRefresh = {
+                if (isConnected) {
+                    pulled = true
+                    viewModel.syncHistory()
+                    viewModel.fetchServerWorkflows()
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        ) {
             if (workflows.isEmpty() && serverWorkflows.isEmpty()) {
                 EmptyState(
                     icon = Icons.Default.AccountTree,
                     title = "No Workflows Yet",
                     message = "Start from one of your server's templates, or tap the + button to import a workflow from your device or the server.",
-                    actionText = "Browse Templates",
-                    onAction = onOpenTemplates
+                    actionText = if (isConnected) "Browse Templates" else null,
+                    onAction = if (isConnected) onOpenTemplates else null
                 )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -154,7 +177,7 @@ fun WorkflowListScreen(
             }
             
             // Loading overlay when importing/syncing
-            if (isSyncing) {
+            if (isSyncing && !pulled) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -176,6 +199,7 @@ fun WorkflowListScreen(
                     }
                 }
             }
+        }
         }
     }
 

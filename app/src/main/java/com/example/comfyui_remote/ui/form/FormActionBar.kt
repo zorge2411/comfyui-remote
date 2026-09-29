@@ -28,7 +28,8 @@ import com.example.comfyui_remote.ui.theme.ComfyUI_front_endTheme
 
 /**
  * The form's fixed bottom bar (Phase 101): batch count, Queue and Generate stay visible while the fields
- * scroll. [busyLabel] replaces "Generate" while running, uploading or checking.
+ * scroll. [busyLabel] replaces "Generate" while running, uploading or checking. [offlineLabel] replaces it,
+ * without a spinner, while the app isn't connected (Phase 102); Queue then still adds to the app's queue.
  */
 @Composable
 fun FormActionBar(
@@ -37,6 +38,8 @@ fun FormActionBar(
     enabled: Boolean,
     busyLabel: String?,
     onQueue: () -> Unit,
+    queueEnabled: Boolean = enabled,
+    offlineLabel: String? = null,
     onGenerate: () -> Unit
 ) {
     Surface(tonalElevation = 3.dp) {
@@ -57,11 +60,13 @@ fun FormActionBar(
             }
             // Narrow phones: less padding so "Queue" and "Generate" fit next to the batch stepper
             val buttonPadding = PaddingValues(horizontal = Dimens.m, vertical = Dimens.s)
-            OutlinedButton(onClick = onQueue, enabled = enabled, contentPadding = buttonPadding, modifier = Modifier.weight(1f)) {
+            OutlinedButton(onClick = onQueue, enabled = queueEnabled, contentPadding = buttonPadding, modifier = Modifier.weight(1f)) {
                 Text("Queue", maxLines = 1)
             }
             Button(onClick = onGenerate, enabled = enabled, contentPadding = buttonPadding, modifier = Modifier.weight(1.3f)) {
-                if (busyLabel != null) {
+                if (offlineLabel != null) {
+                    Text(offlineLabel, maxLines = 1)
+                } else if (busyLabel != null) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(18.dp).padding(end = Dimens.xs),
                         strokeWidth = 2.dp,

@@ -5,67 +5,95 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import com.example.comfyui_remote.MainViewModel
+import com.example.comfyui_remote.network.WebSocketState
 import com.example.comfyui_remote.ui.components.AppCard
 import com.example.comfyui_remote.ui.components.AppTopBar
+import com.example.comfyui_remote.ui.components.ConnectionStatus
 import com.example.comfyui_remote.ui.components.Dimens
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import com.example.comfyui_remote.ui.components.SectionHeader
 
+/** The Settings tab (Phase 102): server, appearance, gallery sync and storage. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
+fun SettingsScreen(viewModel: MainViewModel, onOpenConnection: () -> Unit) {
     val context = LocalContext.current
     val saveFolderUri by viewModel.saveFolderUri.collectAsState()
-    
+    val connectionState by viewModel.connectionState.collectAsState()
+    val serverAddress by viewModel.serverAddress.collectAsState()
+    val hasSavedServer by viewModel.hasSavedServer.collectAsState()
+    val autoConnect by viewModel.autoConnect.collectAsState()
+    val themeMode by viewModel.themeMode.collectAsState()
+    val maxItems by viewModel.maxSyncItems.collectAsState()
+
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
     ) { uri: Uri? ->
         uri?.let {
-            // Take persistable permission
             val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
                     Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             context.contentResolver.takePersistableUriPermission(it, takeFlags)
-            
             viewModel.saveSaveFolderUri(it.toString())
         }
     }
 
-    // Phase 100 reference screen: top bar with back (pushed from History), scrolls, AppCard sections
     Column(modifier = Modifier.fillMaxSize()) {
-    AppTopBar("Settings", onBack = onBack)
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(Dimens.screenPadding),
-        verticalArrangement = Arrangement.spacedBy(Dimens.l)
-    ) {
+        AppTopBar("Settings")
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = Dimens.screenPadding)
+                .padding(bottom = Dimens.screenPadding),
+            verticalArrangement = Arrangement.spacedBy(Dimens.s)
+        ) {
+            SectionHeader("Server")
+            AppCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(Dimens.s)) {
+                    Text(
+                        text = if (hasSavedServer == true) serverAddress else "No server set",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    ConnectionStatus(connectionState)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.s),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        when (connectionState) {
+                            WebSocketState.CONNECTED, WebSocketState.CONNECTING, WebSocketState.RECONNECTING ->
+                                OutlinedButton(onClick = { viewModel.disconnect() }) { Text("Disconnect") }
+                            else -> if (hasSavedServer == true) {
+                                Button(onClick = { viewModel.connect() }) { Text("Connect") }
+                            }
+                        }
+                        TextButton(onClick = onOpenConnection) { Text("Change server…") }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().heightIn(min = Dimens.minTouch),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Connect automatically on start",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Switch(checked = autoConnect, onCheckedChange = { viewModel.setAutoConnect(it) })
+                    }
+                }
+            }
 
-        AppCard(modifier = Modifier.fillMaxWidth()) {
-            Column {
-                Text(
-                    text = "Appearance",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                val themeMode by viewModel.themeMode.collectAsState()
+            SectionHeader("Appearance")
+            AppCard(modifier = Modifier.fillMaxWidth()) {
                 val themeOptions = listOf("System", "Light", "Dark")
-                
-                SingleChoiceSegmentedButtonRow(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                     themeOptions.forEachIndexed { index, label ->
                         SegmentedButton(
                             shape = SegmentedButtonDefaults.itemShape(index = index, count = themeOptions.size),
@@ -77,93 +105,54 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     }
                 }
             }
-        }
 
-        AppCard(modifier = Modifier.fillMaxWidth()) {
-            Column {
-                Text(
-                    text = "Synchronization",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                val maxItems by viewModel.maxSyncItems.collectAsState()
-                
-                Text(
-                    text = "Max History Items: ${maxItems.toInt()}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                
-                Slider(
-                    value = maxItems.toFloat(),
-                    onValueChange = { viewModel.updateMaxSyncItems(it.toInt()) },
-                    valueRange = 100f..2000f,
-                    steps = 18,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                Text(
-                    text = "Higher limits sync more history but take longer.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            SectionHeader("Gallery sync")
+            AppCard(modifier = Modifier.fillMaxWidth()) {
+                Column {
+                    Text(
+                        text = "Items to load from the server: $maxItems",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Slider(
+                        value = maxItems.toFloat(),
+                        onValueChange = { viewModel.updateMaxSyncItems(it.toInt()) },
+                        valueRange = 100f..2000f,
+                        steps = 18,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(
+                        text = "Higher limits load more history but take longer.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-        }
 
-        AppCard(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "Storage",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Text(
-                    text = "Save Folder",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                
-                Text(
-                    text = saveFolderUri ?: "Not selected (Defaults to Downloads)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Button(
-                    onClick = { launcher.launch(null) },
-                    modifier = Modifier.align(Alignment.End)
-                ) {
-                    Text("Change Folder")
+            SectionHeader("Storage")
+            AppCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(text = "Save folder", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        text = saveFolderUri?.takeIf { it.isNotEmpty() } ?: "Not selected (defaults to Downloads)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = Dimens.s),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        if (!saveFolderUri.isNullOrEmpty()) {
+                            TextButton(onClick = { viewModel.saveSaveFolderUri("") }) {
+                                Text("Reset", color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                        OutlinedButton(onClick = { launcher.launch(null) }) {
+                            Text("Change folder")
+                        }
+                    }
                 }
             }
         }
-
-        // Permission Revocation Warning / Reset
-        val hasPermission = try {
-            if (saveFolderUri != null) {
-                val uri = Uri.parse(saveFolderUri)
-                // Check if we still have access (simple heuristic: valid URI and content resolver doesn't crash)
-                // In reality, takePersistableUriPermission handles it, but revoked permission might not throw until access.
-                // We'll just provide the Reset button always if set.
-                true
-            } else false
-        } catch (e: Exception) { false }
-
-        if (saveFolderUri != null) {
-             TextButton(
-                 onClick = { viewModel.saveSaveFolderUri("") }, // Empty string or null? ViewModel logic needed.
-                 modifier = Modifier.align(Alignment.CenterHorizontally)
-             ) {
-                 Text("Reset folder permission", color = MaterialTheme.colorScheme.error)
-             }
-        }
-    }
     }
 }
