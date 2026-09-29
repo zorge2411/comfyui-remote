@@ -159,7 +159,7 @@
 ## Next Steps
 
 1. `/execute 102`. The device check needs the phone on adb and unlocked; it runs the small Z-Image-Turbo template with batch 2 (asks first), and asks for a rotation.
-1b. Then `/plan 103` (workflow list).
+1b. Then `/execute 103` (workflow list; planned 2026-09-29 in `.gsd/phases/103/`, 3 plans in waves 1–3; 103.2 builds on 102's top bar, chip and pull to refresh).
 2. Optional checks carried over, not yet done on the device:
    - Milestone 4: queue controls hidden on a helper v1 server; "Browse Templates" on an empty workflow list; a Gemini, Grok or SaveVideo run.
    - Milestone 3: Phase 82 prompt-first ordering on a real workflow; Phase 80 themed icon under Android 13+ Material You.

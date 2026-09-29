@@ -76,7 +76,11 @@
 
 **Status**: ⬜ Not Started
 **Objective**: Workflow cards show the last result image, the models used and a **compatibility badge** (runs / warnings / will fail), reusing `MainViewModel.preflight`. Add search and sort, and polish the template browser to the Phase 100 conventions.
-**Depends on**: Phase 100
+**Plans** (planned 2026-09-29, `.gsd/phases/103/`):
+- [ ] 103.1 Compatibility, models, last result, lastUsedAt (Room 14 → 15) (wave 1)
+- [ ] 103.2 Workflow list UI: cards, search, sort, server section, import dialog (wave 2)
+- [ ] 103.3 Template browser polish; device check (wave 3)
+**Depends on**: Phase 100; runs after Phase 102 (shares the Workflows top bar)
 
 ### Phase 104: Gallery and Media Viewer
 
