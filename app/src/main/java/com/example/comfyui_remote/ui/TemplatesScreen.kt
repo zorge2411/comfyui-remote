@@ -17,9 +17,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CloudOff
@@ -28,7 +26,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -39,7 +37,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -51,7 +48,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -61,7 +59,13 @@ import com.example.comfyui_remote.MainViewModel
 import com.example.comfyui_remote.data.WorkflowEntity
 import com.example.comfyui_remote.domain.WorkflowTemplate
 import com.example.comfyui_remote.domain.WorkflowTemplateIndex
+import com.example.comfyui_remote.ui.components.AppTopBar
+import com.example.comfyui_remote.ui.components.Dimens
 import com.example.comfyui_remote.ui.components.EmptyState
+import com.example.comfyui_remote.ui.components.LoadingIndicator
+import com.example.comfyui_remote.ui.components.LoadingOverlay
+import com.example.comfyui_remote.ui.components.StatusBanner
+import com.example.comfyui_remote.ui.components.StatusKind
 import kotlinx.coroutines.flow.drop
 
 /**
@@ -102,38 +106,43 @@ fun TemplatesScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Templates") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.fetchTemplates(force = true) }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Reload templates")
-                    }
+            AppTopBar("Templates", onBack = onBack) {
+                IconButton(onClick = { viewModel.fetchTemplates(force = true) }) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Reload templates")
                 }
-            )
+            }
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize()) {
             when {
-                loading && categories.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+                loading && categories.isEmpty() -> LoadingIndicator(modifier = Modifier.fillMaxSize())
                 error != null && categories.isEmpty() -> EmptyState(
                     icon = Icons.Default.CloudOff,
-                    title = "No Templates",
+                    title = "No templates",
                     message = error ?: "",
                     actionText = "Retry",
                     onAction = { viewModel.fetchTemplates(force = true) }
                 )
                 else -> Column(Modifier.fillMaxSize()) {
+                    // A failed reload keeps the templates already shown (Phase 103)
+                    error?.let { message ->
+                        StatusBanner(
+                            StatusKind.Error,
+                            "Couldn't reload templates",
+                            message = message,
+                            modifier = Modifier.padding(horizontal = Dimens.screenPadding, vertical = Dimens.s),
+                            actions = {
+                                TextButton(onClick = { viewModel.clearTemplatesError() }) { Text("Dismiss") }
+                                TextButton(onClick = { viewModel.fetchTemplates(force = true) }) { Text("Retry") }
+                            }
+                        )
+                    }
                     OutlinedTextField(
                         value = query,
                         onValueChange = { query = it },
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = Dimens.screenPadding, vertical = Dimens.s),
                         placeholder = { Text("Search templates, models, tags") },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                         trailingIcon = {
@@ -149,8 +158,8 @@ fun TemplatesScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            .padding(horizontal = Dimens.screenPadding),
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.s)
                     ) {
                         FilterChip(
                             selected = localOnly,
@@ -174,13 +183,15 @@ fun TemplatesScreen(
                         "${visible.size} templates",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                        modifier = Modifier.padding(horizontal = Dimens.screenPadding, vertical = Dimens.xs)
                     )
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(minSize = 160.dp),
                         state = gridState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)
+                        contentPadding = PaddingValues(Dimens.screenPadding),
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.s),
+                        verticalArrangement = Arrangement.spacedBy(Dimens.s)
                     ) {
                         items(visible, key = { it.name }) { template ->
                             TemplateCard(
@@ -196,20 +207,7 @@ fun TemplatesScreen(
             }
 
             if (isImporting) {
-                Box(
-                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            importStatus.ifEmpty { "Importing template..." },
-                            color = Color.White,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
+                LoadingOverlay(importStatus.ifEmpty { "Importing template…" })
             }
         }
     }
@@ -217,7 +215,7 @@ fun TemplatesScreen(
     importError?.let { message ->
         AlertDialog(
             onDismissRequest = { viewModel.clearTemplateImportError() },
-            title = { Text("Import failed") },
+            title = { Text("Couldn't import template") },
             text = { Text(message) },
             confirmButton = {
                 TextButton(onClick = { viewModel.clearTemplateImportError() }) { Text("OK") }
@@ -226,13 +224,14 @@ fun TemplatesScreen(
     }
 }
 
+/** One template: thumbnail with an "API" badge for paid-API templates, title and models (AppCard colours). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TemplateCard(template: WorkflowTemplate, thumbnailUrl: String, onClick: () -> Unit) {
     Card(
         onClick = onClick,
-        modifier = Modifier.padding(8.dp).fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
         Box {
             val placeholder = rememberVectorPainter(
@@ -247,24 +246,25 @@ private fun TemplateCard(template: WorkflowTemplate, thumbnailUrl: String, onCli
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1f)
+                    .clip(MaterialTheme.shapes.medium)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             )
             if (!template.openSource) {
                 Surface(
                     color = MaterialTheme.colorScheme.tertiaryContainer,
-                    shape = RoundedCornerShape(6.dp),
-                    modifier = Modifier.align(Alignment.TopEnd).padding(6.dp)
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(Dimens.s)
                 ) {
                     Text(
                         "API",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        modifier = Modifier.padding(horizontal = Dimens.s, vertical = 2.dp)
                     )
                 }
             }
         }
-        Column(modifier = Modifier.padding(10.dp)) {
+        Column(modifier = Modifier.padding(Dimens.m)) {
             Text(
                 template.title,
                 style = MaterialTheme.typography.titleSmall,

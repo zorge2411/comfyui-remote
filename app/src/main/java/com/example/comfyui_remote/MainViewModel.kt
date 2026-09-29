@@ -971,6 +971,10 @@ class MainViewModel(
     private val _templateImportError = MutableStateFlow<String?>(null)
     val templateImportError: StateFlow<String?> = _templateImportError.asStateFlow()
 
+    fun clearTemplatesError() {
+        _templatesError.value = null
+    }
+
     fun clearTemplateImportError() {
         _templateImportError.value = null
     }
