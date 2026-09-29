@@ -32,6 +32,7 @@ class UserPreferencesRepository(private val context: Context) {
     private val THEME_MODE_KEY = intPreferencesKey("theme_mode")
     private val SERVER_PROFILES_KEY = stringPreferencesKey("server_profiles")
     private val MAX_SYNC_ITEMS_KEY = intPreferencesKey("max_sync_items")
+    private val AUTO_CONNECT_KEY = booleanPreferencesKey("auto_connect")
 
     private val gson = Gson()
 
@@ -64,6 +65,18 @@ class UserPreferencesRepository(private val context: Context) {
         .map { preferences ->
             preferences[MAX_SYNC_ITEMS_KEY] ?: 100
         }
+
+    /** Connect to the saved server on start (Phase 102). Connect sets it, Disconnect clears it. */
+    val autoConnect: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[AUTO_CONNECT_KEY] ?: true
+        }
+
+    suspend fun saveAutoConnect(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[AUTO_CONNECT_KEY] = enabled
+        }
+    }
 
     suspend fun saveThemeMode(mode: Int) {
         context.dataStore.edit { preferences ->

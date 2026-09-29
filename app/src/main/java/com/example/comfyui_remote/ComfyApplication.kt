@@ -30,6 +30,11 @@ class ComfyApplication : Application(), coil.ImageLoaderFactory {
         com.example.comfyui_remote.data.ModelDownloadRepository(connectionRepository, okHttpClient)
     }
 
+    // Phase 102: the ComfyUI server's own queue (running and pending prompts)
+    val serverQueueRepository by lazy {
+        com.example.comfyui_remote.data.ServerQueueRepository(connectionRepository, okHttpClient)
+    }
+
     // Shared Gson instance
     val gson by lazy { com.google.gson.Gson() }
 

@@ -144,13 +144,16 @@ class QueueViewModel(
                     kotlin.random.Random.nextLong(1, Long.MAX_VALUE)
                  }
 
-                workflowExecutionService.prepareAndQueue(
+                val (_, response) = workflowExecutionService.prepareAndQueue(
                     api = api,
                     clientId = connectionRepository.clientId ?: "",
                     workflowJson = item.workflowJson,
                     uploadedFilenames = newlyUploaded,
                     inputs = runInputs
                 )
+                // Phase 102: the server queue shows this name when the prompt carries none
+                (getApplication<Application>() as ComfyApplication).serverQueueRepository
+                    .rememberName(response.prompt_id, item.workflowName)
             }
             
             localQueueRepository.updateStatus(item.id, QueueStatus.COMPLETED)

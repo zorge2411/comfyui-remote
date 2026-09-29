@@ -87,6 +87,17 @@ interface ComfyApiService {
     @POST("remote_helper/models/downloads/clear")
     suspend fun clearModelDownloads(): retrofit2.Response<com.google.gson.JsonElement>
 
+    // Phase 102: the server's own queue. GET gives {"queue_running": [...], "queue_pending": [...]};
+    // POST {"delete": [ids]} or {"clear": true} edits the pending part; /interrupt stops the running prompt.
+    @GET("queue")
+    suspend fun getQueue(): JsonObject
+
+    @POST("queue")
+    suspend fun editQueue(@Body body: JsonObject): okhttp3.ResponseBody
+
+    @POST("interrupt")
+    suspend fun interrupt(@Body body: JsonObject): okhttp3.ResponseBody
+
     @Multipart
     @POST("upload/image")
     suspend fun uploadImage(

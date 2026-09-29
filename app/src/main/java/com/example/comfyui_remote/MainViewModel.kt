@@ -56,29 +56,21 @@ class MainViewModel(
     private val _serverAddress = MutableStateFlow("")
     val serverAddress: StateFlow<String> = _serverAddress.asStateFlow()
     
-    // One-shot event logic for navigation
-    private val _shouldNavigateToWorkflows = MutableStateFlow(false)
-    val shouldNavigateToWorkflows: StateFlow<Boolean> = _shouldNavigateToWorkflows.asStateFlow()
-    
+    // Phase 102: one connection gate for the screens
+    val isConnected: StateFlow<Boolean> = connectionRepository.connectionState
+        .map { it == WebSocketState.CONNECTED }
+        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, false)
+
+    val isConnecting: StateFlow<Boolean> = connectionRepository.connectionState
+        .map { it == WebSocketState.CONNECTING || it == WebSocketState.RECONNECTING }
+        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, false)
+
+    /** null until the saved settings are loaded; then whether a server host is saved. */
+    private val _hasSavedServer = MutableStateFlow<Boolean?>(null)
+    val hasSavedServer: StateFlow<Boolean?> = _hasSavedServer.asStateFlow()
+
     private val _saveFolderUri = MutableStateFlow<String?>(null)
     val saveFolderUri: StateFlow<String?> = _saveFolderUri.asStateFlow()
-
-    // Date range state for history filtering
-    private val _historyStartDate = MutableStateFlow<Long?>(null)
-    val historyStartDate: StateFlow<Long?> = _historyStartDate.asStateFlow()
-
-    private val _historyEndDate = MutableStateFlow<Long?>(null)
-    val historyEndDate: StateFlow<Long?> = _historyEndDate.asStateFlow()
-
-    fun setHistoryDateRange(startDate: Long?, endDate: Long?) {
-        _historyStartDate.value = startDate
-        _historyEndDate.value = endDate
-    }
-
-    fun clearHistoryDateRange() {
-        _historyStartDate.value = null
-        _historyEndDate.value = null
-    }
 
     // Phase 79: Gallery Sync Filtering with Saved Lists
     private val _gallerySyncFilter = MutableStateFlow(com.example.comfyui_remote.data.GallerySyncFilter.default())
@@ -190,8 +182,19 @@ class MainViewModel(
     private val _executionProgress = MutableStateFlow(ExecutionProgress())
     val executionProgress: StateFlow<ExecutionProgress> = _executionProgress.asStateFlow()
 
+    /** The prompt this app's websocket reports progress for (Phase 102: matched to the server queue's running job). */
+    private val _runningPromptId = MutableStateFlow<String?>(null)
+    val runningPromptId: StateFlow<String?> = _runningPromptId.asStateFlow()
+
     val themeMode: StateFlow<Int> = userPreferencesRepository.themeMode.stateIn(viewModelScope, SharingStarted.Lazily, 0)
     val maxSyncItems: StateFlow<Int> = userPreferencesRepository.maxSyncItems.stateIn(viewModelScope, SharingStarted.Lazily, 100)
+
+    /** Connect to the saved server on start (Phase 102). */
+    val autoConnect: StateFlow<Boolean> = userPreferencesRepository.autoConnect.stateIn(viewModelScope, SharingStarted.Lazily, true)
+
+    fun setAutoConnect(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.saveAutoConnect(enabled) }
+    }
 
     val serverProfiles: StateFlow<List<com.example.comfyui_remote.data.ServerProfile>> = userPreferencesRepository.serverProfiles
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -206,10 +209,6 @@ class MainViewModel(
         viewModelScope.launch {
             userPreferencesRepository.saveMaxSyncItems(items)
         }
-    }
-    
-    fun onNavigatedToWorkflows() {
-        _shouldNavigateToWorkflows.value = false
     }
     
 
@@ -239,6 +238,7 @@ class MainViewModel(
         viewModelScope.launch {
             val p = _port.value.toIntOrNull() ?: 8188
             userPreferencesRepository.saveConnectionDetails(_host.value, p, _isSecure.value)
+            _hasSavedServer.value = _host.value.isNotBlank()
             
             // Phase 59: Save to profiles list
             userPreferencesRepository.saveServerProfile(
@@ -675,6 +675,8 @@ class MainViewModel(
 
                     // CACHE INPUT for History
                     _executionCache[response.prompt_id] = updatedJson
+                    (getApplication<Application>() as ComfyApplication).serverQueueRepository
+                        .rememberName(response.prompt_id, workflow.name)
 
                     // Accepted, but outputs depending on these nodes were skipped (Phase 92)
                     com.example.comfyui_remote.domain.ServerErrorReport.fromPartialAcceptance(
@@ -997,6 +999,7 @@ class MainViewModel(
         // Connect via Repository
         val p = _port.value.toIntOrNull() ?: 8188
         connectionRepository.connect(_host.value, p, _isSecure.value)
+        viewModelScope.launch { userPreferencesRepository.saveAutoConnect(true) }
         fetchAvailableModels()
         fetchNodeMetadata()
         fetchServerWorkflows()
@@ -1004,8 +1007,9 @@ class MainViewModel(
     
     fun disconnect() {
         connectionRepository.disconnect()
-        _shouldNavigateToWorkflows.value = false
-        
+        // Phase 102: a deliberate disconnect stops auto-connect on the next start
+        viewModelScope.launch { userPreferencesRepository.saveAutoConnect(false) }
+
         // Stop Service
         val context = getApplication<Application>()
         context.stopService(Intent(context, ExecutionService::class.java))
@@ -1020,6 +1024,8 @@ class MainViewModel(
                 "execution_start" -> {
                     // Confirm execution has begun
                     _executionStatus.value = ExecutionStatus.EXECUTING
+                    _runningPromptId.value = obj.getAsJsonObject("data")?.get("prompt_id")
+                        ?.takeIf { it.isJsonPrimitive }?.asString
                     _executionProgress.value = ExecutionProgress()
                     val wf = _selectedWorkflow.value
                     if (wf != null) ensureNodeTitles(wf)
@@ -1038,6 +1044,7 @@ class MainViewModel(
                     // When node is null, the prompt execution is complete
                     if (data.has("node") && data.get("node").isJsonNull) {
                         progressTracker.finish()
+                        _runningPromptId.value = null
                         _executionStatus.value = ExecutionStatus.FINISHED
                         _executionProgress.value = ExecutionProgress()
                         
@@ -1089,7 +1096,9 @@ class MainViewModel(
                     }
                     _executionStatus.value = ExecutionStatus.ERROR
                     _executionProgress.value = ExecutionProgress()
+                    _runningPromptId.value = null
                 }
+                "execution_interrupted" -> _runningPromptId.value = null
             }
         } catch (e: Exception) {
             // Ignore parsing errors for non-matching messages
@@ -1808,6 +1817,16 @@ class MainViewModel(
             _saveFolderUri.value = userPreferencesRepository.saveFolderUri.first()
 
             updateServerAddressFull()
+            _hasSavedServer.value = savedHost.isNotBlank()
+
+            // Phase 102: connect to the last server unless the user disconnected. The connection outlives
+            // this view model (foreground service), so skip it when one is already up or starting.
+            val state = connectionRepository.connectionState.value
+            if (savedHost.isNotBlank() && userPreferencesRepository.autoConnect.first() &&
+                (state == WebSocketState.DISCONNECTED || state == WebSocketState.ERROR)
+            ) {
+                connect()
+            }
         }.invokeOnCompletion { settingsLoaded.complete(Unit) }
 
         // Backfill baseModelName
