@@ -3,7 +3,7 @@
 ## Current Position
 
 - **Milestone**: 5, UI/UX Overhaul (created 2026-09-27). Phases 100–105.
-- **Phase**: 102 (Navigation and Structure): planning complete, ready for `/execute 102`. 3 plans in waves 1, 2 and 3. Phases 100, 101 and 104 done.
+- **Phase**: 102 (Navigation and Structure): code for 102.1–102.3 done 2026-09-29 (`b0b0cd9`, `4df1035`; 238 tests pass). **Device check pending** (no phone on adb). Phases 100, 101 and 104 done.
 - **Status**: Milestone planned. Milestone 4 is archived in `.gsd/milestones/Milestone 4/` (tag `milestone-4`).
 
 ## Achievements (Milestone 5)
@@ -158,7 +158,7 @@
 
 ## Next Steps
 
-1. `/execute 102`. The device check needs the phone on adb and unlocked; it runs the small Z-Image-Turbo template with batch 2 (asks first), and asks for a rotation.
+1. Phase 102 device check (102.3 task 3, items 1–7 in `102-03-PLAN.md`): needs the phone on adb and unlocked; it runs the small Z-Image-Turbo template with batch 2 (asks first), and asks for a rotation. Then close 102 (ROADMAP ✅, must-have ticked).
 1b. Then `/execute 103` (workflow list; planned 2026-09-29 in `.gsd/phases/103/`, 3 plans in waves 1–3; 103.2 builds on 102's top bar, chip and pull to refresh).
 2. Optional checks carried over, not yet done on the device:
    - Milestone 4: queue controls hidden on a helper v1 server; "Browse Templates" on an empty workflow list; a Gemini, Grok or SaveVideo run.
