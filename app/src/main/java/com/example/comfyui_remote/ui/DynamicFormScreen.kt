@@ -477,45 +477,21 @@ private fun PreflightDialog(
     onCancel: () -> Unit
 ) {
     val errors = issues.count { it.severity == PromptValidator.Severity.ERROR }
-    val warnings = issues.size - errors
-    val byNode = issues
-        .sortedBy { if (it.severity == PromptValidator.Severity.ERROR) 0 else 1 }
-        .groupBy { it.nodeTitle to it.classType }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onCancel,
         title = { Text(if (errors > 0) "Server will likely reject this prompt" else "Server may reject this prompt") },
         text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                Text(
-                    listOfNotNull(
-                        if (errors > 0) "$errors error${if (errors == 1) "" else "s"}" else null,
-                        if (warnings > 0) "$warnings warning${if (warnings == 1) "" else "s"}" else null
-                    ).joinToString(", "),
-                    style = MaterialTheme.typography.labelLarge
-                )
+            // Phase 103: the list is shared with the workflow list's badge
+            com.example.comfyui_remote.ui.components.IssueList(
+                issues,
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
                 if (missingModelCount > 0) {
                     Spacer(Modifier.height(8.dp))
                     Text(
                         "$missingModelCount missing model file${if (missingModelCount == 1) "" else "s"} can be fetched from the Missing Models card",
                         style = MaterialTheme.typography.bodySmall
                     )
-                }
-                byNode.forEach { (node, nodeIssues) ->
-                    val (title, classType) = node
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        if (classType.isNotEmpty() && classType != title) "$title ($classType)" else title,
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                    nodeIssues.forEach { issue ->
-                        val prefix = if (issue.severity == PromptValidator.Severity.ERROR) "✖" else "⚠"
-                        Text(
-                            "$prefix ${issue.inputName?.let { "$it: " } ?: ""}${issue.message}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (issue.severity == PromptValidator.Severity.ERROR) MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
             }
         },

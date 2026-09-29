@@ -88,7 +88,7 @@ fun ImportWorkflowDialog(
     AlertDialog(
         onDismissRequest = onDismissRequest,
         title = {
-            Text(text = "Import Workflow (API Format)")
+            Text(text = "Import workflow")
         },
         text = {
             Column {
@@ -96,25 +96,25 @@ fun ImportWorkflowDialog(
                     onClick = { filePickerLauncher.launch("application/json") },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Select JSON File")
+                    Text("Choose a JSON file")
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))
-                TextField(
+                OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Workflow Name") },
+                    label = { Text("Name") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                TextField(
+                OutlinedTextField(
                     value = jsonContent,
                     onValueChange = {
                         jsonContent = it
                         validateJson(it)
                     },
-                    label = { Text("Paste JSON Here") },
+                    label = { Text("Workflow JSON") },
                     minLines = 5,
                     maxLines = 10,
                     modifier = Modifier.fillMaxWidth(),
@@ -124,32 +124,33 @@ fun ImportWorkflowDialog(
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 when (val state = validationState) {
+                    // Phase 103: both ComfyUI formats are supported (graph since Phase 30); say why Import is off
                     JsonValidationState.Empty -> {
-                         Text(
-                            text = "Note: Please use 'API format' (from ComfyUI > Save > API format).",
-                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                            color = androidx.compose.material3.MaterialTheme.colorScheme.secondary
+                        Text(
+                            text = "Pick a workflow file or paste its JSON. Both the normal and the API format work.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     JsonValidationState.ValidApiFormat -> {
                         Text(
-                            text = "✓ Valid API Format detected",
-                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                            color = androidx.compose.ui.graphics.Color(0xFF4CAF50) // Green
+                            text = if (name.isBlank()) "API format workflow. Give it a name to import." else "API format workflow",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     JsonValidationState.GraphFormatDetected -> {
                         Text(
-                            text = "✓ Graph Format detected (will be auto-converted)",
-                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                            color = androidx.compose.ui.graphics.Color(0xFF2196F3) // Blue
+                            text = if (name.isBlank()) "Workflow file; it will be converted. Give it a name to import." else "Workflow file; it will be converted",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     JsonValidationState.InvalidJson -> {
                         Text(
-                            text = "Invalid JSON syntax",
-                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                            color = androidx.compose.material3.MaterialTheme.colorScheme.error
+                            text = "This isn't valid JSON",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
                         )
                     }
                 }
