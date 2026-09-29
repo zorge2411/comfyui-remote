@@ -59,12 +59,17 @@
 
 ### Phase 102: Navigation and Structure
 
-**Status**: ⬜ Not Started
+**Status**: 📋 Planned (`.gsd/phases/102/`: 3 plans)
 **Objective**: Rework the tab bar and screen roles.
 - Connection becomes a status indicator plus settings, not a tab of its own.
 - Define what Queue, History and Gallery are each for, and remove the overlap.
 - Decide where Templates and Settings live.
 - Make back behaviour consistent.
+- Decided 2026-09-29: labelled tabs Workflows, Queue, Gallery, Settings; History removed; auto-connect on start; Queue shows the server queue too; "Not connected" banner and disabled server actions offline.
+**Plans**:
+- [ ] 102.1 Server queue (parse, repository, cancel/interrupt), auto-connect, connection gate (wave 1)
+- [ ] 102.2 Tabs and back behaviour, connection chip, Connection as pushed screen, Settings tab (wave 2)
+- [ ] 102.3 Queue tab with server queue, offline gating; device check (wave 3)
 **Depends on**: Phase 100
 
 ### Phase 103: Workflow List and Templates
