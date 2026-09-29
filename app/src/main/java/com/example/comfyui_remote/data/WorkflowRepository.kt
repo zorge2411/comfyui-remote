@@ -19,6 +19,10 @@ class WorkflowRepository(private val workflowDao: WorkflowDao) {
         workflowDao.update(workflow)
     }
 
+    suspend fun markUsed(id: Long, time: Long = System.currentTimeMillis()) {
+        workflowDao.markUsed(id, time)
+    }
+
     suspend fun deleteWorkflow(workflow: WorkflowEntity) {
         workflowDao.delete(workflow)
     }

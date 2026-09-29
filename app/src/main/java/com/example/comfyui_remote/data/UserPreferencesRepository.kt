@@ -33,6 +33,7 @@ class UserPreferencesRepository(private val context: Context) {
     private val SERVER_PROFILES_KEY = stringPreferencesKey("server_profiles")
     private val MAX_SYNC_ITEMS_KEY = intPreferencesKey("max_sync_items")
     private val AUTO_CONNECT_KEY = booleanPreferencesKey("auto_connect")
+    private val WORKFLOW_SORT_KEY = stringPreferencesKey("workflow_sort")
 
     private val gson = Gson()
 
@@ -75,6 +76,20 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun saveAutoConnect(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[AUTO_CONNECT_KEY] = enabled
+        }
+    }
+
+    /** The workflow list's sort (Phase 103); unknown values fall back to Last used. */
+    val workflowSort: Flow<com.example.comfyui_remote.domain.WorkflowSort> = context.dataStore.data
+        .map { preferences ->
+            preferences[WORKFLOW_SORT_KEY]
+                ?.let { name -> com.example.comfyui_remote.domain.WorkflowSort.entries.firstOrNull { it.name == name } }
+                ?: com.example.comfyui_remote.domain.WorkflowSort.LAST_USED
+        }
+
+    suspend fun saveWorkflowSort(sort: com.example.comfyui_remote.domain.WorkflowSort) {
+        context.dataStore.edit { preferences ->
+            preferences[WORKFLOW_SORT_KEY] = sort.name
         }
     }
 

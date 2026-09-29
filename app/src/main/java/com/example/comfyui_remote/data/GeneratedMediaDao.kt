@@ -46,6 +46,10 @@ interface GeneratedMediaDao {
     @Query("SELECT * FROM generated_media WHERE id = :id")
     suspend fun getById(id: Long): GeneratedMediaEntity?
 
+    /** Visible rows for these file names, newest first; callers keep the first per name (Phase 103). */
+    @Query("SELECT id, workflowName, fileName, subfolder, serverHost, serverPort, timestamp, mediaType, serverType FROM generated_media WHERE hidden = 0 AND fileName IN (:names) ORDER BY timestamp DESC")
+    suspend fun getListingsByFileNames(names: List<String>): List<GeneratedMediaListing>
+
     @Query("SELECT * FROM generated_media WHERE fileName = :filename ORDER BY timestamp DESC LIMIT 1")
     suspend fun getLatestByFilename(filename: String): GeneratedMediaEntity?
 }

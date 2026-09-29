@@ -366,22 +366,31 @@ class MainViewModel(
         _selectedWorkflow.value = workflow
         _inputImages.value = emptyMap() // Reset inputs
         
+        // Phase 103: "Last used" sort; history previews (id 0) aren't stored workflows
+        if (workflow.id != 0L) {
+            viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { repository.markUsed(workflow.id) }
+        }
+
         // Fix: Update generated image view to show the last result if available
         if (workflow.lastImageName != null) {
-             val protocol = if (_isSecure.value) "https" else "http"
-             val url = com.example.comfyui_remote.domain.MediaUrls.view("$protocol://${_serverAddress.value}", workflow.lastImageName!!)
-            _generatedImage.value = url
-            
-            // Phase 60: Fetch ID for navigation
+            val base = "${if (_isSecure.value) "https" else "http"}://${_serverAddress.value}"
+            _generatedImage.value = com.example.comfyui_remote.domain.MediaUrls.view(base, workflow.lastImageName)
+
+            // Phase 60: Fetch ID for navigation. Phase 103: the stored row also gives the subfolder and type.
             viewModelScope.launch {
                 val media = mediaRepository.getLatestByFilename(workflow.lastImageName)
                 _generatedMediaId.value = media?.id
+                if (media != null && _selectedWorkflow.value?.id == workflow.id) {
+                    _generatedImage.value = com.example.comfyui_remote.domain.MediaUrls.view(
+                        base, media.fileName, media.subfolder, media.serverType
+                    )
+                }
             }
         } else {
             _generatedImage.value = null
             _generatedMediaId.value = null
         }
-        
+
         // Reset execution state when switching workflows
         clearErrorMessage()
     }
@@ -584,6 +593,14 @@ class MainViewModel(
         _inputImages.value = current
     }
 
+    /** The prompt Generate would send with [inputs], without uploads: what pre-flight and the list badge check. */
+    private fun buildCheckPrompt(
+        workflow: WorkflowEntity,
+        inputs: List<com.example.comfyui_remote.domain.InputField>
+    ): com.google.gson.JsonObject = com.google.gson.JsonParser.parseString(
+        workflowExecutionService.buildPrompt(workflow.jsonContent, emptyMap(), inputs)
+    ).asJsonObject
+
     /**
      * Checks the prompt that Generate / Add to Queue would send against the server's live /object_info
      * (Phase 91). Returns null when the server's node list can't be obtained; the caller then queues
@@ -604,10 +621,7 @@ class MainViewModel(
         val pendingUploads = _inputImages.value.filterValues { it != null }.keys
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
             try {
-                val prompt = com.google.gson.JsonParser.parseString(
-                    workflowExecutionService.buildPrompt(workflow.jsonContent, emptyMap(), inputs)
-                ).asJsonObject
-                com.example.comfyui_remote.domain.PromptValidator.validate(prompt, metadata).filterNot {
+                com.example.comfyui_remote.domain.PromptValidator.validate(buildCheckPrompt(workflow, inputs), metadata).filterNot {
                     it.kind == com.example.comfyui_remote.domain.PromptValidator.Kind.VALUE_NOT_IN_LIST &&
                         it.inputName == "image" && it.nodeId in pendingUploads
                 }
@@ -726,6 +740,68 @@ class MainViewModel(
 
     private val _nodeMetadata = MutableStateFlow<com.google.gson.JsonObject?>(null)
     val nodeMetadata: StateFlow<com.google.gson.JsonObject?> = _nodeMetadata.asStateFlow()
+
+    // ---- Phase 103: workflow list cards ----
+
+    /** The models each stored workflow loads, by workflow id. */
+    val workflowModels: StateFlow<Map<Long, List<com.example.comfyui_remote.domain.ModelRef>>> = run {
+        val memo = HashMap<Long, Pair<String, List<com.example.comfyui_remote.domain.ModelRef>>>()
+        allWorkflows.map { list ->
+            list.associate { wf ->
+                val cached = memo[wf.id]?.takeIf { it.first == wf.jsonContent }?.second
+                wf.id to (cached ?: com.example.comfyui_remote.domain.WorkflowModels.of(wf.jsonContent)
+                    .also { memo[wf.id] = wf.jsonContent to it })
+            }
+        }.flowOn(kotlinx.coroutines.Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+    }
+
+    private data class StatusKey(val json: String, val savedInputs: String?, val metadata: com.google.gson.JsonObject)
+
+    /**
+     * Whether each stored workflow will run on the connected server, checked like Generate's pre-flight
+     * against the cached /object_info. Empty without metadata (offline): no badges. Unchanged workflows
+     * aren't re-checked when the list re-emits (form values are saved every 500 ms).
+     */
+    val workflowStatus: StateFlow<Map<Long, com.example.comfyui_remote.domain.Compatibility>> = run {
+        val memo = HashMap<Long, Pair<StatusKey, com.example.comfyui_remote.domain.Compatibility>>()
+        kotlinx.coroutines.flow.combine(allWorkflows, _nodeMetadata) { list, metadata ->
+            if (metadata == null) return@combine emptyMap()
+            val result = LinkedHashMap<Long, com.example.comfyui_remote.domain.Compatibility>()
+            for (wf in list) {
+                val key = StatusKey(wf.jsonContent, wf.savedInputs, metadata)
+                val cached = memo[wf.id]?.takeIf { it.first.json == key.json && it.first.savedInputs == key.savedInputs && it.first.metadata === metadata }
+                val status = cached?.second ?: try {
+                    com.example.comfyui_remote.domain.WorkflowCompatibility
+                        .check(buildCheckPrompt(wf, parseWorkflowInputs(wf)), metadata)
+                        .also { memo[wf.id] = key to it }
+                } catch (e: Exception) {
+                    android.util.Log.w("WORKFLOW_STATUS", "Check failed for ${wf.name}: ${e.message}")
+                    null
+                }
+                if (status != null) result[wf.id] = status
+            }
+            result
+        }.flowOn(kotlinx.coroutines.Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+    }
+
+    /** Each stored workflow's last result, found through its lastImageName (media rows' workflowName isn't reliable). */
+    val lastResults: StateFlow<Map<Long, com.example.comfyui_remote.data.GeneratedMediaListing>> =
+        kotlinx.coroutines.flow.combine(allWorkflows, allMedia) { list, _ -> list }
+            .map { list ->
+                val byName = mediaRepository.latestListingsByFileNames(list.mapNotNull { it.lastImageName }.toSet())
+                list.mapNotNull { wf -> wf.lastImageName?.let { byName[it] }?.let { wf.id to it } }.toMap()
+            }
+            .flowOn(kotlinx.coroutines.Dispatchers.IO)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    val workflowSort: StateFlow<com.example.comfyui_remote.domain.WorkflowSort> = userPreferencesRepository.workflowSort
+        .stateIn(viewModelScope, SharingStarted.Eagerly, com.example.comfyui_remote.domain.WorkflowSort.LAST_USED)
+
+    fun setWorkflowSort(sort: com.example.comfyui_remote.domain.WorkflowSort) {
+        viewModelScope.launch { userPreferencesRepository.saveWorkflowSort(sort) }
+    }
 
     fun fetchAvailableModels() {
         viewModelScope.launch {

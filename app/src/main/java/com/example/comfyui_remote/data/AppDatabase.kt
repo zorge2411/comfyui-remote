@@ -23,11 +23,15 @@ interface WorkflowDao {
     @Update
     suspend fun update(workflow: WorkflowEntity)
 
+    // A targeted update, so it can't race the form's REPLACE saves (Phase 103)
+    @Query("UPDATE workflows SET lastUsedAt = :time WHERE id = :id")
+    suspend fun markUsed(id: Long, time: Long)
+
     @Delete
     suspend fun delete(workflow: WorkflowEntity)
 }
 
-@Database(entities = [WorkflowEntity::class, GeneratedMediaEntity::class, LocalQueueItem::class], version = 14, exportSchema = false)
+@Database(entities = [WorkflowEntity::class, GeneratedMediaEntity::class, LocalQueueItem::class], version = 15, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun workflowDao(): WorkflowDao
@@ -145,6 +149,13 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Phase 103: "Last used" sort on the workflow list
+        val MIGRATION_14_15 = object : androidx.room.migration.Migration(14, 15) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE workflows ADD COLUMN lastUsedAt INTEGER")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -152,7 +163,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "comfy_database"
                 )
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

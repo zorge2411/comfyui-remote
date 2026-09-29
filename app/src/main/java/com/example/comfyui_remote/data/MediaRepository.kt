@@ -56,4 +56,13 @@ class MediaRepository(private val mediaDao: GeneratedMediaDao) {
     suspend fun getById(id: Long): GeneratedMediaEntity? = mediaDao.getById(id)
 
     suspend fun getLatestByFilename(filename: String): GeneratedMediaEntity? = mediaDao.getLatestByFilename(filename)
+
+    /** The newest visible listing per file name (Phase 103: each workflow's last result). */
+    suspend fun latestListingsByFileNames(names: Collection<String>): Map<String, GeneratedMediaListing> =
+        if (names.isEmpty()) emptyMap()
+        else names.chunked(500)
+            .flatMap { mediaDao.getListingsByFileNames(it) }
+            .sortedByDescending { it.timestamp }
+            .distinctBy { it.fileName }
+            .associateBy { it.fileName }
 }

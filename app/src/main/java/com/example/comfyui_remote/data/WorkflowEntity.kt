@@ -17,5 +17,6 @@ data class WorkflowEntity(
     val formatVersion: Int = 1,
     val missingNodes: String? = null, // Comma-separated list of missing node types
     val modelSources: String? = null, // Phase 97: JSON list of ModelSource (model download links)
-    val savedInputs: String? = null // Phase 101: last form values (JSON list of InputField)
+    val savedInputs: String? = null, // Phase 101: last form values (JSON list of InputField)
+    val lastUsedAt: Long? = null // Phase 103: when the workflow was last opened, for the "Last used" sort
 )
