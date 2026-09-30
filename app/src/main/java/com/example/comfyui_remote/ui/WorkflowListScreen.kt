@@ -166,12 +166,13 @@ fun WorkflowListScreen(
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            // Banner and search scroll away with the list, so landscape keeps room for the cards (Phase 103)
+            val header: @Composable (horizontal: androidx.compose.ui.unit.Dp) -> Unit = { horizontal ->
                 NotConnectedBanner(
                     connectionState,
                     onReconnect = { viewModel.connect() },
                     onOpenConnection = onOpenConnection,
-                    modifier = Modifier.padding(horizontal = Dimens.screenPadding, vertical = Dimens.s)
+                    modifier = Modifier.padding(horizontal = horizontal, vertical = Dimens.s)
                 )
                 if (workflows.isNotEmpty() || serverWorkflows.isNotEmpty()) {
                     OutlinedTextField(
@@ -189,9 +190,11 @@ fun WorkflowListScreen(
                         singleLine = true,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = Dimens.screenPadding, vertical = Dimens.s)
+                            .padding(horizontal = horizontal, vertical = Dimens.s)
                     )
                 }
+            }
+            Column(modifier = Modifier.fillMaxSize()) {
                 PullToRefreshBox(
                     isRefreshing = pulled && isSyncing,
                     onRefresh = {
@@ -204,20 +207,26 @@ fun WorkflowListScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     when {
-                        workflows.isEmpty() && serverWorkflows.isEmpty() -> EmptyState(
-                            icon = Icons.Default.AccountTree,
-                            title = "No workflows yet",
-                            message = "Start from one of your server's templates, or tap + to import a workflow file.",
-                            actionText = if (isConnected) "Browse templates" else null,
-                            onAction = if (isConnected) onOpenTemplates else null
-                        )
-                        shown.isEmpty() && shownServer.isEmpty() -> EmptyState(
-                            icon = Icons.Default.SearchOff,
-                            title = "No matches",
-                            message = "No workflow name or model matches “${query.trim()}”.",
-                            actionText = "Clear search",
-                            onAction = { query = "" }
-                        )
+                        workflows.isEmpty() && serverWorkflows.isEmpty() -> Column {
+                            header(Dimens.screenPadding)
+                            EmptyState(
+                                icon = Icons.Default.AccountTree,
+                                title = "No workflows yet",
+                                message = "Start from one of your server's templates, or tap + to import a workflow file.",
+                                actionText = if (isConnected) "Browse templates" else null,
+                                onAction = if (isConnected) onOpenTemplates else null
+                            )
+                        }
+                        shown.isEmpty() && shownServer.isEmpty() -> Column {
+                            header(Dimens.screenPadding)
+                            EmptyState(
+                                icon = Icons.Default.SearchOff,
+                                title = "No matches",
+                                message = "No workflow name or model matches “${query.trim()}”.",
+                                actionText = "Clear search",
+                                onAction = { query = "" }
+                            )
+                        }
                         else -> LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             // Room below the last card for the FAB (UI spec §10)
@@ -229,6 +238,7 @@ fun WorkflowListScreen(
                             ),
                             verticalArrangement = Arrangement.spacedBy(Dimens.listGap)
                         ) {
+                            item(key = "header") { Column { header(0.dp) } }
                             items(shown, key = { it.id }) { workflow ->
                                 WorkflowCard(
                                     workflow = workflow,

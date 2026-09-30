@@ -149,6 +149,27 @@ class PromptValidatorTest {
         assertTrue(issues.none { it.nodeId == "3" })
     }
 
+    // Phase 103 device check: an Ollama node's model tag has a slash but isn't a file on the server
+    @Test
+    fun `a remote model tag on an empty list is not a missing file`() {
+        val info = obj("""
+            {
+              "Ollama": { "input": { "required": { "model": ["COMBO", {"options": []}] } }, "output": ["STRING"], "output_node": false },
+              "Out": { "input": { "required": { "s": ["STRING", {}] } }, "output": [], "output_node": true }
+            }
+        """)
+        val prompt = obj("""
+            {
+              "1": {"class_type": "Ollama", "inputs": {"model": "hf.co/user/some-model-GGUF:Q8_0"}},
+              "2": {"class_type": "Out", "inputs": {"s": ["1", 0]}}
+            }
+        """)
+        assertEquals(emptyList<Kind>(), PromptValidator.validate(prompt, info).map { it.kind })
+        // A model file on an empty list is still reported
+        prompt.getAsJsonObject("1").getAsJsonObject("inputs").addProperty("model", "loras/detail.safetensors")
+        assertEquals(listOf(Kind.VALUE_NOT_IN_LIST), PromptValidator.validate(prompt, info).map { it.kind })
+    }
+
     @Test
     fun `empty lists are not checked when file checks are off`() {
         assertEquals(emptyList<Kind>(), PromptValidator.validate(emptyListPrompt(), emptyListInfo, checkFileValues = false).map { it.kind })

@@ -52,6 +52,12 @@ object PromptValidator {
         RegexOption.IGNORE_CASE
     )
 
+    // The same file types without the path rule: what an empty server list is checked for
+    private val FILE_EXTENSION = Regex(
+        """\.(safetensors|ckpt|pt|pth|bin|gguf|onnx|sft|png|jpe?g|webp|gif|mp4|webm|mov|wav|mp3|flac|glb|gltf|fbx|obj|ply|stl|usdz|spz|splat)$""",
+        RegexOption.IGNORE_CASE
+    )
+
     private val UPLOAD_FLAGS = listOf("image_upload", "video_upload", "audio_upload")
 
     /** A file input the frontend offers an upload button for, in the legacy `[[files], {...}]` or V3 `["COMBO", {...}]` form. */
@@ -154,7 +160,10 @@ object PromptValidator {
                 val text = value.asString
                 val isUpload = isUploadInput(spec)
                 val isFile = FILE_VALUE.containsMatchIn(text) || isUpload
-                val listKnown = options.isNotEmpty() || (isFile && checkFileValues)
+                // An empty list is only a missing file when the value is clearly one: a slash alone isn't enough,
+                // since remote-model tags ("hf.co/user/model:Q8_0") are filled in by the node itself (Phase 103)
+                val emptyListFile = isUpload || FILE_EXTENSION.containsMatchIn(text)
+                val listKnown = options.isNotEmpty() || (emptyListFile && checkFileValues)
                 if (listKnown && text !in options && (checkFileValues || !isFile)) {
                     val shown = options.take(5).joinToString(", ") + if (options.size > 5) ", …" else ""
                     if (isFile) {
