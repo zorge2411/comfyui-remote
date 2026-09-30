@@ -1082,7 +1082,6 @@ class MainViewModel(
         viewModelScope.launch { userPreferencesRepository.saveAutoConnect(true) }
         fetchAvailableModels()
         fetchNodeMetadata()
-        fetchServerWorkflows()
     }
     
     fun disconnect() {
@@ -1447,10 +1446,14 @@ class MainViewModel(
         }
     }
     
-    fun fetchServerWorkflows() {
+    /**
+     * The workflows saved on the server (userdata). [showProgress] drives the list's refresh indicator; the
+     * automatic fetch on every connection (Phase 103 device check) runs quietly, without the loading overlay.
+     */
+    fun fetchServerWorkflows(showProgress: Boolean = true) {
         viewModelScope.launch {
             android.util.Log.d("WORKFLOW_FETCH", "Starting fetchServerWorkflows()")
-            _isSyncing.value = true
+            if (showProgress) _isSyncing.value = true
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 try {
                     val response = buildApiService().getUserData(dir = "workflows")
@@ -1467,7 +1470,7 @@ class MainViewModel(
                     android.util.Log.e("WORKFLOW_ERROR", "Error in fetchServerWorkflows: ${e.javaClass.simpleName} - ${e.message}", e)
                     e.printStackTrace()
                 } finally {
-                    _isSyncing.value = false
+                    if (showProgress) _isSyncing.value = false
                 }
             }
         }
@@ -1953,6 +1956,9 @@ class MainViewModel(
                     // the user manually disconnects and reconnects.
                     fetchNodeMetadata()
                     fetchAvailableModels()
+                    // Phase 103: fetched on every connection, not only on connect(), whose request could fail
+                    // before the network was up (the server section stayed empty until a pull to refresh)
+                    fetchServerWorkflows(showProgress = false)
                     // Phase 97: model folders may have changed while disconnected
                     // (ModelDownloadRepository checks the helper itself)
                     modelListCache.clear()
