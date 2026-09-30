@@ -52,7 +52,7 @@ fun ErrorCard(
         ),
         modifier = modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(Dimens.m)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -60,7 +60,7 @@ fun ErrorCard(
                     imageVector = Icons.Default.ErrorOutline,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.padding(end = 8.dp)
+                    modifier = Modifier.padding(end = Dimens.s)
                 )
                 Text(
                     text = title,
@@ -71,7 +71,7 @@ fun ErrorCard(
                 if (onDismiss != null) {
                     IconButton(
                         onClick = onDismiss,
-                        modifier = Modifier.padding(start = 8.dp)
+                        modifier = Modifier.padding(start = Dimens.s)
                     ) {
                         Icon(
                             Icons.Default.Close,
@@ -81,7 +81,7 @@ fun ErrorCard(
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Dimens.s))
             if (onCopy == null) {
                 Text(
                     text = message,
@@ -106,7 +106,7 @@ fun ErrorCard(
                 }
             }
             if (onRetry != null) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Dimens.m))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -118,7 +118,7 @@ fun ErrorCard(
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onErrorContainer
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(Dimens.xs))
                         Text(
                             "Retry",
                             color = MaterialTheme.colorScheme.onErrorContainer

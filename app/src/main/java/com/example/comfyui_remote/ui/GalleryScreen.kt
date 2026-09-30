@@ -28,7 +28,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bookmarks
@@ -597,7 +596,7 @@ fun GalleryItem(
             .bitmapConfig(android.graphics.Bitmap.Config.RGB_565) // 50% memory saving for thumbs
             .build()
     }
-    val shape = RoundedCornerShape(Dimens.xs)
+    val shape = MaterialTheme.shapes.extraSmall
 
     Box(
         modifier = Modifier

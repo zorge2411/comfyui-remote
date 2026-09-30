@@ -19,7 +19,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.comfyui_remote.domain.ModelDownload
 import com.example.comfyui_remote.ui.components.formatBytes
@@ -49,7 +48,7 @@ fun ModelDownloadCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(download.filename, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(download.filename, style = MaterialTheme.typography.titleSmall)
                 val state = when (download.status) {
                     "queued" -> download.position?.let { "#$it in queue" } ?: "Queued"
                     "downloading" -> "Downloading"

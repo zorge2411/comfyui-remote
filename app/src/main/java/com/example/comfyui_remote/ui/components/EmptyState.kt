@@ -56,7 +56,7 @@ fun EmptyState(
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         )
         
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(Dimens.l))
         
         Text(
             text = title,
@@ -65,7 +65,7 @@ fun EmptyState(
             textAlign = TextAlign.Center
         )
         
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(Dimens.s))
         
         Text(
             text = message,
@@ -75,7 +75,7 @@ fun EmptyState(
         )
         
         if (actionText != null && onAction != null) {
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(Dimens.xl))
             
             Button(onClick = onAction) {
                 Text(actionText)

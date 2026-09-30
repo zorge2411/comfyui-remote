@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
@@ -103,7 +102,7 @@ fun ImageSelector(
     if (showSelectionDialog) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showSelectionDialog = false },
-            title = { Text("Select Image Source") },
+            title = { Text("Choose image") },
             text = {
                 Column {
                     androidx.compose.material3.TextButton(
@@ -142,13 +141,13 @@ fun ImageSelector(
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(Dimens.s))
         
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(MaterialTheme.shapes.small)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .clickable {
                     showSelectionDialog = true
@@ -167,9 +166,9 @@ fun ImageSelector(
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(8.dp)
+                        .padding(Dimens.s)
                         .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f), CircleShape)
-                        .padding(8.dp)
+                        .padding(Dimens.s)
                 ) {
                    Icon(
                        imageVector = Icons.Default.Edit,
@@ -186,7 +185,7 @@ fun ImageSelector(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(32.dp)
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Dimens.xs))
                     Text(
                         text = "Select Image",
                         style = MaterialTheme.typography.bodySmall,

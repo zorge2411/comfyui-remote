@@ -1,6 +1,15 @@
 package com.example.comfyui_remote.ui.components
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.WarningAmber
+import androidx.compose.material3.Icon
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
@@ -40,14 +49,24 @@ fun IssueList(
                 if (classType.isNotEmpty() && classType != title) "$title ($classType)" else title,
                 style = MaterialTheme.typography.titleSmall
             )
+            // Outlined icons instead of text marks (UI spec §5; Phase 105)
             nodeIssues.forEach { issue ->
-                val prefix = if (issue.severity == PromptValidator.Severity.ERROR) "✖" else "⚠"
-                Text(
-                    "$prefix ${issue.inputName?.let { "$it: " } ?: ""}${issue.message}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (issue.severity == PromptValidator.Severity.ERROR) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                val error = issue.severity == PromptValidator.Severity.ERROR
+                val color = if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                Row(verticalAlignment = Alignment.Top, modifier = Modifier.padding(top = Dimens.xs)) {
+                    Icon(
+                        if (error) Icons.Outlined.ErrorOutline else Icons.Outlined.WarningAmber,
+                        contentDescription = if (error) "Error" else "Warning",
+                        tint = color,
+                        modifier = Modifier.size(16.dp).padding(top = 1.dp)
+                    )
+                    Text(
+                        "${issue.inputName?.let { "$it: " } ?: ""}${issue.message}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = color,
+                        modifier = Modifier.padding(start = Dimens.xs)
+                    )
+                }
             }
         }
     }

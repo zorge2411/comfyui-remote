@@ -467,9 +467,9 @@ fun DynamicFormScreen(
                     items(allNodes) { node ->
                         Column(modifier = Modifier.padding(vertical = Dimens.xs)) {
                             Row {
-                                Text("#${node.id}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Text("#${node.id}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.width(Dimens.s))
-                                Text(node.title, fontWeight = FontWeight.SemiBold)
+                                Text(node.title, style = MaterialTheme.typography.bodyMedium)
                             }
                             Text(
                                 text = node.classType,
