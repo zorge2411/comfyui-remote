@@ -97,12 +97,16 @@
 
 ### Phase 105: Consistency Pass and Device Check
 
-**Status**: 💬 Discussed 2026-09-30 (`.gsd/phases/105/105-CONTEXT.md`); next `/plan 105`
+**Status**: 📋 Planned 2026-09-30 (`.gsd/phases/105/`: CONTEXT and 3 plans); next `/execute 105`
 **Objective**: Finish the milestone's must-haves.
 - Apply the shared components to what's left: the issue list's ✖/⚠ marks, bold titles, the gallery dialogs and the image picker, stray dp values.
 - Landscape: the four tabs move to a navigation rail; portrait keeps the bottom bar.
 - Haptics: a click on Generate/Queue, a confirm on a finished run, and a "Vibration" switch in Settings.
 - Check on the device: every screen in light and dark, portrait and landscape; a touch-target scan (48 dp); contrast; before/after screenshots against the Phase 100 audit.
+**Plans**:
+- [ ] 105.1 Navigation rail in landscape; haptics and the Vibration switch (wave 1)
+- [ ] 105.2 Consistency sweep: status icons, typography, dialog titles, shapes, spacing tokens (wave 1)
+- [ ] 105.3 Full device pass (both themes, both orientations, touch-target scan); close the milestone's must-haves (wave 2)
 **Depends on**: Phases 101–104
 
 ### Phase 106: Pinned Form Fields and Motion
