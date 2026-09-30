@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -123,77 +124,81 @@ fun TemplatesScreen(
                     actionText = "Retry",
                     onAction = { viewModel.fetchTemplates(force = true) }
                 )
-                else -> Column(Modifier.fillMaxSize()) {
-                    // A failed reload keeps the templates already shown (Phase 103)
-                    error?.let { message ->
-                        StatusBanner(
-                            StatusKind.Error,
-                            "Couldn't reload templates",
-                            message = message,
-                            modifier = Modifier.padding(horizontal = Dimens.screenPadding, vertical = Dimens.s),
-                            actions = {
-                                TextButton(onClick = { viewModel.clearTemplatesError() }) { Text("Dismiss") }
-                                TextButton(onClick = { viewModel.fetchTemplates(force = true) }) { Text("Retry") }
+                // The banner, search, chips and count are the grid's first item, so they scroll away and
+                // landscape keeps room for the cards (Phase 105 device check)
+                else -> LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 160.dp),
+                    state = gridState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = Dimens.screenPadding, vertical = Dimens.s),
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.s),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.s)
+                ) {
+                    item(key = "header", span = { GridItemSpan(maxLineSpan) }) {
+                        Column {
+                            // A failed reload keeps the templates already shown (Phase 103)
+                            error?.let { message ->
+                                StatusBanner(
+                                    StatusKind.Error,
+                                    "Couldn't reload templates",
+                                    message = message,
+                                    modifier = Modifier.padding(vertical = Dimens.s),
+                                    actions = {
+                                        TextButton(onClick = { viewModel.clearTemplatesError() }) { Text("Dismiss") }
+                                        TextButton(onClick = { viewModel.fetchTemplates(force = true) }) { Text("Retry") }
+                                    }
+                                )
                             }
-                        )
-                    }
-                    OutlinedTextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = Dimens.screenPadding, vertical = Dimens.s),
-                        // One line in portrait; models and tags are searched too (device check)
-                        placeholder = { Text("Search templates", maxLines = 1) },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                        trailingIcon = {
-                            if (query.isNotEmpty()) {
-                                IconButton(onClick = { query = "" }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                            OutlinedTextField(
+                                value = query,
+                                onValueChange = { query = it },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = Dimens.s),
+                                // One line in portrait; models and tags are searched too (device check)
+                                placeholder = { Text("Search templates", maxLines = 1) },
+                                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                                trailingIcon = {
+                                    if (query.isNotEmpty()) {
+                                        IconButton(onClick = { query = "" }) {
+                                            Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                                        }
+                                    }
+                                },
+                                singleLine = true
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(Dimens.s)
+                            ) {
+                                FilterChip(
+                                    selected = localOnly,
+                                    onClick = { localOnly = !localOnly },
+                                    label = { Text("Local only") }
+                                )
+                                FilterChip(
+                                    selected = category == null,
+                                    onClick = { category = null },
+                                    label = { Text("All") }
+                                )
+                                categories.forEach { c ->
+                                    FilterChip(
+                                        selected = category == c.title,
+                                        onClick = { category = if (category == c.title) null else c.title },
+                                        label = { Text(c.title) }
+                                    )
                                 }
                             }
-                        },
-                        singleLine = true
-                    )
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = Dimens.screenPadding),
-                        horizontalArrangement = Arrangement.spacedBy(Dimens.s)
-                    ) {
-                        FilterChip(
-                            selected = localOnly,
-                            onClick = { localOnly = !localOnly },
-                            label = { Text("Local only") }
-                        )
-                        FilterChip(
-                            selected = category == null,
-                            onClick = { category = null },
-                            label = { Text("All") }
-                        )
-                        categories.forEach { c ->
-                            FilterChip(
-                                selected = category == c.title,
-                                onClick = { category = if (category == c.title) null else c.title },
-                                label = { Text(c.title) }
+                            Text(
+                                "${visible.size} templates",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = Dimens.xs)
                             )
                         }
                     }
-                    Text(
-                        "${visible.size} templates",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = Dimens.screenPadding, vertical = Dimens.xs)
-                    )
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 160.dp),
-                        state = gridState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(Dimens.screenPadding),
-                        horizontalArrangement = Arrangement.spacedBy(Dimens.s),
-                        verticalArrangement = Arrangement.spacedBy(Dimens.s)
-                    ) {
                         items(visible, key = { it.name }) { template ->
                             TemplateCard(
                                 template = template,
@@ -203,7 +208,6 @@ fun TemplatesScreen(
                                 }
                             )
                         }
-                    }
                 }
             }
 

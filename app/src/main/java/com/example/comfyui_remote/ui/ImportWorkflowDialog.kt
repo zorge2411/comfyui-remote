@@ -3,6 +3,7 @@ package com.example.comfyui_remote.ui
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -91,7 +92,8 @@ fun ImportWorkflowDialog(
             Text(text = "Import workflow")
         },
         text = {
-            Column {
+            // Scrolls, so the fields keep their size in landscape (Phase 105 device check)
+            Column(modifier = Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
                 OutlinedButton(
                     onClick = { filePickerLauncher.launch("application/json") },
                     modifier = Modifier.fillMaxWidth()
