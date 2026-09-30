@@ -143,7 +143,8 @@ fun TemplatesScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = Dimens.screenPadding, vertical = Dimens.s),
-                        placeholder = { Text("Search templates, models, tags") },
+                        // One line in portrait; models and tags are searched too (device check)
+                        placeholder = { Text("Search templates", maxLines = 1) },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                         trailingIcon = {
                             if (query.isNotEmpty()) {

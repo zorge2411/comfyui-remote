@@ -15,8 +15,8 @@
 
 - [ ] Shared UI building blocks used on every screen: top bar, section header, card, dialog, and empty, loading and error states (Phases 100, 105)
 - [x] The workflow form shows the prompt and key settings first; everything else is grouped and collapsible; status cards (missing nodes or models, errors, progress) sit in one place (Phase 101)
-- [ ] Clear navigation: a tab bar with defined roles for Queue, History and Gallery, and connection state visible without a dedicated screen (Phase 102)
-- [ ] Workflow list cards show what a workflow is and whether it will run: a compatibility badge (carried over from Milestone 4) and the last result (Phase 103)
+- [x] Clear navigation: a tab bar with defined roles for Queue, History and Gallery, and connection state visible without a dedicated screen (Phase 102)
+- [x] Workflow list cards show what a workflow is and whether it will run: a compatibility badge (carried over from Milestone 4) and the last result (Phase 103)
 - [x] Gallery and media viewer follow the same conventions (Phase 104)
 - [ ] No screen breaks in landscape; dark mode and touch targets checked on the device (Phases 100, 105). Connection and Settings are fixed; status-bar contrast and insets are fixed app-wide
 
@@ -59,7 +59,7 @@
 
 ### Phase 102: Navigation and Structure
 
-**Status**: 🔨 Code done 2026-09-29; device check pending (`.gsd/phases/102/`)
+**Status**: ✅ Done, device-verified 2026-09-30 (`.gsd/phases/102/`); Queue Remove/Stop left for a manual check
 **Objective**: Rework the tab bar and screen roles.
 - Connection becomes a status indicator plus settings, not a tab of its own.
 - Define what Queue, History and Gallery are each for, and remove the overlap.
@@ -69,17 +69,17 @@
 **Plans**:
 - [x] 102.1 Server queue (parse, repository, cancel/interrupt), auto-connect, connection gate (wave 1)
 - [x] 102.2 Tabs and back behaviour, connection chip, Connection as pushed screen, Settings tab (wave 2)
-- [ ] 102.3 Queue tab with server queue, offline gating; device check (wave 3)
+- [x] 102.3 Queue tab with server queue, offline gating; device check (wave 3)
 **Depends on**: Phase 100
 
 ### Phase 103: Workflow List and Templates
 
-**Status**: 🔨 Code done 2026-09-29; device check pending (`.gsd/phases/103/`)
+**Status**: ✅ Done, device-verified 2026-09-30 (`.gsd/phases/103/`)
 **Objective**: Workflow cards show the last result image, the models used and a **compatibility badge** (runs / warnings / will fail), reusing `MainViewModel.preflight`. Add search and sort, and polish the template browser to the Phase 100 conventions.
 **Plans** (planned 2026-09-29, `.gsd/phases/103/`):
 - [x] 103.1 Compatibility, models, last result, lastUsedAt (Room 14 → 15) (wave 1)
 - [x] 103.2 Workflow list UI: cards, search, sort, server section, import dialog (wave 2)
-- [ ] 103.3 Template browser polish; device check (wave 3)
+- [x] 103.3 Template browser polish; device check (wave 3)
 **Depends on**: Phase 100; runs after Phase 102 (shares the Workflows top bar)
 
 ### Phase 104: Gallery and Media Viewer
