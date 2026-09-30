@@ -22,9 +22,9 @@
 
 ## Nice-to-Haves
 
-- [ ] Pin favourite fields per workflow to the top of the form
-- [ ] Shared-element / motion transitions between the list, form and result
-- [ ] Haptic feedback on Generate and on completion
+- [ ] Pin favourite fields per workflow to the top of the form (Phase 106)
+- [ ] Shared-element / motion transitions between the list, form and result (Phase 106)
+- [ ] Haptic feedback on Generate and on completion (Phase 105)
 
 ## Phases
 
@@ -97,9 +97,18 @@
 
 ### Phase 105: Consistency Pass and Device Check
 
-**Status**: ⬜ Not Started
-**Objective**: Finish the milestone.
-- Apply the shared components to any screen still left: Settings, Queue, History and the dialogs.
-- Check on the device: dark mode, touch targets (48 dp), contrast, and landscape on every screen.
-- Before/after screenshots.
+**Status**: 💬 Discussed 2026-09-30 (`.gsd/phases/105/105-CONTEXT.md`); next `/plan 105`
+**Objective**: Finish the milestone's must-haves.
+- Apply the shared components to what's left: the issue list's ✖/⚠ marks, bold titles, the gallery dialogs and the image picker, stray dp values.
+- Landscape: the four tabs move to a navigation rail; portrait keeps the bottom bar.
+- Haptics: a click on Generate/Queue, a confirm on a finished run, and a "Vibration" switch in Settings.
+- Check on the device: every screen in light and dark, portrait and landscape; a touch-target scan (48 dp); contrast; before/after screenshots against the Phase 100 audit.
 **Depends on**: Phases 101–104
+
+### Phase 106: Pinned Form Fields and Motion
+
+**Status**: 💬 Discussed 2026-09-30 (`.gsd/phases/106/106-CONTEXT.md`)
+**Objective**: The milestone's nice-to-haves, split out of Phase 105.
+- A pin icon per form field; pinned fields show in a "Pinned" group under the prompt, per workflow (Room 15 → 16).
+- Shared-element motion: the workflow card's thumbnail into the form's result preview, and the result preview into the full-screen viewer.
+**Depends on**: Phase 105

@@ -2,9 +2,9 @@
 
 ## Current Position
 
-- **Milestone**: 5, UI/UX Overhaul (created 2026-09-27). Phases 100–105.
+- **Milestone**: 5, UI/UX Overhaul (created 2026-09-27). Phases 100–106 (106 split out of 105 on 2026-09-30).
 - **Phase**: 102 and 103 done and device-verified 2026-09-30 (fixes from the check: `ecb2bcc`, `e55479e`; 251 tests pass, database v15). Phases 100–104 done; next: 105.
-- **Status**: Milestone planned. Milestone 4 is archived in `.gsd/milestones/Milestone 4/` (tag `milestone-4`).
+- **Status**: Phase 105 discussed 2026-09-30 (`.gsd/phases/105/105-CONTEXT.md`); next `/plan 105`. Milestone 4 is archived in `.gsd/milestones/Milestone 4/` (tag `milestone-4`).
 
 ## Achievements (Milestone 5)
 
@@ -158,9 +158,8 @@
 
 ## Next Steps
 
-1. `/plan 105` (consistency pass). Carry in from the 102/103 device check:
+1. `/plan 105` (consistency pass, navigation rail, haptics, full device check; decisions in `105-CONTEXT.md`), then `/plan 106` (pinned fields, motion). Carry in from the 102/103 device check:
    - landscape: the labelled tab bar takes about a third of the height (consider a navigation rail); the + button can cover a card's ⋮ menu;
-   - a manual check of the Queue tab's Remove (pending job) and Stop (running job) with a job longer than Z-Image-Turbo's ~14 s;
    - not run: the templates reload-error banner, importing a template.
 2. Optional checks carried over, not yet done on the device:
    - Milestone 4: queue controls hidden on a helper v1 server; "Browse Templates" on an empty workflow list; a Gemini, Grok or SaveVideo run.
