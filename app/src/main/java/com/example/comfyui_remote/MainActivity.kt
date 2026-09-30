@@ -7,6 +7,20 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.dp
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
@@ -42,7 +56,9 @@ import com.example.comfyui_remote.ui.WorkflowListScreen
 import com.example.comfyui_remote.ui.theme.ComfyUI_front_endTheme
 
 /** A bottom-bar tab (Phase 102): its root route and the pushed routes that belong to it. */
-private data class Tab(val route: String, val label: String, val icon: ImageVector, val children: Set<String> = emptySet())
+private data class Tab(val route: String, val label: String, val icon: ImageVector, val children: Set<String> = emptySet()) {
+    fun isSelected(currentRoute: String?) = currentRoute == route || currentRoute in children
+}
 
 private val TABS = listOf(
     Tab("workflows", "Workflows", Icons.Filled.AccountTree, setOf("templates")),
@@ -108,25 +124,41 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                // Tabs are hidden on the form, the full-screen media viewer (Phase 104) and Connection.
+                // Landscape puts them in a rail, portrait in the bottom bar (Phase 105 D-01).
+                val tabsHidden = currentRoute == "remote_control" || currentRoute == "connection" ||
+                    currentRoute?.startsWith("media_detail") == true
+                val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+                val showRail = landscape && !tabsHidden
+
                 Scaffold(
                     bottomBar = {
-                        // Hidden on the form, the full-screen media viewer (Phase 104) and Connection
-                        val hidden = currentRoute == "remote_control" || currentRoute == "connection" ||
-                            currentRoute?.startsWith("media_detail") == true
-                        if (!hidden) {
+                        if (!landscape && !tabsHidden) {
                             NavigationBar {
                                 TABS.forEach { tab ->
                                     NavigationBarItem(
                                         icon = { Icon(tab.icon, contentDescription = null) },
                                         label = { Text(tab.label) },
-                                        selected = currentRoute == tab.route || currentRoute in tab.children,
+                                        selected = tab.isSelected(currentRoute),
                                         onClick = { navController.navigateToTab(tab.route) }
                                     )
                                 }
                             }
                         }
                     }
-                ) { innerPadding ->
+                ) { scaffoldPadding ->
+                    // The rail takes the start inset, so the screens beside it don't pad it again
+                    val innerPadding = if (showRail) {
+                        val direction = LocalLayoutDirection.current
+                        PaddingValues(
+                            start = 0.dp,
+                            top = scaffoldPadding.calculateTopPadding(),
+                            end = scaffoldPadding.calculateEndPadding(direction),
+                            bottom = scaffoldPadding.calculateBottomPadding()
+                        )
+                    } else {
+                        scaffoldPadding
+                    }
                     // Listen for auto-navigation to form (e.g. "Open in form" in the media viewer)
                     val navigateToForm by viewModel.navigateToForm.collectAsState()
                     LaunchedEffect(navigateToForm) {
@@ -136,6 +168,31 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    Row(modifier = Modifier.fillMaxSize()) {
+                    if (showRail) {
+                        NavigationRail {
+                            Spacer(Modifier.weight(1f))
+                            TABS.forEach { tab ->
+                                NavigationRailItem(
+                                    icon = { Icon(tab.icon, contentDescription = null) },
+                                    label = { Text(tab.label) },
+                                    selected = tab.isSelected(currentRoute),
+                                    onClick = { navController.navigateToTab(tab.route) }
+                                )
+                            }
+                            Spacer(Modifier.weight(1f))
+                        }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize()
+                            .then(
+                                if (showRail) Modifier.consumeWindowInsets(
+                                    WindowInsets.safeDrawing.only(WindowInsetsSides.Start)
+                                ) else Modifier
+                            )
+                    ) {
                     @OptIn(ExperimentalSharedTransitionApi::class)
                     SharedTransitionLayout {
                         NavHost(
@@ -245,6 +302,8 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
+                    }
+                    }
                     }
                 }
             }
