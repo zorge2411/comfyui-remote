@@ -30,6 +30,7 @@ fun SettingsScreen(viewModel: MainViewModel, onOpenConnection: () -> Unit) {
     val serverAddress by viewModel.serverAddress.collectAsState()
     val hasSavedServer by viewModel.hasSavedServer.collectAsState()
     val autoConnect by viewModel.autoConnect.collectAsState()
+    val vibration by viewModel.vibration.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
     val maxItems by viewModel.maxSyncItems.collectAsState()
 
@@ -103,6 +104,21 @@ fun SettingsScreen(viewModel: MainViewModel, onOpenConnection: () -> Unit) {
                             Text(label)
                         }
                     }
+                }
+                // Phase 105: haptics on Generate/Queue and when a run finishes
+                Row(
+                    modifier = Modifier.fillMaxWidth().heightIn(min = Dimens.minTouch).padding(top = Dimens.s),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Vibration", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "On Generate and when a run finishes",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(checked = vibration, onCheckedChange = { viewModel.setVibration(it) })
                 }
             }
 

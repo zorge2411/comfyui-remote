@@ -142,7 +142,19 @@ fun DynamicFormScreen(
             }
         }
     }
-    fun generate() = withPreflight { viewModel.executeWorkflow(workflow, inputs, batchCount) }
+    // Phase 105: a click when a run is sent, a confirm when its result arrives while the form shows
+    val vibration by viewModel.vibration.collectAsState()
+    val haptics = com.example.comfyui_remote.ui.components.rememberHaptics(vibration)
+    var previousStatus by remember { mutableStateOf(executionStatus) }
+    LaunchedEffect(executionStatus) {
+        val wasRunning = previousStatus == ExecutionStatus.EXECUTING || previousStatus == ExecutionStatus.QUEUED
+        if (wasRunning && executionStatus == ExecutionStatus.FINISHED) haptics.confirm()
+        previousStatus = executionStatus
+    }
+    fun generate() = withPreflight {
+        haptics.click()
+        viewModel.executeWorkflow(workflow, inputs, batchCount)
+    }
 
     // Missing nodes against the connected server; the list stored at import may be stale
     val liveMissingNodes by androidx.compose.runtime.produceState<List<String>?>(null, workflow, nodeMetadata) {
@@ -271,7 +283,12 @@ fun DynamicFormScreen(
                     checking -> "Checking…"
                     else -> null
                 },
-                onQueue = { withPreflight { viewModel.addToQueue(workflow, inputs, batchCount) } },
+                onQueue = {
+                    withPreflight {
+                        haptics.click()
+                        viewModel.addToQueue(workflow, inputs, batchCount)
+                    }
+                },
                 onGenerate = { generate() }
             )
         }

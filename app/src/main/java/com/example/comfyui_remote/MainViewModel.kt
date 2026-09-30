@@ -192,6 +192,13 @@ class MainViewModel(
     /** Connect to the saved server on start (Phase 102). */
     val autoConnect: StateFlow<Boolean> = userPreferencesRepository.autoConnect.stateIn(viewModelScope, SharingStarted.Lazily, true)
 
+    /** Vibration on Generate/Queue and on a finished run (Phase 105). */
+    val vibration: StateFlow<Boolean> = userPreferencesRepository.vibration.stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    fun setVibration(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.saveVibration(enabled) }
+    }
+
     fun setAutoConnect(enabled: Boolean) {
         viewModelScope.launch { userPreferencesRepository.saveAutoConnect(enabled) }
     }
