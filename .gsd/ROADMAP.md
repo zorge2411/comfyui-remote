@@ -111,8 +111,12 @@
 
 ### Phase 106: Pinned Form Fields and Motion
 
-**Status**: 💬 Discussed 2026-09-30 (`.gsd/phases/106/106-CONTEXT.md`)
+**Status**: 📋 Planned 2026-10-01 (`.gsd/phases/106/`: CONTEXT and 3 plans); next `/execute 106`
 **Objective**: The milestone's nice-to-haves, split out of Phase 105.
 - A pin icon per form field; pinned fields show in a "Pinned" group under the prompt, per workflow (Room 15 → 16).
 - Shared-element motion: the workflow card's thumbnail into the form's result preview, and the result preview into the full-screen viewer.
+**Plans**:
+- [ ] 106.1 FormLayout pinned group (tested); pinnedFields column, Room 15 → 16; targeted lastImageName write (wave 1)
+- [ ] 106.2 Pinned group and pin icons in the form (wave 2)
+- [ ] 106.3 Shared-element motion; device check; close (wave 3)
 **Depends on**: Phase 105
