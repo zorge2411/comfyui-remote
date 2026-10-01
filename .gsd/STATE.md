@@ -2,9 +2,9 @@
 
 ## Current Position
 
-- **Milestone**: 5, UI/UX Overhaul (created 2026-09-27). Phases 100–106 (106 split out of 105 on 2026-09-30).
-- **Phase**: 106 done and device-verified 2026-10-01. Milestone 5 complete: Phases 100–106 done, all must-haves and nice-to-haves ticked (database v16, 255 tests).
-- **Status**: Milestone 5 ready to audit and archive. Milestone 4 is archived in `.gsd/milestones/Milestone 4/` (tag `milestone-4`).
+- **Milestone**: none active. Milestone 5 (UI/UX Overhaul, 2026-09-27 to 2026-10-01) is complete and archived in `.gsd/milestones/Milestone 5/` (summary: `Milestone 5-SUMMARY.md`, tag `milestone-5`).
+- **Phase**: none. Phases 100–106 are done and device-verified (database v16, 255 JVM tests).
+- **Status**: ready for `/new-milestone`.
 
 ## Achievements (Milestone 5)
 
@@ -131,6 +131,8 @@
 
 ## Roadmap Evolution
 
+- **2026-10-01**: Milestone 5 completed and archived (`.gsd/milestones/Milestone 5/`, `Milestone 5-SUMMARY.md`, tag `milestone-5`). Phases 100–106: all six must-haves and all three nice-to-haves.
+
 - **2026-09-27**: Milestone 5 created: UI/UX Overhaul, Phases 100–105. Scope: form, navigation, gallery, workflow list and templates; polish Material 3; phone portrait (landscape must not break). The compatibility badge carried over from Milestone 4 is in Phase 103.
 
 - **2026-09-27**: Milestone 4 completed and archived (`.gsd/milestones/Milestone 4/`, `Milestone 4-SUMMARY.md`). Phases 89–99: 5 must-haves, the template browser, plus model downloads to the server (97, 99) and the empty-list pre-flight fix (98).
@@ -158,9 +160,8 @@
 
 ## Next Steps
 
-1. Audit and archive Milestone 5 (`.agent/workflows/` audit-milestone / complete-milestone), then plan Milestone 6.
-   - landscape: the labelled tab bar takes about a third of the height (consider a navigation rail); the + button can cover a card's ⋮ menu;
-   - not run: the templates reload-error banner, importing a template.
+1. `/new-milestone` to start Milestone 6.
 2. Optional checks carried over, not yet done on the device:
-   - Milestone 4: queue controls hidden on a helper v1 server; "Browse Templates" on an empty workflow list; a Gemini, Grok or SaveVideo run.
-   - Milestone 3: Phase 82 prompt-first ordering on a real workflow; Phase 80 themed icon under Android 13+ Material You.
+   - Milestone 5: a live Remove/Stop on the server queue; the templates reload-error banner in aeroplane mode; the pin row in landscape.
+   - Milestone 4: queue controls hidden on a helper v1 server; a Gemini, Grok or SaveVideo run (API nodes cost money).
+   - Milestone 3: Phase 80 themed icon under Android 13+ Material You.
