@@ -90,6 +90,47 @@ class FormLayoutTest {
         assertEquals(listOf("Seed", "Steps", "Checkpoint"), model.main.map { it.label })
     }
 
+    // Phase 106: pinned fields
+    @Test
+    fun `a pinned node-group field moves to the pinned group`() {
+        val model = FormLayout.build(zImage, "68", null, pinned = setOf("70/shift"))
+        assertEquals(listOf("70/shift"), model.pinned.map { it.key })
+        assertEquals("Shift", model.pinned.single().label)
+        // its node had no other fields, so the group is gone
+        assert(model.groups.none { it.nodeId == "70" }) { model.groups.map { it.nodeId }.toString() }
+    }
+
+    @Test
+    fun `pinning one field keeps the rest of its group`() {
+        val model = FormLayout.build(zImage, "68", null, pinned = setOf("63/type"))
+        assertEquals(listOf("Type"), model.pinned.map { it.label })
+        assertEquals(listOf("Clip name"), model.groups.single { it.nodeId == "63" }.fields.map { it.label })
+    }
+
+    @Test
+    fun `pins on main settings, the prompt or unknown keys are ignored`() {
+        val model = FormLayout.build(zImage, "68", null, pinned = setOf("71/seed", "68/text", "99/missing"))
+        assertEquals(emptyList<LabelledField>(), model.pinned)
+        assertEquals(FormLayout.build(zImage, "68", null), model)
+    }
+
+    @Test
+    fun `pinned fields with the same label get their node title`() {
+        val loras = zImage + listOf(
+            FloatInput("90", "strength_model", 1f, "LoRA detail"),
+            FloatInput("91", "strength_model", 0.6f, "LoRA style")
+        )
+        val model = FormLayout.build(loras, "68", null, pinned = setOf("90/strength_model", "91/strength_model", "70/shift"))
+        assertEquals(
+            listOf("Shift", "LoRA detail · Strength model", "LoRA style · Strength model"),
+            model.pinned.map { it.label }
+        )
+        // every input still appears exactly once
+        val shown = listOfNotNull(model.prompt, model.negative) + model.main + model.pinned + model.groups.flatMap { it.fields }
+        assertEquals(loras.map { it.key }.toSet(), shown.map { it.key }.toSet())
+        assertEquals(loras.size, shown.size)
+    }
+
     @Test
     fun `humanize field names`() {
         assertEquals("Filename prefix", FormLayout.humanize("filename_prefix"))
