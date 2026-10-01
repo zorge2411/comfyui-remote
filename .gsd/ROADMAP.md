@@ -13,18 +13,18 @@
 
 ## Must-Haves
 
-- [ ] Shared UI building blocks used on every screen: top bar, section header, card, dialog, and empty, loading and error states (Phases 100, 105)
+- [x] Shared UI building blocks used on every screen: top bar, section header, card, dialog, and empty, loading and error states (Phases 100, 105)
 - [x] The workflow form shows the prompt and key settings first; everything else is grouped and collapsible; status cards (missing nodes or models, errors, progress) sit in one place (Phase 101)
 - [x] Clear navigation: a tab bar with defined roles for Queue, History and Gallery, and connection state visible without a dedicated screen (Phase 102)
 - [x] Workflow list cards show what a workflow is and whether it will run: a compatibility badge (carried over from Milestone 4) and the last result (Phase 103)
 - [x] Gallery and media viewer follow the same conventions (Phase 104)
-- [ ] No screen breaks in landscape; dark mode and touch targets checked on the device (Phases 100, 105). Connection and Settings are fixed; status-bar contrast and insets are fixed app-wide
+- [x] No screen breaks in landscape; dark mode and touch targets checked on the device (Phases 100, 105). Connection and Settings are fixed; status-bar contrast and insets are fixed app-wide
 
 ## Nice-to-Haves
 
 - [ ] Pin favourite fields per workflow to the top of the form (Phase 106)
 - [ ] Shared-element / motion transitions between the list, form and result (Phase 106)
-- [ ] Haptic feedback on Generate and on completion (Phase 105)
+- [x] Haptic feedback on Generate and on completion (Phase 105)
 
 ## Phases
 
@@ -97,16 +97,16 @@
 
 ### Phase 105: Consistency Pass and Device Check
 
-**Status**: 📋 Planned 2026-09-30 (`.gsd/phases/105/`: CONTEXT and 3 plans); next `/execute 105`
+**Status**: ✅ Done, device-verified 2026-09-30 (`.gsd/phases/105/`)
 **Objective**: Finish the milestone's must-haves.
 - Apply the shared components to what's left: the issue list's ✖/⚠ marks, bold titles, the gallery dialogs and the image picker, stray dp values.
 - Landscape: the four tabs move to a navigation rail; portrait keeps the bottom bar.
 - Haptics: a click on Generate/Queue, a confirm on a finished run, and a "Vibration" switch in Settings.
 - Check on the device: every screen in light and dark, portrait and landscape; a touch-target scan (48 dp); contrast; before/after screenshots against the Phase 100 audit.
 **Plans**:
-- [ ] 105.1 Navigation rail in landscape; haptics and the Vibration switch (wave 1)
-- [ ] 105.2 Consistency sweep: status icons, typography, dialog titles, shapes, spacing tokens (wave 1)
-- [ ] 105.3 Full device pass (both themes, both orientations, touch-target scan); close the milestone's must-haves (wave 2)
+- [x] 105.1 Navigation rail in landscape; haptics and the Vibration switch (wave 1)
+- [x] 105.2 Consistency sweep: status icons, typography, dialog titles, shapes, spacing tokens (wave 1)
+- [x] 105.3 Full device pass (both themes, both orientations, touch-target scan); close the milestone's must-haves (wave 2)
 **Depends on**: Phases 101–104
 
 ### Phase 106: Pinned Form Fields and Motion

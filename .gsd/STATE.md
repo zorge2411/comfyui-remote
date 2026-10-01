@@ -3,8 +3,8 @@
 ## Current Position
 
 - **Milestone**: 5, UI/UX Overhaul (created 2026-09-27). Phases 100–106 (106 split out of 105 on 2026-09-30).
-- **Phase**: 102 and 103 done and device-verified 2026-09-30 (fixes from the check: `ecb2bcc`, `e55479e`; 251 tests pass, database v15). Phases 100–104 done; next: 105.
-- **Status**: Phase 105 planned 2026-09-30 (`.gsd/phases/105/`: 3 plans in waves 1, 1 and 2); next `/execute 105`. Milestone 4 is archived in `.gsd/milestones/Milestone 4/` (tag `milestone-4`).
+- **Phase**: 105 done and device-verified 2026-09-30 (closed 2026-10-01). All six Milestone 5 must-haves are met; Phases 100–105 done. Next: Phase 106 (nice-to-haves).
+- **Status**: Phase 106 discussed (`.gsd/phases/106/106-CONTEXT.md`); next `/plan 106`. Milestone 4 is archived in `.gsd/milestones/Milestone 4/` (tag `milestone-4`).
 
 ## Achievements (Milestone 5)
 
@@ -158,7 +158,7 @@
 
 ## Next Steps
 
-1. `/execute 105` (105.1 rail and haptics, 105.2 sweep, 105.3 device pass with the phone on adb, unlocked, screen timeout raised), then `/plan 106` (pinned fields, motion). Carry in from the 102/103 device check:
+1. `/plan 106` (pinned form fields, Room 15 → 16; card → form and result → viewer motion). Then the milestone audit and archive.
    - landscape: the labelled tab bar takes about a third of the height (consider a navigation rail); the + button can cover a card's ⋮ menu;
    - not run: the templates reload-error banner, importing a template.
 2. Optional checks carried over, not yet done on the device:
