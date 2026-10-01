@@ -73,6 +73,7 @@ import com.example.comfyui_remote.ui.form.FormActionBar
 import com.example.comfyui_remote.ui.form.MainSettings
 import com.example.comfyui_remote.ui.form.NodeSection
 import com.example.comfyui_remote.ui.form.NumberField
+import com.example.comfyui_remote.ui.form.PinnableField
 import com.example.comfyui_remote.ui.form.PromptField
 import com.example.comfyui_remote.ui.form.SeedField
 import com.example.comfyui_remote.ui.form.SelectionField
@@ -106,7 +107,11 @@ fun DynamicFormScreen(
         viewModel.saveFormValues(workflow, inputs)
     }
     val promptIds = remember(workflow.jsonContent) { viewModel.promptNodeIds(workflow.jsonContent) }
-    val form = remember(inputs, promptIds) { FormLayout.build(inputs, promptIds.first, promptIds.second) }
+    // Phase 106: node-group fields the user pinned under the prompt
+    val pinnedKeys = remember(workflow.pinnedFields) { viewModel.pinnedFields(workflow) }
+    val form = remember(inputs, promptIds, pinnedKeys) {
+        FormLayout.build(inputs, promptIds.first, promptIds.second, pinnedKeys)
+    }
     var expandedGroups by rememberSaveable(workflow.id) { mutableStateOf(listOf<String>()) }
 
     // Image fields with an upload in flight, by key: Generate/Queue wait for the server file name, or
@@ -397,6 +402,16 @@ fun DynamicFormScreen(
             form.prompt?.let { renderField(it, Modifier) }
             form.negative?.let { renderField(it, Modifier) }
 
+            // ---- Pinned (Phase 106) ----
+            if (form.pinned.isNotEmpty()) {
+                SectionHeader("Pinned")
+                form.pinned.forEach { lf ->
+                    PinnableField(pinned = true, label = lf.label, onToggle = { viewModel.togglePin(workflow, lf.key) }) {
+                        renderField(lf, Modifier)
+                    }
+                }
+            }
+
             // ---- Main settings ----
             if (form.main.isNotEmpty()) {
                 SectionHeader("Main settings")
@@ -414,7 +429,11 @@ fun DynamicFormScreen(
                             expandedGroups = if (group.nodeId in expandedGroups) expandedGroups - group.nodeId
                             else expandedGroups + group.nodeId
                         }
-                    ) { lf -> renderField(lf, Modifier) }
+                    ) { lf ->
+                        PinnableField(pinned = false, label = lf.label, onToggle = { viewModel.togglePin(workflow, lf.key) }) {
+                            renderField(lf, Modifier)
+                        }
+                    }
                 }
             }
             Spacer(Modifier.height(Dimens.l))

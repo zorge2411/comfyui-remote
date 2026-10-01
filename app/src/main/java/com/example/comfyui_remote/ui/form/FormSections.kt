@@ -3,6 +3,7 @@ package com.example.comfyui_remote.ui.form
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,6 +12,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -55,6 +59,24 @@ fun MainSettings(fields: List<LabelledField>, field: @Composable (LabelledField,
 }
 
 private fun InputField.isNumber() = this is InputField.IntInput || this is InputField.FloatInput
+
+/**
+ * A field with a pin beside it (Phase 106): pinned fields show under the prompt. The pin sits outside the
+ * field, so it doesn't compete with the field's own trailing icons.
+ */
+@Composable
+fun PinnableField(pinned: Boolean, label: String, onToggle: () -> Unit, content: @Composable () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(modifier = Modifier.weight(1f)) { content() }
+        IconButton(onClick = onToggle) {
+            Icon(
+                if (pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                contentDescription = if (pinned) "Unpin $label" else "Pin $label",
+                tint = if (pinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
 
 /** The inputs of one node, collapsed to a header with the node title and input count until tapped. */
 @Composable
