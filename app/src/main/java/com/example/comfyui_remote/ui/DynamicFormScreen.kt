@@ -64,6 +64,8 @@ import com.example.comfyui_remote.ui.components.AppTopBar
 import com.example.comfyui_remote.ui.components.ConfirmDialog
 import com.example.comfyui_remote.ui.components.Dimens
 import com.example.comfyui_remote.ui.components.ErrorCard
+import com.example.comfyui_remote.ui.components.sharedImage
+import androidx.compose.foundation.layout.Box
 import com.example.comfyui_remote.ui.components.NotConnectedBanner
 import com.example.comfyui_remote.ui.components.SectionHeader
 import com.example.comfyui_remote.ui.components.StatusBanner
@@ -86,14 +88,17 @@ import kotlinx.coroutines.launch
  * settings, and every other input in collapsed per-node sections, with Queue and Generate in a fixed bar.
  */
 @Suppress("DEPRECATION", "UNUSED_PARAMETER")
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 @Composable
 fun DynamicFormScreen(
     viewModel: MainViewModel,
     workflow: WorkflowEntity,
     onBack: () -> Unit,
     onViewInGallery: (Long) -> Unit,
-    onOpenConnection: () -> Unit
+    onOpenConnection: () -> Unit,
+    // Phase 106: the result preview is shared with the workflow card and the full-screen viewer
+    sharedTransitionScope: androidx.compose.animation.SharedTransitionScope? = null,
+    animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope? = null
 ) {
     val nodeMetadata by viewModel.nodeMetadata.collectAsState()
     // Field values, keyed by nodeId/fieldName. Re-parsed when the workflow or the server's node list changes,
@@ -382,12 +387,24 @@ fun DynamicFormScreen(
                 // Compact, so the prompt stays near the top
                 AppCard(onClick = generatedMediaId?.let { id -> { onViewInGallery(id) } }) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        coil.compose.AsyncImage(
-                            model = image,
-                            contentDescription = "Latest result",
-                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                            modifier = Modifier.size(96.dp).clip(MaterialTheme.shapes.small)
-                        )
+                        // Outer key: the viewer's page for this item; inner key: the workflow card's thumbnail
+                        Box(
+                            modifier = Modifier
+                                .size(96.dp)
+                                .sharedImage(
+                                    generatedMediaId?.let { "image-$it" }, sharedTransitionScope, animatedVisibilityScope
+                                )
+                        ) {
+                            coil.compose.AsyncImage(
+                                model = image,
+                                contentDescription = "Latest result",
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                modifier = Modifier
+                                    .sharedImage("workflow-thumb-${workflow.id}", sharedTransitionScope, animatedVisibilityScope)
+                                    .fillMaxSize()
+                                    .clip(MaterialTheme.shapes.small)
+                            )
+                        }
                         Column(modifier = Modifier.weight(1f).padding(start = Dimens.m)) {
                             Text("Latest result", style = MaterialTheme.typography.titleSmall)
                             if (generatedMediaId != null) {

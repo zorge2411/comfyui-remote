@@ -83,6 +83,7 @@ import com.example.comfyui_remote.ui.components.IssueList
 import com.example.comfyui_remote.ui.components.LoadingOverlay
 import com.example.comfyui_remote.ui.components.NotConnectedBanner
 import com.example.comfyui_remote.ui.components.SectionHeader
+import com.example.comfyui_remote.ui.components.sharedImage
 
 private val SORT_LABELS = listOf(
     WorkflowSort.LAST_USED to "Last used",
@@ -94,12 +95,15 @@ private val SORT_LABELS = listOf(
  * The Workflows tab (Phase 103): cards with the last result, the models and whether the workflow will run
  * on the connected server; search, sort, and the server's saved workflows in a collapsible section.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 @Composable
 fun WorkflowListScreen(
     viewModel: MainViewModel,
     onOpenTemplates: () -> Unit = {},
     onOpenConnection: () -> Unit,
+    // Phase 106: the card thumbnail grows into the form's result preview
+    sharedTransitionScope: androidx.compose.animation.SharedTransitionScope? = null,
+    animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope? = null,
     onWorkflowValidation: (WorkflowEntity) -> Unit // Will navigate to detail/run screen
 ) {
     val workflows by viewModel.allWorkflows.collectAsState(initial = emptyList())
@@ -251,7 +255,9 @@ fun WorkflowListScreen(
                                     onOpen = { onWorkflowValidation(workflow) },
                                     onShowIssues = { issues -> issuesOf = workflow to issues },
                                     onRename = { renaming = workflow },
-                                    onDelete = { deleting = workflow }
+                                    onDelete = { deleting = workflow },
+                                    sharedTransitionScope = sharedTransitionScope,
+                                    animatedVisibilityScope = animatedVisibilityScope
                                 )
                             }
                             if (shownServer.isNotEmpty()) {
@@ -351,6 +357,7 @@ fun WorkflowListScreen(
 }
 
 /** One stored workflow: last result, name, models, compatibility badge and a More menu (UI spec §4). */
+@OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 @Composable
 private fun WorkflowCard(
     workflow: WorkflowEntity,
@@ -361,11 +368,19 @@ private fun WorkflowCard(
     onOpen: () -> Unit,
     onShowIssues: (List<PromptValidator.Issue>) -> Unit,
     onRename: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    sharedTransitionScope: androidx.compose.animation.SharedTransitionScope?,
+    animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope?
 ) {
     AppCard(modifier = Modifier.fillMaxWidth(), onClick = onOpen) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Thumbnail(thumbnailUrl, isVideo)
+            Thumbnail(
+                thumbnailUrl,
+                isVideo,
+                imageModifier = Modifier.sharedImage(
+                    "workflow-thumb-${workflow.id}", sharedTransitionScope, animatedVisibilityScope
+                )
+            )
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -401,7 +416,7 @@ private fun WorkflowCard(
 }
 
 @Composable
-private fun Thumbnail(url: String?, isVideo: Boolean) {
+private fun Thumbnail(url: String?, isVideo: Boolean, imageModifier: Modifier = Modifier) {
     val shape = MaterialTheme.shapes.medium
     Box(
         modifier = Modifier
@@ -415,7 +430,7 @@ private fun Thumbnail(url: String?, isVideo: Boolean) {
                 model = url,
                 contentDescription = "Last result",
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                modifier = imageModifier.fillMaxSize()
             )
         } else {
             Icon(

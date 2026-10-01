@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.comfyui_remote.data.ConnectionRepository
 import com.example.comfyui_remote.data.WorkflowEntity
 import com.example.comfyui_remote.data.WorkflowRepository
+import com.example.comfyui_remote.ui.constructUrl
 import com.example.comfyui_remote.network.ExecutionStatus
 import com.example.comfyui_remote.network.WebSocketState
 import com.example.comfyui_remote.service.ExecutionService
@@ -369,7 +370,11 @@ class MainViewModel(
     private val _selectedWorkflow = MutableStateFlow<WorkflowEntity?>(null)
     val selectedWorkflow: StateFlow<WorkflowEntity?> = _selectedWorkflow.asStateFlow()
 
-    fun selectWorkflow(workflow: WorkflowEntity) {
+    /**
+     * [lastResult] is the workflow's last result as the list already knows it (Phase 106): the preview URL and
+     * media id are then set at once, so the card → form transition starts from the same image.
+     */
+    fun selectWorkflow(workflow: WorkflowEntity, lastResult: com.example.comfyui_remote.data.GeneratedMediaListing? = null) {
         _selectedWorkflow.value = workflow
         _inputImages.value = emptyMap() // Reset inputs
         
@@ -378,8 +383,11 @@ class MainViewModel(
             viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { repository.markUsed(workflow.id) }
         }
 
-        // Fix: Update generated image view to show the last result if available
-        if (workflow.lastImageName != null) {
+        if (lastResult != null && lastResult.fileName == workflow.lastImageName && lastResult.mediaType != "VIDEO") {
+            _generatedImage.value = lastResult.constructUrl(_host.value, _port.value, _isSecure.value)
+            _generatedMediaId.value = lastResult.id
+        } else if (workflow.lastImageName != null) {
+            // Fix: Update generated image view to show the last result if available
             val base = "${if (_isSecure.value) "https" else "http"}://${_serverAddress.value}"
             _generatedImage.value = com.example.comfyui_remote.domain.MediaUrls.view(base, workflow.lastImageName)
 

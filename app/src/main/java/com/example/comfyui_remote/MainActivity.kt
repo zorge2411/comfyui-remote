@@ -222,10 +222,13 @@ class MainActivity : ComponentActivity() {
                                     WorkflowListScreen(
                                         viewModel = viewModel,
                                         onOpenTemplates = { navController.navigate("templates") },
-                                        onOpenConnection = openConnection
+                                        onOpenConnection = openConnection,
+                                        sharedTransitionScope = this@SharedTransitionLayout,
+                                        animatedVisibilityScope = this@composable
                                     ) { workflow ->
                                         viewModel.parseWorkflowInputs(workflow.jsonContent)
-                                        viewModel.selectWorkflow(workflow)
+                                        // Phase 106: the card's last result, so the preview is ready for the transition
+                                        viewModel.selectWorkflow(workflow, viewModel.lastResults.value[workflow.id])
                                         navController.navigate("remote_control")
                                     }
                                 }
@@ -296,7 +299,9 @@ class MainActivity : ComponentActivity() {
                                             onViewInGallery = { mediaId ->
                                                 navController.navigate("media_detail/$mediaId")
                                             },
-                                            onOpenConnection = openConnection
+                                            onOpenConnection = openConnection,
+                                            sharedTransitionScope = this@SharedTransitionLayout,
+                                            animatedVisibilityScope = this@composable
                                         )
                                     }
                                 }
