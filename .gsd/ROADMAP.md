@@ -22,8 +22,8 @@
 
 ## Nice-to-Haves
 
-- [ ] Pin favourite fields per workflow to the top of the form (Phase 106)
-- [ ] Shared-element / motion transitions between the list, form and result (Phase 106)
+- [x] Pin favourite fields per workflow to the top of the form (Phase 106)
+- [x] Shared-element / motion transitions between the list, form and result (Phase 106)
 - [x] Haptic feedback on Generate and on completion (Phase 105)
 
 ## Phases
@@ -111,12 +111,12 @@
 
 ### Phase 106: Pinned Form Fields and Motion
 
-**Status**: 📋 Planned 2026-10-01 (`.gsd/phases/106/`: CONTEXT and 3 plans); next `/execute 106`
+**Status**: ✅ Done, device-verified 2026-10-01 (`.gsd/phases/106/`)
 **Objective**: The milestone's nice-to-haves, split out of Phase 105.
 - A pin icon per form field; pinned fields show in a "Pinned" group under the prompt, per workflow (Room 15 → 16).
 - Shared-element motion: the workflow card's thumbnail into the form's result preview, and the result preview into the full-screen viewer.
 **Plans**:
-- [ ] 106.1 FormLayout pinned group (tested); pinnedFields column, Room 15 → 16; targeted lastImageName write (wave 1)
-- [ ] 106.2 Pinned group and pin icons in the form (wave 2)
-- [ ] 106.3 Shared-element motion; device check; close (wave 3)
+- [x] 106.1 FormLayout pinned group (tested); pinnedFields column, Room 15 → 16; targeted lastImageName write (wave 1)
+- [x] 106.2 Pinned group and pin icons in the form (wave 2)
+- [x] 106.3 Shared-element motion; device check; close (wave 3)
 **Depends on**: Phase 105
