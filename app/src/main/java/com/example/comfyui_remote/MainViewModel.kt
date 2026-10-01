@@ -433,6 +433,27 @@ class MainViewModel(
             com.example.comfyui_remote.domain.FormValues.decode(workflow.savedInputs)
         )
 
+    /** The workflow's pinned field keys ("nodeId/fieldName", Phase 106); empty when none or unreadable. */
+    fun pinnedFields(workflow: WorkflowEntity): Set<String> = try {
+        workflow.pinnedFields?.let {
+            com.google.gson.Gson().fromJson(it, Array<String>::class.java)?.toSet()
+        } ?: emptySet()
+    } catch (e: Exception) {
+        emptySet()
+    }
+
+    /** Pins or unpins a node-group field; the form re-lays out from the updated selection at once. */
+    fun togglePin(workflow: WorkflowEntity, key: String) {
+        val current = pinnedFields(_selectedWorkflow.value?.takeIf { it.id == workflow.id } ?: workflow)
+        val next = if (key in current) current - key else current + key
+        val json = if (next.isEmpty()) null else com.google.gson.Gson().toJson(next.toList())
+        if (_selectedWorkflow.value?.id == workflow.id) {
+            _selectedWorkflow.value = _selectedWorkflow.value?.copy(pinnedFields = json)
+        }
+        if (workflow.id == 0L) return // history previews aren't stored workflows
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { repository.setPinned(workflow.id, json) }
+    }
+
     /** Positive and negative prompt source nodes, for the form layout (Phase 101). */
     fun promptNodeIds(json: String): Pair<String?, String?> =
         workflowParser.findPositivePromptNodeId(json) to workflowParser.findNegativePromptNodeId(json)
@@ -1287,9 +1308,14 @@ class MainViewModel(
                                         _generatedMediaId.value = existing?.id
                                     }
 
+                                    // Phase 106: a targeted update; rewriting the row from the selection-time copy
+                                    // undid pins and form values saved since then
                                     _selectedWorkflow.value?.let { workflow ->
                                         if (workflow.id != 0L) {
-                                            repository.insert(workflow.copy(lastImageName = filename))
+                                            repository.setLastImage(workflow.id, filename)
+                                            if (_selectedWorkflow.value?.id == workflow.id) {
+                                                _selectedWorkflow.value = _selectedWorkflow.value?.copy(lastImageName = filename)
+                                            }
                                         }
                                     }
                                 }

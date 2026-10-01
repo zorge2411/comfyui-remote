@@ -23,6 +23,14 @@ class WorkflowRepository(private val workflowDao: WorkflowDao) {
         workflowDao.markUsed(id, time)
     }
 
+    suspend fun setPinned(id: Long, json: String?) {
+        workflowDao.setPinned(id, json)
+    }
+
+    suspend fun setLastImage(id: Long, name: String) {
+        workflowDao.setLastImage(id, name)
+    }
+
     suspend fun deleteWorkflow(workflow: WorkflowEntity) {
         workflowDao.delete(workflow)
     }
