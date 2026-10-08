@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PushPin
@@ -19,6 +20,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -53,6 +56,50 @@ fun MainSettings(fields: List<LabelledField>, field: @Composable (LabelledField,
                 }
             } else {
                 field(f, Modifier)
+            }
+        }
+    }
+}
+
+/**
+ * A display-only item for the text a display node produced (for example the Ollama prompt): not editable,
+ * selectable, with Copy and Show more.
+ */
+@Composable
+fun ResultTextItem(text: String?, modifier: Modifier = Modifier) {
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    var expanded by androidx.compose.runtime.saveable.rememberSaveable(text) { androidx.compose.runtime.mutableStateOf(false) }
+    AppCard(modifier = modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Text result",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+            if (text != null) {
+                IconButton(onClick = { clipboard.setText(androidx.compose.ui.text.AnnotatedString(text)) }) {
+                    Icon(Icons.Filled.ContentCopy, contentDescription = "Copy text result")
+                }
+            }
+        }
+        if (text == null) {
+            Text(
+                "Appears here after a run.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            androidx.compose.foundation.text.selection.SelectionContainer {
+                Text(
+                    text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = if (expanded) Int.MAX_VALUE else 8,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+            }
+            if (!expanded && text.lines().size + text.length / 45 > 8) {
+                androidx.compose.material3.TextButton(onClick = { expanded = true }) { Text("Show more") }
             }
         }
     }

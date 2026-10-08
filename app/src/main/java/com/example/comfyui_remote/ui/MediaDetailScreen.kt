@@ -333,6 +333,9 @@ private fun MediaInfoSheet(item: GeneratedMediaListing, info: MediaInfo?, onDism
                     info.negative?.let { negative ->
                         CopyableText("Negative prompt", negative) { clipboard.setText(AnnotatedString(negative)) }
                     }
+                    info.resultText?.let { text ->
+                        CopyableText("Text result", text) { clipboard.setText(AnnotatedString(text)) }
+                    }
                     if (info.settings.isNotEmpty()) {
                         SectionHeader("Settings")
                         info.settings.forEach { (label, value) ->

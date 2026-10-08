@@ -76,6 +76,7 @@ import com.example.comfyui_remote.ui.form.MainSettings
 import com.example.comfyui_remote.ui.form.NodeSection
 import com.example.comfyui_remote.ui.form.NumberField
 import com.example.comfyui_remote.ui.form.PinnableField
+import com.example.comfyui_remote.ui.form.ResultTextItem
 import com.example.comfyui_remote.ui.form.PromptField
 import com.example.comfyui_remote.ui.form.SeedField
 import com.example.comfyui_remote.ui.form.SelectionField
@@ -196,6 +197,9 @@ fun DynamicFormScreen(
     val serverWarning by viewModel.serverWarning.collectAsState()
     val image by viewModel.generatedImage.collectAsState()
     val generatedMediaId by viewModel.generatedMediaId.collectAsState()
+    val resultText by viewModel.resultText.collectAsState()
+    val showResultText = resultText != null ||
+        remember(workflow.jsonContent) { com.example.comfyui_remote.domain.TextOutputs.hasDisplayNode(workflow.jsonContent) }
 
     val connectionState by viewModel.connectionState.collectAsState()
     val isConnected = connectionState == com.example.comfyui_remote.network.WebSocketState.CONNECTED
@@ -430,9 +434,13 @@ fun DynamicFormScreen(
             }
 
             // ---- Main settings ----
-            if (form.main.isNotEmpty()) {
+            if (form.main.isNotEmpty() || showResultText) {
                 SectionHeader("Main settings")
-                MainSettings(form.main) { lf, modifier -> renderField(lf, modifier) }
+                if (form.main.isNotEmpty()) MainSettings(form.main) { lf, modifier -> renderField(lf, modifier) }
+                if (showResultText) {
+                    if (form.main.isNotEmpty()) Spacer(Modifier.height(Dimens.s))
+                    ResultTextItem(resultText)
+                }
             }
 
             // ---- Everything else, per node ----

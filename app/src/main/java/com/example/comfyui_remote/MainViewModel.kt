@@ -377,7 +377,14 @@ class MainViewModel(
     fun selectWorkflow(workflow: WorkflowEntity, lastResult: com.example.comfyui_remote.data.GeneratedMediaListing? = null) {
         _selectedWorkflow.value = workflow
         _inputImages.value = emptyMap() // Reset inputs
-        
+        _resultText.value = null
+        if (workflow.lastImageName != null) {
+            viewModelScope.launch {
+                val text = mediaRepository.getLatestByFilename(workflow.lastImageName)?.resultText
+                if (_selectedWorkflow.value?.id == workflow.id && _resultText.value == null) _resultText.value = text
+            }
+        }
+
         // Phase 103: "Last used" sort; history previews (id 0) aren't stored workflows
         if (workflow.id != 0L) {
             viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { repository.markUsed(workflow.id) }
@@ -764,6 +771,10 @@ class MainViewModel(
         }
     }
 
+
+    /** The latest text result (display nodes) of the selected workflow; shown read-only in Main settings. */
+    private val _resultText = MutableStateFlow<String?>(null)
+    val resultText: StateFlow<String?> = _resultText.asStateFlow()
 
     private val _generatedImage = MutableStateFlow<String?>(null)
     val generatedImage: StateFlow<String?> = _generatedImage.asStateFlow()
@@ -1331,6 +1342,12 @@ class MainViewModel(
                         }
                     }
                 }
+
+                // Text results of display nodes: shown in the form's Main settings and kept with the run's media
+                com.example.comfyui_remote.domain.TextOutputs.from(outputs)?.let { text ->
+                    _resultText.value = text
+                    if (promptId.isNotEmpty()) mediaRepository.setResultText(promptId, text)
+                }
             } catch (e: Exception) {
                 android.util.Log.e("SYNC_DEBUG", "Error syncing history item $promptId: ${e.message}", e)
                 e.printStackTrace()
@@ -1650,7 +1667,8 @@ class MainViewModel(
                                                                             promptJson = workflowJson,
                                                                             promptId = executionId,
                                                                             serverType = serverType,
-                                                                            timestamp = itemTimestamp
+                                                                            timestamp = itemTimestamp,
+                                                                            resultText = com.example.comfyui_remote.domain.TextOutputs.from(outputs)
                                                                         )
                                                                     )
                                                                 }
@@ -1836,9 +1854,10 @@ class MainViewModel(
     /** How an item was made, for the viewer's Info sheet; empty for uploads without a stored prompt. */
     suspend fun mediaInfo(id: Long): com.example.comfyui_remote.domain.MediaInfo =
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val media = mediaRepository.getById(id)
             com.example.comfyui_remote.domain.MediaInfo.from(
-                mediaRepository.getById(id)?.promptJson, workflowParser, _nodeMetadata.value
-            )
+                media?.promptJson, workflowParser, _nodeMetadata.value
+            ).copy(resultText = media?.resultText)
         }
 
     override fun onCleared() {

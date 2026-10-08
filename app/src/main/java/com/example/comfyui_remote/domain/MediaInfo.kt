@@ -10,9 +10,11 @@ data class MediaInfo(
     val prompt: String?,
     val negative: String?,
     /** Label and value, in the form's main-settings order (Seed, Width, Height, Steps, CFG...). */
-    val settings: List<Pair<String, String>>
+    val settings: List<Pair<String, String>>,
+    /** Text the run's display nodes produced (e.g. the Ollama prompt). */
+    val resultText: String? = null
 ) {
-    val isEmpty: Boolean get() = prompt == null && negative == null && settings.isEmpty()
+    val isEmpty: Boolean get() = prompt == null && negative == null && settings.isEmpty() && resultText == null
 
     companion object {
         val EMPTY = MediaInfo(null, null, emptyList())

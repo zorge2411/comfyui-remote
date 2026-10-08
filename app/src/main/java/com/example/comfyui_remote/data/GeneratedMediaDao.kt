@@ -43,6 +43,9 @@ interface GeneratedMediaDao {
     @Query("SELECT id, workflowName, fileName, subfolder, serverHost, serverPort, timestamp, mediaType, serverType FROM generated_media WHERE hidden = 0 ORDER BY timestamp DESC")
     fun getAllListings(): Flow<List<GeneratedMediaListing>>
 
+    @Query("UPDATE generated_media SET resultText = :text WHERE promptId = :promptId")
+    suspend fun setResultText(promptId: String, text: String)
+
     @Query("SELECT * FROM generated_media WHERE id = :id")
     suspend fun getById(id: Long): GeneratedMediaEntity?
 

@@ -22,5 +22,7 @@ data class GeneratedMediaEntity(
     val promptId: String? = null, // ComfyUI Execution ID
     val serverType: String = "output", // "output" (default) or "input"
     // Phase 104: removed from the gallery; the row stays so syncs don't add the item again
-    @ColumnInfo(defaultValue = "0") val hidden: Boolean = false
+    @ColumnInfo(defaultValue = "0") val hidden: Boolean = false,
+    // Text the run's display nodes produced (e.g. the Ollama prompt), shown in the viewer's Info sheet
+    val resultText: String? = null
 )
