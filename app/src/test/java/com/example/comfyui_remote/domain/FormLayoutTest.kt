@@ -90,6 +90,36 @@ class FormLayoutTest {
         assertEquals(listOf("Seed", "Steps", "Checkpoint"), model.main.map { it.label })
     }
 
+    @Test
+    fun `a prompt written by an Ollama node is the form prompt`() {
+        val api = """
+            {
+              "29": {"class_type": "OllamaGenerateV2", "inputs": {"system": "write", "prompt": "a woman on a beach", "think": false}},
+              "36": {"class_type": "Krea2EditGroundedEncode", "inputs": {"prompt": ["29", 0], "grounding_px": 768}},
+              "37": {"class_type": "Krea2EditGroundedEncode", "inputs": {"prompt": "extra fingers", "grounding_px": 768}},
+              "8": {"class_type": "KSampler", "inputs": {"seed": 5, "steps": 8, "positive": ["36", 0], "negative": ["37", 0]}}
+            }
+        """.trimIndent()
+        val parser = WorkflowParser()
+        val model = FormLayout.build(parser.parse(api), parser.findPositivePromptNodeId(api), parser.findNegativePromptNodeId(api))
+        assertEquals("29/prompt", model.prompt?.key)
+        assertEquals("37/prompt", model.negative?.key)
+    }
+
+    @Test
+    fun `without a sampler the sole Ollama node supplies the prompt`() {
+        val api = """
+            {
+              "123": {"class_type": "OllamaGenerateV2", "inputs": {"prompt": "woman dances"}},
+              "104": {"class_type": "MiniMaxH3ImageToVideo", "inputs": {"prompt": ["123", 0], "width": 512}},
+              "16": {"class_type": "BasicGuider", "inputs": {"conditioning": ["104", 0]}}
+            }
+        """.trimIndent()
+        val parser = WorkflowParser()
+        assertEquals("123", parser.findPositivePromptNodeId(api))
+        assertNull(parser.findNegativePromptNodeId(api))
+    }
+
     // Phase 106: pinned fields
     @Test
     fun `a pinned node-group field moves to the pinned group`() {

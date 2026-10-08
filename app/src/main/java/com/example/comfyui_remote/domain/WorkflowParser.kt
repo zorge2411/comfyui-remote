@@ -146,15 +146,52 @@ class WorkflowParser {
      * multiple sampler-shaped nodes disagree on the positive source (ambiguous) —
      * callers must leave ordering unchanged in either case.
      */
-    fun findPositivePromptNodeId(jsonContent: String): String? = findConditioningSourceNodeId(jsonContent, "positive")
+    fun findPositivePromptNodeId(jsonContent: String): String? =
+        findConditioningSourceNodeId(jsonContent, "positive") ?: findSoleOllamaNodeId(jsonContent)
+
+    /**
+     * Workflows without a sampler-shaped node (video guiders...) still have one place the user types the idea:
+     * the Ollama Generate node. Only when there is exactly one.
+     */
+    private fun findSoleOllamaNodeId(jsonContent: String): String? = try {
+        val ids = JsonParser.parseString(jsonContent).asJsonObject.entrySet()
+            .filter { (_, el) -> el.isJsonObject && el.asJsonObject.get("class_type")?.asString?.startsWith("OllamaGenerate") == true }
+            .map { it.key }
+        if (ids.size == 1) ids.first() else null
+    } catch (e: Exception) {
+        null
+    }
+
+    /**
+     * When the prompt encoder's text is wired from another node (an Ollama prompt writer), the field the user
+     * types into lives upstream: follow the `prompt`/`text` link until a node holds the text itself.
+     */
+    private fun followTextLink(root: JsonObject, startId: String): String {
+        fun inputsOf(id: String) =
+            root.get(id)?.takeIf { it.isJsonObject }?.asJsonObject?.get("inputs")?.takeIf { it.isJsonObject }?.asJsonObject
+        fun hasText(id: String) = listOf("prompt", "text").any {
+            val v = inputsOf(id)?.get(it)
+            v != null && v.isJsonPrimitive && v.asJsonPrimitive.isString
+        }
+        var id = startId
+        repeat(8) {
+            if (hasText(id)) return id
+            val inputs = inputsOf(id) ?: return startId
+            val link = listOf("prompt", "text").mapNotNull { inputs.get(it) }.firstOrNull { it.isJsonArray }?.asJsonArray
+                ?: return startId
+            id = link.takeIf { it.size() >= 1 }?.get(0)?.asString ?: return startId
+        }
+        return startId
+    }
 
     /** The negative-prompt counterpart of [findPositivePromptNodeId] (Phase 101), with the same rules. */
     fun findNegativePromptNodeId(jsonContent: String): String? = findConditioningSourceNodeId(jsonContent, "negative")
 
     private fun findConditioningSourceNodeId(jsonContent: String, key: String): String? {
         val positiveSourceIds = mutableSetOf<String>()
+        var jsonObject: JsonObject? = null
         try {
-            val jsonObject = JsonParser.parseString(jsonContent).asJsonObject
+            jsonObject = JsonParser.parseString(jsonContent).asJsonObject
             jsonObject.entrySet().forEach { (_, element) ->
                 if (!element.isJsonObject) return@forEach
                 val node = element.asJsonObject
@@ -171,7 +208,8 @@ class WorkflowParser {
         } catch (e: Exception) {
             return null
         }
-        return if (positiveSourceIds.size == 1) positiveSourceIds.first() else null
+        val source = if (positiveSourceIds.size == 1) positiveSourceIds.first() else return null
+        return jsonObject?.let { followTextLink(it, source) } ?: source
     }
 
     /**
