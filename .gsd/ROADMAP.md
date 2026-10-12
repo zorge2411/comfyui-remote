@@ -23,8 +23,8 @@
 
 ### Phase 97: Visible Import and Sync Failures
 
-**Status**: ⬜ Not Started
-**Objective**: Make every import and sync failure visible. `importWorkflowInternal`, `importServerWorkflow` and `fetchServerWorkflows` catch exceptions and only log them, so a bad workflow or an unreachable server looks like nothing happened. Report them through the existing error UI (Workflows screen), with the failing step in the message (fetching, converting, saving). Use `ServerErrorReport` for HTTP errors.
+**Status**: 📝 Planned (`.gsd/phases/97/`: 97-CONTEXT, 97-01-PLAN, 97-02-PLAN)
+**Objective**: Make every import and sync failure visible. `importWorkflowInternal`, `importServerWorkflow` and `fetchServerWorkflows` catch exceptions and only log them, so a bad workflow or an unreachable server looks like nothing happened. Report them through the existing error UI (Workflows screen), with the failing step in the message (fetching, converting, saving). Research found the worse problem: when conversion fails or the server's node list is missing, the raw graph JSON is saved as the workflow, so it looks imported but can never run. Never store an unconverted graph workflow. Also report server workflow list and history sync failures.
 **Discovered**: Milestone 4 review (2026-10-12): 6 `WORKFLOW_ERROR` log-only catch blocks in `MainViewModel`
 
 ### Phase 98: Duplicate Imports and Queue Re-check
