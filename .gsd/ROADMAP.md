@@ -40,8 +40,8 @@
 
 ### Phase 100: Compatibility Badge on the Workflow List
 
-**Status**: ⬜ Not Started
-**Objective**: Show runs / warnings / will fail on each workflow card from `PromptValidator` against the connected server, cached per server connection and refreshed on reconnect.
+**Status**: 📝 Planned (`.gsd/phases/100/`)
+**Objective**: Show ready / warnings / will fail (with the first reason) on each workflow card, from `PromptValidator` on the stored workflow against the connected server's node list. Computed off the main thread, cached per workflow, refreshed on reconnect, hidden while disconnected. File inputs that the form replaces at run time (image, video, audio, mask) are not flagged. A corpus test guards against good workflows turning red.
 **Depends on**: Phase 98
 
 ### Phase 101: Switch Dynamic Options in the Form
