@@ -36,6 +36,14 @@ class MediaRepository(private val mediaDao: GeneratedMediaDao) {
         mediaDao.deleteAll()
     }
 
+    suspend fun deleteVisible() = mediaDao.deleteVisible()
+
+    suspend fun hide(ids: List<Long>) = mediaDao.hide(ids)
+
+    suspend fun unhideAll() = mediaDao.unhideAll()
+
+    val hiddenCount: Flow<Int> = mediaDao.hiddenCount()
+
     suspend fun getAllPromptIds(): List<String> {
         android.util.Log.d("MEDIA_REPO", "Fetching all prompt IDs")
         val result = mediaDao.getAllPromptIds()
@@ -45,7 +53,18 @@ class MediaRepository(private val mediaDao: GeneratedMediaDao) {
 
     val allMediaListings: Flow<List<GeneratedMediaListing>> = mediaDao.getAllListings()
 
+    suspend fun setResultText(promptId: String, text: String) = mediaDao.setResultText(promptId, text)
+
     suspend fun getById(id: Long): GeneratedMediaEntity? = mediaDao.getById(id)
 
     suspend fun getLatestByFilename(filename: String): GeneratedMediaEntity? = mediaDao.getLatestByFilename(filename)
+
+    /** The newest visible listing per file name (Phase 103: each workflow's last result). */
+    suspend fun latestListingsByFileNames(names: Collection<String>): Map<String, GeneratedMediaListing> =
+        if (names.isEmpty()) emptyMap()
+        else names.chunked(500)
+            .flatMap { mediaDao.getListingsByFileNames(it) }
+            .sortedByDescending { it.timestamp }
+            .distinctBy { it.fileName }
+            .associateBy { it.fileName }
 }

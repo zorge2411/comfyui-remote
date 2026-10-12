@@ -25,6 +25,16 @@ class ComfyApplication : Application(), coil.ImageLoaderFactory {
     // Global connection state
     val connectionRepository by lazy { ConnectionRepository() }
 
+    // Phase 99: the server's model download queue, shared by screens and ExecutionService
+    val modelDownloadRepository by lazy {
+        com.example.comfyui_remote.data.ModelDownloadRepository(connectionRepository, okHttpClient)
+    }
+
+    // Phase 102: the ComfyUI server's own queue (running and pending prompts)
+    val serverQueueRepository by lazy {
+        com.example.comfyui_remote.data.ServerQueueRepository(connectionRepository, okHttpClient)
+    }
+
     // Shared Gson instance
     val gson by lazy { com.google.gson.Gson() }
 

@@ -23,6 +23,9 @@ interface ComfyApiService {
 
     @GET("history/{prompt_id}")
     suspend fun getHistory(@Path("prompt_id") promptId: String): JsonObject
+    @GET("models")
+    suspend fun getModelFolders(): List<String>
+
     @GET("models/{folder}")
     suspend fun getModels(@Path("folder") folder: String): List<String>
 
@@ -56,6 +59,44 @@ interface ComfyApiService {
     // Legacy catch-all
     @GET("{path}")
     suspend fun getFileContent(@Path("path", encoded = true) path: String): com.google.gson.JsonElement
+
+    // Phase 97: comfyui_remote_helper extension (server/comfyui_remote_helper), downloads models to the server
+    @GET("remote_helper/info")
+    suspend fun getHelperInfo(): JsonObject
+
+    @POST("remote_helper/models/probe")
+    suspend fun probeModel(@Body body: JsonObject): JsonObject
+
+    // Response, so the {"error"} body of a 400/403/409 can be shown
+    @POST("remote_helper/models/download")
+    suspend fun startModelDownload(@Body body: JsonObject): retrofit2.Response<JsonObject>
+
+    @GET("remote_helper/models/downloads")
+    suspend fun getModelDownloads(): com.google.gson.JsonArray
+
+    @POST("remote_helper/models/downloads/{id}/cancel")
+    suspend fun cancelModelDownload(@Path("id") id: String): JsonObject
+
+    // Phase 99: extension version 2 queue control
+    @POST("remote_helper/models/downloads/{id}/move")
+    suspend fun moveModelDownload(@Path("id") id: String, @Body body: JsonObject): retrofit2.Response<com.google.gson.JsonElement>
+
+    @POST("remote_helper/models/downloads/{id}/retry")
+    suspend fun retryModelDownload(@Path("id") id: String): retrofit2.Response<com.google.gson.JsonElement>
+
+    @POST("remote_helper/models/downloads/clear")
+    suspend fun clearModelDownloads(): retrofit2.Response<com.google.gson.JsonElement>
+
+    // Phase 102: the server's own queue. GET gives {"queue_running": [...], "queue_pending": [...]};
+    // POST {"delete": [ids]} or {"clear": true} edits the pending part; /interrupt stops the running prompt.
+    @GET("queue")
+    suspend fun getQueue(): JsonObject
+
+    @POST("queue")
+    suspend fun editQueue(@Body body: JsonObject): okhttp3.ResponseBody
+
+    @POST("interrupt")
+    suspend fun interrupt(@Body body: JsonObject): okhttp3.ResponseBody
 
     @Multipart
     @POST("upload/image")

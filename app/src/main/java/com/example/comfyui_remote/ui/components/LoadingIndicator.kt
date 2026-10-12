@@ -31,7 +31,7 @@ fun LoadingOverlay(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.5f)),
+            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f)),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -45,7 +45,7 @@ fun LoadingOverlay(
                 Text(
                     text = message,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.inverseOnSurface
                 )
             }
         }

@@ -71,9 +71,9 @@ class WorkflowCorpusTest {
         val objectInfo = readJson(resource("object_info.json"))
         val fixtures = resource("workflows").listFiles { f -> f.name.endsWith(".json") }!!.sortedBy { it.name }
         val bad = fixtures.mapNotNull { file ->
-            val api = GraphToApiConverter.convert(file.readText(), ComfyObjectInfo(objectInfo)).json
+            val api = JsonParser.parseString(GraphToApiConverter.convert(file.readText(), ComfyObjectInfo(objectInfo)).json).asJsonObject
             val r = com.example.comfyui_remote.domain.WorkflowCompatibility.check(api, objectInfo)
-            if (r == null || r.level == com.example.comfyui_remote.domain.WorkflowCompatibility.Level.WILL_FAIL) "${file.name}: ${r?.summary ?: "unreadable"}" else null
+            if (r is com.example.comfyui_remote.domain.Compatibility.WillFail) "${file.name}: ${r.issues.firstOrNull()}" else null
         }
         if (bad.isNotEmpty()) fail("Workflows that would be badged red:\n" + bad.joinToString("\n"))
     }

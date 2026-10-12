@@ -1,8 +1,9 @@
 package com.example.comfyui_remote.data
 
 /**
- * Represents a filter configuration for gallery sync operations.
- * Users can define custom filters to sync specific subsets of their gallery.
+ * The gallery's filter, applied on the phone to the stored media (Phase 104, `GalleryView`), and the
+ * filter a saved list keeps. [maxItems] and [serverFilter] are no longer used; they stay so saved lists
+ * from older versions still load.
  */
 data class GallerySyncFilter(
     val startDate: Long? = null,
@@ -25,15 +26,15 @@ data class GallerySyncFilter(
         NAME_ASC
     }
 
-    /**
-     * Check if any filters are currently active.
-     * @return true if any filter parameter is set
-     */
+    /** True when the filter hides anything (the sort alone doesn't). */
     fun isActive(): Boolean =
         startDate != null || endDate != null ||
         !workflowNameFilter.isNullOrBlank() ||
         !fileNameFilter.isNullOrBlank() ||
-        mediaType != null || serverFilter != null
+        mediaType != null
+
+    /** True when the order isn't the default newest first. */
+    fun isSorted(): Boolean = sortOrder != SortOrder.NEWEST_FIRST
 
     /**
      * Validate the filter parameters.
@@ -76,12 +77,10 @@ data class GallerySyncFilter(
             parts.add("Type: ${mediaType.name}")
         }
 
-        if (serverFilter != null) {
-            parts.add("Server: $serverFilter")
-        }
-
-        if (maxItems != 100) {
-            parts.add("Max: $maxItems")
+        when (sortOrder) {
+            SortOrder.OLDEST_FIRST -> parts.add("Oldest first")
+            SortOrder.NAME_ASC -> parts.add("By name")
+            SortOrder.NEWEST_FIRST -> {}
         }
 
         return if (parts.isEmpty()) "No filters" else parts.joinToString(", ")

@@ -16,5 +16,9 @@ data class WorkflowEntity(
     val source: String? = null, // "LOCAL_IMPORT", "SERVER_USERDATA", etc.
     val formatVersion: Int = 1,
     val missingNodes: String? = null, // Comma-separated list of missing node types
-    val sourceKey: String? = null // Template name or server file path; identifies re-imports (Phase 98)
+    val modelSources: String? = null, // Phase 97: JSON list of ModelSource (model download links)
+    val savedInputs: String? = null, // Phase 101: last form values (JSON list of InputField)
+    val lastUsedAt: Long? = null, // Phase 103: when the workflow was last opened, for the "Last used" sort
+    val pinnedFields: String? = null, // Phase 106: JSON list of pinned field keys ("nodeId/fieldName")
+    val sourceKey: String? = null // Template name or server file path; identifies re-imports (Milestone 6)
 )

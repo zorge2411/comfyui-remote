@@ -1,30 +1,48 @@
 package com.example.comfyui_remote.ui
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.material.icons.filled.Bookmarks
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.comfyui_remote.MainViewModel
 import com.example.comfyui_remote.data.SavedGalleryList
+import com.example.comfyui_remote.ui.components.AppCard
+import com.example.comfyui_remote.ui.components.ConfirmDialog
+import com.example.comfyui_remote.ui.components.Dimens
+import com.example.comfyui_remote.ui.components.EmptyState
 
-/**
- * Bottom sheet drawer for displaying and managing saved gallery lists.
- * Users can view, apply, rename, duplicate, and delete saved lists.
- */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+/** Saved gallery lists (named filters, Phase 104): tap to apply; rename, duplicate or delete from the menu. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SavedListsDrawer(
     viewModel: MainViewModel,
@@ -32,242 +50,100 @@ fun SavedListsDrawer(
     onApplyList: (String) -> Unit
 ) {
     val savedLists by viewModel.savedGalleryLists.collectAsState(initial = emptyList())
-    var showRenameDialog by remember { mutableStateOf<SavedGalleryList?>(null) }
-    var showDeleteConfirmDialog by remember { mutableStateOf<SavedGalleryList?>(null) }
+    var renaming by remember { mutableStateOf<SavedGalleryList?>(null) }
+    var deleting by remember { mutableStateOf<SavedGalleryList?>(null) }
 
-    if (showRenameDialog != null) {
-        RenameListDialog(
-            list = showRenameDialog!!,
-            onDismiss = { showRenameDialog = null },
-            onRename = { newName ->
-                viewModel.renameSavedGalleryList(showRenameDialog!!.id, newName)
-                showRenameDialog = null
-            }
-        )
-    }
-
-    if (showDeleteConfirmDialog != null) {
-        DeleteListConfirmDialog(
-            list = showDeleteConfirmDialog!!,
-            onDismiss = { showDeleteConfirmDialog = null },
-            onDelete = {
-                viewModel.deleteSavedGalleryList(showDeleteConfirmDialog!!.id)
-                showDeleteConfirmDialog = null
-            }
-        )
-    }
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss
-    ) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = Dimens.screenPadding)
+                .navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(Dimens.m)
         ) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Saved Lists",
-                    style = MaterialTheme.typography.titleLarge
-                )
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "Close")
-                }
-            }
-
-            HorizontalDivider()
-
-            // Lists
+            Text("Saved lists", style = MaterialTheme.typography.titleLarge)
             if (savedLists.isEmpty()) {
-                // Empty state
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlaylistAdd,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.outline
-                    )
-                    Text(
-                        text = "No Saved Lists",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "Create your first list by applying filters and saving them",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                EmptyState(
+                    icon = Icons.Filled.Bookmarks,
+                    title = "No saved lists",
+                    message = "Save a filter from the Filter sheet to come back to it here.",
+                    modifier = Modifier.heightIn(max = 320.dp)
+                )
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(Dimens.listGap),
+                    modifier = Modifier.padding(bottom = Dimens.l)
                 ) {
                     items(savedLists, key = { it.id }) { list ->
-                        SavedListItem(
+                        SavedListCard(
                             list = list,
                             onApply = { onApplyList(list.id) },
-                            onRename = { showRenameDialog = list },
+                            onRename = { renaming = list },
                             onDuplicate = { viewModel.duplicateSavedGalleryList(list.id) },
-                            onDelete = { showDeleteConfirmDialog = list }
+                            onDelete = { deleting = list }
                         )
                     }
                 }
             }
         }
     }
+
+    renaming?.let { list ->
+        RenameListDialog(
+            list = list,
+            onDismiss = { renaming = null },
+            onRename = { newName ->
+                viewModel.renameSavedGalleryList(list.id, newName)
+                renaming = null
+            }
+        )
+    }
+
+    deleting?.let { list ->
+        ConfirmDialog(
+            title = "Delete list?",
+            text = "\"${list.name}\" is deleted. Images aren't affected.",
+            confirmLabel = "Delete",
+            destructive = true,
+            onConfirm = {
+                viewModel.deleteSavedGalleryList(list.id)
+                deleting = null
+            },
+            onDismiss = { deleting = null }
+        )
+    }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun SavedListItem(
+private fun SavedListCard(
     list: SavedGalleryList,
     onApply: () -> Unit,
     onRename: () -> Unit,
     onDuplicate: () -> Unit,
     onDelete: () -> Unit
 ) {
-    var showMenu by remember { mutableStateOf(false) }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = onApply,
-                onLongClick = { showMenu = true }
-            )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // Header row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // List type icon
-                Icon(
-                    imageVector = when (list.listType) {
-                        SavedGalleryList.ListType.SNAPSHOT -> Icons.Default.Bookmark
-                        SavedGalleryList.ListType.LIVE_FILTER -> Icons.Default.FilterList
-                    },
-                    contentDescription = null,
-                    tint = when (list.listType) {
-                        SavedGalleryList.ListType.SNAPSHOT -> MaterialTheme.colorScheme.primary
-                        SavedGalleryList.ListType.LIVE_FILTER -> MaterialTheme.colorScheme.secondary
-                    }
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // List name
+    var menu by remember { mutableStateOf(false) }
+    AppCard(onClick = onApply) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(list.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
-                    text = list.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
+                    filterSummary(list.filter),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-
-                // Menu button
-                Box {
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More options")
-                    }
-
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Rename") },
-                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                onRename()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Duplicate") },
-                            leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                onDuplicate()
-                            }
-                        )
-                        HorizontalDivider()
-                        DropdownMenuItem(
-                            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.Delete,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                            },
-                            onClick = {
-                                showMenu = false
-                                onDelete()
-                            }
-                        )
-                    }
+                Text(list.getAgeString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Box {
+                IconButton(onClick = { menu = true }) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = "Options for ${list.name}")
                 }
-            }
-
-            // List type and item count
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                SuggestionChip(
-                    onClick = { },
-                    label = {
-                        Text(
-                            text = list.getTypeDescription(),
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-                )
-
-                Text(
-                    text = list.getAgeString(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            // Filter summary (if active)
-            if (list.filter.isActive()) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = MaterialTheme.shapes.small
-                ) {
-                    Text(
-                        text = list.filter.getSummary(),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(8.dp),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; onRename() })
+                    DropdownMenuItem(text = { Text("Duplicate") }, onClick = { menu = false; onDuplicate() })
+                    DropdownMenuItem(text = { Text("Delete") }, onClick = { menu = false; onDelete() })
                 }
             }
         }
@@ -275,83 +151,24 @@ private fun SavedListItem(
 }
 
 @Composable
-private fun RenameListDialog(
-    list: SavedGalleryList,
-    onDismiss: () -> Unit,
-    onRename: (String) -> Unit
-) {
-    var newName by remember { mutableStateOf(list.name) }
-    var nameError by remember { mutableStateOf<String?>(null) }
-
-    val isValidName = newName.isNotBlank() && newName.length <= 50
-
+private fun RenameListDialog(list: SavedGalleryList, onDismiss: () -> Unit, onRename: (String) -> Unit) {
+    var name by remember { mutableStateOf(list.name) }
+    val valid = name.isNotBlank() && name.length <= 50
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Rename List") },
+        title = { Text("Rename list") },
         text = {
             OutlinedTextField(
-                value = newName,
-                onValueChange = { 
-                    newName = it
-                    nameError = when {
-                        it.isBlank() -> "Name is required"
-                        it.length > 50 -> "Name must be 50 characters or less"
-                        else -> null
-                    }
-                },
-                label = { Text("List Name") },
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Name") },
                 singleLine = true,
-                isError = nameError != null,
-                supportingText = nameError?.let { { Text(it) } },
+                isError = !valid,
+                supportingText = if (!valid) { { Text(if (name.isBlank()) "Enter a name" else "50 characters at most") } } else null,
                 modifier = Modifier.fillMaxWidth()
             )
         },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (isValidName) {
-                        onRename(newName)
-                    }
-                },
-                enabled = isValidName
-            ) {
-                Text("Rename")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
-@Composable
-private fun DeleteListConfirmDialog(
-    list: SavedGalleryList,
-    onDismiss: () -> Unit,
-    onDelete: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Delete List") },
-        text = {
-            Text("Are you sure you want to delete \"${list.name}\"? This action cannot be undone.")
-        },
-        confirmButton = {
-            Button(
-                onClick = onDelete,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
-                )
-            ) {
-                Text("Delete")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
+        confirmButton = { TextButton(onClick = { onRename(name.trim()) }, enabled = valid) { Text("Rename") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }

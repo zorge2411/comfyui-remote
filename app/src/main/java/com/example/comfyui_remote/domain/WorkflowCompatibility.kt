@@ -1,54 +1,33 @@
 package com.example.comfyui_remote.domain
 
 import com.google.gson.JsonObject
-import com.google.gson.JsonParser
 
-/**
- * Whether a stored workflow should run on the connected server, for the badge on the workflow list (Phase 100).
- * Built on [PromptValidator]; opening the workflow still shows the full detail.
- */
+/** Whether a workflow will run on the connected server (Phase 103): the badge on the workflow list. */
+sealed interface Compatibility {
+    data object Ready : Compatibility
+    data class Warnings(val issues: List<PromptValidator.Issue>) : Compatibility
+    data class WillFail(val issues: List<PromptValidator.Issue>) : Compatibility
+}
+
 object WorkflowCompatibility {
 
-    enum class Level { READY, WARNINGS, WILL_FAIL }
-
-    data class Result(val level: Level, val summary: String)
-
-    // The form replaces these file inputs at run time, so a stored name the server lacks is not a problem
-    private val FORM_FILE_INPUTS = setOf("image", "video", "audio", "mask")
-
-    fun assess(issues: List<PromptValidator.Issue>): Result {
-        val errors = issues.filter { it.severity == PromptValidator.Severity.ERROR }
-        if (errors.isNotEmpty()) {
-            val missing = errors.filter { it.kind == PromptValidator.Kind.MISSING_NODE_TYPE }
-                .map { it.classType }.distinct().sorted()
-            val summary = if (missing.isNotEmpty()) {
-                "Missing nodes: ${missing.joinToString(", ")}"
+    /**
+     * Checks [prompt] (built the way Generate builds it) against the server's /object_info.
+     * An image missing on the server only warns: the user picks one in the form before running.
+     */
+    fun check(prompt: JsonObject, objectInfo: JsonObject): Compatibility {
+        val issues = PromptValidator.validate(prompt, objectInfo).map { issue ->
+            if (issue.kind == PromptValidator.Kind.VALUE_NOT_IN_LIST && issue.inputName == "image") {
+                issue.copy(severity = PromptValidator.Severity.WARNING)
             } else {
-                errors.first().let { "${it.nodeTitle}: ${it.message}" }
+                issue
             }
-            return Result(Level.WILL_FAIL, summary)
         }
-        if (issues.isNotEmpty()) {
-            return Result(Level.WARNINGS, if (issues.size == 1) "1 warning" else "${issues.size} warnings")
-        }
-        return Result(Level.READY, "")
-    }
-
-    /** The stored workflow (API format) against the server's /object_info; null if it can't be read. */
-    fun check(json: String, objectInfo: JsonObject): Result? {
-        val prompt = try {
-            JsonParser.parseString(json).takeIf { it.isJsonObject }?.asJsonObject
-        } catch (e: Exception) {
-            null
-        } ?: return null
-        return try {
-            assess(
-                PromptValidator.validate(prompt, objectInfo).filterNot {
-                    it.kind == PromptValidator.Kind.VALUE_NOT_IN_LIST && it.inputName in FORM_FILE_INPUTS
-                }
-            )
-        } catch (e: Exception) {
-            null
+        return when {
+            issues.any { it.severity == PromptValidator.Severity.ERROR } ->
+                Compatibility.WillFail(issues.sortedBy { it.severity != PromptValidator.Severity.ERROR })
+            issues.isNotEmpty() -> Compatibility.Warnings(issues)
+            else -> Compatibility.Ready
         }
     }
 }

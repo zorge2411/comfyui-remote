@@ -3,83 +3,77 @@ package com.example.comfyui_remote
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.dp
+import android.content.res.Configuration
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.PendingActions
 import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.Icons
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MenuDefaults
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
-import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.comfyui_remote.data.AppDatabase
 import com.example.comfyui_remote.data.WorkflowRepository
-import com.example.comfyui_remote.network.WebSocketState
+import com.example.comfyui_remote.ui.ConnectionScreen
 import com.example.comfyui_remote.ui.WorkflowListScreen
 import com.example.comfyui_remote.ui.theme.ComfyUI_front_endTheme
 
-import androidx.compose.runtime.LaunchedEffect
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.SharedTransitionLayout
+/** A bottom-bar tab (Phase 102): its root route and the pushed routes that belong to it. */
+private data class Tab(val route: String, val label: String, val icon: ImageVector, val children: Set<String> = emptySet()) {
+    fun isSelected(currentRoute: String?) = currentRoute == route || currentRoute in children
+}
+
+private val TABS = listOf(
+    Tab("workflows", "Workflows", Icons.Filled.AccountTree, setOf("templates")),
+    Tab("queue", "Queue", Icons.Filled.PendingActions),
+    Tab("gallery", "Gallery", Icons.Filled.PhotoLibrary),
+    Tab("settings", "Settings", Icons.Filled.Settings)
+)
 
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Phase 100: draw behind the system bars; the outer Scaffold pads them once (UI spec §10)
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        
+
         val database = AppDatabase.getDatabase(this)
         val repository = WorkflowRepository(database.workflowDao())
         val mediaRepository = com.example.comfyui_remote.data.MediaRepository(database.generatedMediaDao())
@@ -89,30 +83,20 @@ class MainActivity : ComponentActivity() {
         val app = application as ComfyApplication
         val viewModelFactory = MainViewModelFactory(
             app,
-            repository, 
-            mediaRepository, 
+            repository,
+            mediaRepository,
             userPreferencesRepository,
             app.connectionRepository,
             localQueueRepository,
             savedGalleryListRepository
         )
         val viewModel = ViewModelProvider(this, viewModelFactory)[MainViewModel::class.java]
-        
-        // Queue ViewModel
-        // We need to instantiate WorkflowExecutionService separately or get it from somewhere.
-        // For now, let's create a new instance or move definition up.
-        // Better: create `workflowExecutionService` once.
-        // Since MainViewModel creates it internally (which is not ideal but done), 
-        // we should probably expose it or create it here.
-        // Let's create it here to pass to QueueViewModel.
-        // MainViewModel created its oown. This is inconsistent but harmless for stateless usage 
-        // (assuming no shared state in Service itself, which is true).
-        // However, to be cleaner, we should have passed it to MainViewModelFactory too (Plan for next refactor).
-        // For now:
+
+        // WorkflowExecutionService is stateless; the queue gets its own instance
         val workflowExecutor = com.example.comfyui_remote.domain.WorkflowExecutor()
         val imageRepository = com.example.comfyui_remote.data.ImageRepository()
         val workflowExecutionService = com.example.comfyui_remote.domain.WorkflowExecutionService(imageRepository, workflowExecutor)
-        
+
         val queueViewModelFactory = com.example.comfyui_remote.QueueViewModelFactory(
             app,
             localQueueRepository,
@@ -128,433 +112,227 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
-                
+                val openConnection = { navController.navigate("connection") { launchSingleTop = true } }
+
+                // First run: no saved server, so start on Connection (Phase 102 D-02)
+                val hasSavedServer by viewModel.hasSavedServer.collectAsState()
+                LaunchedEffect(hasSavedServer) {
+                    if (hasSavedServer == false && navController.currentDestination?.route != "connection") {
+                        navController.navigate("connection") {
+                            popUpTo("workflows") { inclusive = true }
+                        }
+                    }
+                }
+
+                // Tabs are hidden on the form, the full-screen media viewer (Phase 104) and Connection.
+                // Landscape puts them in a rail, portrait in the bottom bar (Phase 105 D-01).
+                val tabsHidden = currentRoute == "remote_control" || currentRoute == "connection" ||
+                    currentRoute?.startsWith("media_detail") == true
+                val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+                val showRail = landscape && !tabsHidden
+
                 Scaffold(
                     bottomBar = {
-                        if (currentRoute != "remote_control") { // Hide on dynamic form
+                        if (!landscape && !tabsHidden) {
                             NavigationBar {
-                                NavigationBarItem(
-                                    icon = { 
-                                        Icon(
-                                            Icons.Filled.Wifi, 
-                                            contentDescription = "Connection",
-                                            modifier = Modifier.size(28.dp)
-                                        ) 
-                                    },
-                                    selected = currentRoute == "connection",
-                                    onClick = {
-                                        navController.navigate("connection") {
-                                            popUpTo("connection") { inclusive = false }
-                                            launchSingleTop = true
-                                        }
-                                    }
-                                )
-                                NavigationBarItem(
-                                    icon = { 
-                                        Icon(
-                                            Icons.Filled.AccountTree, 
-                                            contentDescription = "Workflows",
-                                            modifier = Modifier.size(28.dp)
-                                        ) 
-                                    },
-                                    selected = currentRoute == "workflows",
-                                    onClick = {
-                                        navController.navigate("workflows") {
-                                            popUpTo("connection") { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    }
-                                )
-                                
-                                // Queue Item
-                                NavigationBarItem(
-                                    icon = { 
-                                        Icon(
-                                            Icons.Filled.PendingActions, 
-                                            contentDescription = "Queue",
-                                            modifier = Modifier.size(28.dp)
-                                        ) 
-                                    },
-                                    selected = currentRoute == "queue",
-                                    onClick = {
-                                        navController.navigate("queue") {
-                                            popUpTo("connection") { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    }
-                                )
-
-                                NavigationBarItem(
-                                    icon = { 
-                                        Icon(
-                                            Icons.Filled.PhotoLibrary, 
-                                            contentDescription = "Gallery",
-                                            modifier = Modifier.size(28.dp)
-                                        ) 
-                                    },
-                                    selected = currentRoute == "gallery",
-                                    onClick = {
-                                        navController.navigate("gallery") {
-                                            popUpTo("connection") { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    }
-                                )
-
-                                NavigationBarItem(
-                                    icon = { 
-                                        Icon(
-                                            Icons.Filled.Menu, 
-                                            contentDescription = "More",
-                                            modifier = Modifier.size(28.dp)
-                                        ) 
-                                    },
-                                    selected = currentRoute == "history" || currentRoute == "settings",
-                                    onClick = {
-                                        navController.navigate("history") {
-                                            popUpTo("connection") { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    }
-                                )
+                                TABS.forEach { tab ->
+                                    NavigationBarItem(
+                                        icon = { Icon(tab.icon, contentDescription = null) },
+                                        label = { Text(tab.label) },
+                                        selected = tab.isSelected(currentRoute),
+                                        onClick = { navController.navigateToTab(tab.route) }
+                                    )
+                                }
                             }
                         }
                     }
-                ) { innerPadding ->
-                    // Listen for auto-navigation to form (e.g. from history load)
+                ) { scaffoldPadding ->
+                    // The rail takes the start inset, so the screens beside it don't pad it again
+                    val innerPadding = if (showRail) {
+                        val direction = LocalLayoutDirection.current
+                        PaddingValues(
+                            start = 0.dp,
+                            top = scaffoldPadding.calculateTopPadding(),
+                            end = scaffoldPadding.calculateEndPadding(direction),
+                            bottom = scaffoldPadding.calculateBottomPadding()
+                        )
+                    } else {
+                        scaffoldPadding
+                    }
+                    // Listen for auto-navigation to form (e.g. "Open in form" in the media viewer)
                     val navigateToForm by viewModel.navigateToForm.collectAsState()
                     LaunchedEffect(navigateToForm) {
                         if (navigateToForm) {
-                            navController.navigate("remote_control") {
-                                // popUpTo("history") // Optional: Back goes back to history
-                            }
+                            navController.navigate("remote_control") { launchSingleTop = true }
                             viewModel.onNavigatedToForm()
                         }
                     }
 
+                    Row(modifier = Modifier.fillMaxSize()) {
+                    if (showRail) {
+                        NavigationRail {
+                            Spacer(Modifier.weight(1f))
+                            TABS.forEach { tab ->
+                                NavigationRailItem(
+                                    icon = { Icon(tab.icon, contentDescription = null) },
+                                    label = { Text(tab.label) },
+                                    selected = tab.isSelected(currentRoute),
+                                    onClick = { navController.navigateToTab(tab.route) }
+                                )
+                            }
+                            Spacer(Modifier.weight(1f))
+                        }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize()
+                            .then(
+                                if (showRail) Modifier.consumeWindowInsets(
+                                    WindowInsets.safeDrawing.only(WindowInsetsSides.Start)
+                                ) else Modifier
+                            )
+                    ) {
                     @OptIn(ExperimentalSharedTransitionApi::class)
                     SharedTransitionLayout {
                         NavHost(
-                            navController = navController, 
-                            startDestination = "connection",
-                            modifier = Modifier.padding(innerPadding)
+                            navController = navController,
+                            startDestination = "workflows"
                         ) {
-                        composable("connection") {
-                            ConnectionScreen(viewModel) {
-                                navController.navigate("workflows")
-                            }
-                        }
-                        composable("workflows") {
-                            WorkflowListScreen(
-                                viewModel = viewModel,
-                                onOpenTemplates = { navController.navigate("templates") }
-                            ) { workflow ->
-                                viewModel.parseWorkflowInputs(workflow.jsonContent)
-                                viewModel.selectWorkflow(workflow)
-                                navController.navigate("remote_control")
-                            }
-                        }
-                        composable("templates") {
-                            com.example.comfyui_remote.ui.TemplatesScreen(
-                                viewModel = viewModel,
-                                onBack = { navController.popBackStack() },
-                                onOpenWorkflow = { workflow ->
-                                    viewModel.parseWorkflowInputs(workflow.jsonContent)
-                                    viewModel.selectWorkflow(workflow)
-                                    navController.navigate("remote_control")
+                            composable("connection") {
+                                PaddedScreen(innerPadding) {
+                                    val canGoBack = navController.previousBackStackEntry != null
+                                    ConnectionScreen(
+                                        viewModel = viewModel,
+                                        onBack = if (canGoBack) ({ navController.popBackStack() }) else null,
+                                        onConnected = {
+                                            if (navController.previousBackStackEntry != null) {
+                                                navController.popBackStack()
+                                            } else {
+                                                navController.navigate("workflows") {
+                                                    popUpTo("connection") { inclusive = true }
+                                                }
+                                            }
+                                        }
+                                    )
                                 }
-                            )
-                        }
-                        composable("queue") {
-                            com.example.comfyui_remote.ui.QueueScreen(queueViewModel) {
-                                // Back action for Queue Screen inside Tab Nav?
-                                // Usually BottomNav screens don't have back unless they go deeper.
-                                // But QueueScreen takes an onBack lambda.
-                                // For Top level, maybe no back?
-                                // Or back to Home?
-                                navController.popBackStack() 
                             }
-                        }
-                        composable("history") {
-                            com.example.comfyui_remote.ui.HistoryScreen(
-                                viewModel = viewModel,
-                                onNavigateToSettings = {
-                                    navController.navigate("settings")
-                                }
-                            )
-                        }
-                        composable("gallery") {
-                            com.example.comfyui_remote.ui.GalleryScreen(
-                                viewModel = viewModel,
-                                onMediaClick = { media ->
-                                    navController.navigate("media_detail/${media.id}")
-                                },
-                                sharedTransitionScope = this@SharedTransitionLayout,
-                                animatedVisibilityScope = this@composable
-                            )
-                        }
-                        composable(
-                            route = "media_detail/{mediaId}",
-                            arguments = listOf(navArgument("mediaId") { type = NavType.LongType })
-                        ) { backStackEntry ->
-                            val mediaId = backStackEntry.arguments?.getLong("mediaId") ?: 0L
-                            com.example.comfyui_remote.ui.MediaDetailScreen(
-                                viewModel = viewModel, 
-                                mediaId = mediaId,
-                                onBack = { navController.popBackStack() },
-                                sharedTransitionScope = this@SharedTransitionLayout,
-                                animatedVisibilityScope = this@composable
-                            )
-                        }
-                        composable("settings") {
-                            com.example.comfyui_remote.ui.SettingsScreen(viewModel)
-                        }
-                        composable("remote_control") {
-                            val workflow by viewModel.selectedWorkflow.collectAsState()
-                            if (workflow != null) {
-                                com.example.comfyui_remote.ui.DynamicFormScreen(
-                                    viewModel,
-                                    workflow!!,
-                                    onBack = { navController.popBackStack() },
-                                    onViewInGallery = { mediaId ->
-                                        navController.navigate("media_detail/$mediaId")
-                                    },
-                                    onViewQueue = {
-                                        navController.navigate("queue")
+                            composable("workflows") {
+                                PaddedScreen(innerPadding) {
+                                    WorkflowListScreen(
+                                        viewModel = viewModel,
+                                        onOpenTemplates = { navController.navigate("templates") },
+                                        onOpenConnection = openConnection,
+                                        sharedTransitionScope = this@SharedTransitionLayout,
+                                        animatedVisibilityScope = this@composable
+                                    ) { workflow ->
+                                        viewModel.parseWorkflowInputs(workflow.jsonContent)
+                                        // Phase 106: the card's last result, so the preview is ready for the transition
+                                        viewModel.selectWorkflow(workflow, viewModel.lastResults.value[workflow.id])
+                                        navController.navigate("remote_control")
                                     }
+                                }
+                            }
+                            composable("templates") {
+                                PaddedScreen(innerPadding) {
+                                    com.example.comfyui_remote.ui.TemplatesScreen(
+                                        viewModel = viewModel,
+                                        onBack = { navController.popBackStack() },
+                                        onOpenWorkflow = { workflow ->
+                                            viewModel.parseWorkflowInputs(workflow.jsonContent)
+                                            viewModel.selectWorkflow(workflow)
+                                            navController.navigate("remote_control")
+                                        }
+                                    )
+                                }
+                            }
+                            composable("queue") {
+                                PaddedScreen(innerPadding) {
+                                    com.example.comfyui_remote.ui.QueueScreen(
+                                        viewModel = queueViewModel,
+                                        mainViewModel = viewModel,
+                                        downloads = app.modelDownloadRepository,
+                                        serverQueue = app.serverQueueRepository,
+                                        onOpenConnection = openConnection
+                                    )
+                                }
+                            }
+                            composable("gallery") {
+                                PaddedScreen(innerPadding) {
+                                    com.example.comfyui_remote.ui.GalleryScreen(
+                                        viewModel = viewModel,
+                                        onMediaClick = { media ->
+                                            navController.navigate("media_detail/${media.id}")
+                                        },
+                                        onOpenConnection = openConnection,
+                                        sharedTransitionScope = this@SharedTransitionLayout,
+                                        animatedVisibilityScope = this@composable
+                                    )
+                                }
+                            }
+                            composable(
+                                route = "media_detail/{mediaId}",
+                                arguments = listOf(navArgument("mediaId") { type = NavType.LongType })
+                            ) { backStackEntry ->
+                                val mediaId = backStackEntry.arguments?.getLong("mediaId") ?: 0L
+                                com.example.comfyui_remote.ui.MediaDetailScreen(
+                                    viewModel = viewModel,
+                                    mediaId = mediaId,
+                                    onBack = { navController.popBackStack() },
+                                    sharedTransitionScope = this@SharedTransitionLayout,
+                                    animatedVisibilityScope = this@composable
                                 )
                             }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ConnectionScreen(viewModel: MainViewModel, onConnect: () -> Unit) {
-    val host by viewModel.host.collectAsState()
-    val port by viewModel.port.collectAsState()
-    val isSecure by viewModel.isSecure.collectAsState()
-    val serverProfiles by viewModel.serverProfiles.collectAsState()
-    val connectionState by viewModel.connectionState.collectAsState()
-    val shouldNavigate by viewModel.shouldNavigateToWorkflows.collectAsState()
-    
-    // Auto-navigate ONLY when the signal is raised
-    LaunchedEffect(shouldNavigate) {
-        if (shouldNavigate) {
-             onConnect()
-             viewModel.onNavigatedToWorkflows() // Consume the event
-        }
-    }
-
-    val keyboardController = LocalSoftwareKeyboardController.current
-
-    var hostError by remember { mutableStateOf<String?>(null) }
-    var portError by remember { mutableStateOf<String?>(null) }
-
-    val connectAction = {
-        keyboardController?.hide()
-        
-        // Reset errors
-        hostError = null
-        portError = null
-
-        if (connectionState == WebSocketState.CONNECTED) {
-            viewModel.disconnect()
-        } else {
-            // Validate
-            var hasError = false
-            if (host.isBlank()) {
-                hostError = "IP address is required"
-                hasError = true
-            }
-            
-            if (port.isBlank()) {
-                portError = "Port is required"
-                hasError = true
-            } else if (port.toIntOrNull() == null) {
-                portError = "Invalid port number"
-                hasError = true
-            }
-
-            if (!hasError) {
-                viewModel.saveConnection() // Persist
-                viewModel.connect()
-            }
-        }
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        StatusIndicator(connectionState)
-        
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Text(
-            text = "Connect to ComfyUI",
-            style = MaterialTheme.typography.headlineMedium
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        var expanded by remember { mutableStateOf(false) }
-
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            OutlinedTextField(
-                value = host,
-                onValueChange = { 
-                    viewModel.updateHost(it)
-                    hostError = null 
-                },
-                label = { Text("Host IP (e.g. 192.168.1.10)") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(),
-                singleLine = true,
-                isError = hostError != null,
-                supportingText = if (hostError != null) { { Text(hostError!!) } } else null,
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                },
-                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { connectAction() })
-            )
-
-            if (serverProfiles.isNotEmpty()) {
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    serverProfiles.forEach { profile ->
-                        val label = if (profile.port != 8188 || profile.isSecure) {
-                             "${profile.host}:${profile.port}${if (profile.isSecure) " (secure)" else ""}"
-                        } else {
-                            profile.host
-                        }
-                        
-                        DropdownMenuItem(
-                            text = { 
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(text = label, modifier = Modifier.weight(1f))
-                                    IconButton(
-                                        onClick = { 
-                                            viewModel.deleteServerProfile(profile)
-                                        }
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Delete, 
-                                            contentDescription = "Delete Profile",
-                                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f),
-                                            modifier = Modifier.size(20.dp)
+                            composable("settings") {
+                                PaddedScreen(innerPadding) {
+                                    com.example.comfyui_remote.ui.SettingsScreen(viewModel, onOpenConnection = openConnection)
+                                }
+                            }
+                            composable("remote_control") {
+                                PaddedScreen(innerPadding) {
+                                    val workflow by viewModel.selectedWorkflow.collectAsState()
+                                    if (workflow != null) {
+                                        com.example.comfyui_remote.ui.DynamicFormScreen(
+                                            viewModel,
+                                            workflow!!,
+                                            onBack = { navController.popBackStack() },
+                                            onViewInGallery = { mediaId ->
+                                                navController.navigate("media_detail/$mediaId")
+                                            },
+                                            onOpenConnection = openConnection,
+                                            sharedTransitionScope = this@SharedTransitionLayout,
+                                            animatedVisibilityScope = this@composable
                                         )
                                     }
                                 }
-                            },
-                            onClick = {
-                                viewModel.selectServerProfile(profile)
-                                expanded = false
-                            },
-                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
-                        )
+                            }
+                        }
+                    }
+                    }
                     }
                 }
             }
         }
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        OutlinedTextField(
-            value = port,
-            onValueChange = { 
-                viewModel.updatePort(it)
-                portError = null
-            },
-            label = { Text("Port (Default: 8188)") },
-            isError = portError != null,
-            supportingText = portError?.let { { Text(it) } },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { connectAction() }),
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Switch(
-                checked = isSecure,
-                onCheckedChange = { viewModel.updateIsSecure(it) }
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Column {
-                Text(text = "Use Secure Connection (HTTPS/WSS)")
-                Text(
-                    text = "Required for remote servers with SSL",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = connectAction,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(if (connectionState == WebSocketState.CONNECTED) "Disconnect" else "Connect")
-        }
-        
-        if (connectionState == WebSocketState.CONNECTED) {
-             Spacer(modifier = Modifier.height(16.dp))
-             Button(onClick = onConnect, modifier = Modifier.fillMaxWidth()) {
-                 Text("Go to Workflows")
-             }
-        }
     }
 }
 
-@Composable
-fun StatusIndicator(state: WebSocketState) {
-    val color = when (state) {
-        WebSocketState.CONNECTED -> Color.Green
-        WebSocketState.CONNECTING -> Color.Yellow
-        WebSocketState.ERROR -> Color.Red
-        WebSocketState.DISCONNECTED -> Color.Gray
-        WebSocketState.RECONNECTING -> Color.Yellow
+/**
+ * Switches tabs keeping each tab's state (Phase 102 D-01): the stack is at most Workflows plus one other tab,
+ * so Back from a tab root goes to Workflows, and Back from Workflows leaves the app.
+ */
+private fun NavHostController.navigateToTab(route: String) {
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
     }
+}
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            modifier = Modifier
-                .size(24.dp)
-                .background(color, CircleShape)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(text = state.name)
-    }
+/**
+ * The outer Scaffold's padding (tab bar, system bars) for one destination; the full-screen media viewer
+ * goes without it (Phase 104). Inner Scaffolds and top bars must not add the system bars again.
+ */
+@Composable
+private fun PaddedScreen(padding: PaddingValues, content: @Composable () -> Unit) {
+    Box(Modifier.padding(padding).consumeWindowInsets(padding)) { content() }
 }

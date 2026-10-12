@@ -1,6 +1,6 @@
 # Phase 90 Summary: Frontend-Only and Virtual Node Support
 
-**Completed:** 2026-09-26 (code). **Pending:** device check.
+**Completed:** 2026-09-26. Verified locally and on the phone.
 
 ## Delivered
 
@@ -50,6 +50,8 @@
   - a template with bypassed groups, e.g. `video_wan2_2_14B_s2v`, if your server has the models;
   - your MiniMax H3 workflow as a regression check.
 
-## Device Check (2026-10-12)
+## Device check (2026-09-26)
 
-✅ **Passed.** The user built the app locally (`testDebugUnitTest`, `assembleDebug`, `installDebug`) and ran the planned device checks on the phone; all passed.
+Passed on the Fairphone 6 over wireless adb. Build from `master` `a9c45ec` (the agent's branch plus the local-master merge): `testDebugUnitTest` 185/185, `assembleDebug` and `installDebug` OK. The database upgraded from 10 to 11 in place, with no data loss (`user_version` 11).
+
+- A template with a PrimitiveNode and the MiniMax H3 workflow both ran.

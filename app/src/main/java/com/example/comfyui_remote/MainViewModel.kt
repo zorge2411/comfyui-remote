@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.comfyui_remote.data.ConnectionRepository
 import com.example.comfyui_remote.data.WorkflowEntity
 import com.example.comfyui_remote.data.WorkflowRepository
+import com.example.comfyui_remote.ui.constructUrl
 import com.example.comfyui_remote.network.ExecutionStatus
 import com.example.comfyui_remote.network.WebSocketState
 import com.example.comfyui_remote.service.ExecutionService
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.ensureActive
@@ -57,29 +59,21 @@ class MainViewModel(
     private val _serverAddress = MutableStateFlow("")
     val serverAddress: StateFlow<String> = _serverAddress.asStateFlow()
     
-    // One-shot event logic for navigation
-    private val _shouldNavigateToWorkflows = MutableStateFlow(false)
-    val shouldNavigateToWorkflows: StateFlow<Boolean> = _shouldNavigateToWorkflows.asStateFlow()
-    
+    // Phase 102: one connection gate for the screens
+    val isConnected: StateFlow<Boolean> = connectionRepository.connectionState
+        .map { it == WebSocketState.CONNECTED }
+        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, false)
+
+    val isConnecting: StateFlow<Boolean> = connectionRepository.connectionState
+        .map { it == WebSocketState.CONNECTING || it == WebSocketState.RECONNECTING }
+        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, false)
+
+    /** null until the saved settings are loaded; then whether a server host is saved. */
+    private val _hasSavedServer = MutableStateFlow<Boolean?>(null)
+    val hasSavedServer: StateFlow<Boolean?> = _hasSavedServer.asStateFlow()
+
     private val _saveFolderUri = MutableStateFlow<String?>(null)
     val saveFolderUri: StateFlow<String?> = _saveFolderUri.asStateFlow()
-
-    // Date range state for history filtering
-    private val _historyStartDate = MutableStateFlow<Long?>(null)
-    val historyStartDate: StateFlow<Long?> = _historyStartDate.asStateFlow()
-
-    private val _historyEndDate = MutableStateFlow<Long?>(null)
-    val historyEndDate: StateFlow<Long?> = _historyEndDate.asStateFlow()
-
-    fun setHistoryDateRange(startDate: Long?, endDate: Long?) {
-        _historyStartDate.value = startDate
-        _historyEndDate.value = endDate
-    }
-
-    fun clearHistoryDateRange() {
-        _historyStartDate.value = null
-        _historyEndDate.value = null
-    }
 
     // Phase 79: Gallery Sync Filtering with Saved Lists
     private val _gallerySyncFilter = MutableStateFlow(com.example.comfyui_remote.data.GallerySyncFilter.default())
@@ -95,63 +89,23 @@ class MainViewModel(
         _gallerySyncFilter.value = com.example.comfyui_remote.data.GallerySyncFilter.default()
     }
 
-    /**
-     * Sync gallery with the specified filter.
-     * This extends the existing syncHistory() to support all filter parameters.
-     * Clears existing items first to remove items that don't match the new filter.
-     */
-    fun syncGalleryWithFilter(filter: com.example.comfyui_remote.data.GallerySyncFilter) {
-        viewModelScope.launch {
-            android.util.Log.d("GALLERY_FILTER", "syncGalleryWithFilter() called with filter: ${filter.getSummary()}")
-            
-            // Update the current filter state
-            _gallerySyncFilter.value = filter
-            
-            // Clear existing items to remove items that don't match the new filter
-            mediaRepository.deleteAll()
-            
-            // Sync with date range and max items from filter
-            syncHistory(
-                startDate = filter.startDate,
-                endDate = filter.endDate,
-                maxItemsOverride = filter.maxItems
-            )
-        }
+    /** Sets the gallery's filter (Phase 104): applied on the phone, so nothing is deleted or re-synced. */
+    fun setGalleryFilter(filter: com.example.comfyui_remote.data.GallerySyncFilter) {
+        _gallerySyncFilter.value = filter
     }
 
-    /**
-     * Save the current gallery list as a named list.
-     * @param name The name for the saved list
-     * @param listType Whether to save as SNAPSHOT (current items) or LIVE_FILTER (filter config)
-     */
+    /** Saves [filter] as a named list (saved lists are named filters since Phase 104). */
     suspend fun saveCurrentGalleryList(
         name: String,
-        listType: com.example.comfyui_remote.data.SavedGalleryList.ListType
+        filter: com.example.comfyui_remote.data.GallerySyncFilter
     ): Result<com.example.comfyui_remote.data.SavedGalleryList> {
         return try {
-            val currentFilter = _gallerySyncFilter.value
-            val currentMediaList = mediaRepository.allMediaListings.first()
-            
-            val savedList = when (listType) {
-                com.example.comfyui_remote.data.SavedGalleryList.ListType.SNAPSHOT -> {
-                    // Save current items as a snapshot
-                    val itemIds = currentMediaList.map { it.id }
-                    com.example.comfyui_remote.data.SavedGalleryList.createSnapshot(
-                        name = name,
-                        filter = currentFilter,
-                        itemIds = itemIds
-                    )
-                }
-                com.example.comfyui_remote.data.SavedGalleryList.ListType.LIVE_FILTER -> {
-                    // Save filter configuration only
-                    com.example.comfyui_remote.data.SavedGalleryList.createLiveFilter(
-                        name = name,
-                        filter = currentFilter,
-                        itemCount = currentMediaList.size
-                    )
-                }
-            }
-            
+            val count = com.example.comfyui_remote.domain.GalleryView.apply(mediaRepository.allMediaListings.first(), filter).size
+            val savedList = com.example.comfyui_remote.data.SavedGalleryList.createLiveFilter(
+                name = name,
+                filter = filter,
+                itemCount = count
+            )
             savedGalleryListRepository.saveList(savedList)
             Result.success(savedList)
         } catch (e: Exception) {
@@ -160,38 +114,18 @@ class MainViewModel(
         }
     }
 
-    /**
-     * Apply a saved filter and trigger sync.
-     * @param listId The ID of the saved list to apply
-     */
+    /** Applies a saved list's filter. Older Snapshot lists apply their filter too (D-03). */
     fun applySavedFilter(listId: String) {
         viewModelScope.launch {
             try {
                 val savedList = savedGalleryListRepository.getListById(listId)
-                if (savedList != null) {
-                    android.util.Log.d("GALLERY_FILTER", "Applying saved filter: ${savedList.name}")
-                    
-                    when (savedList.listType) {
-                        com.example.comfyui_remote.data.SavedGalleryList.ListType.LIVE_FILTER -> {
-                            // Apply the filter and sync
-                            _gallerySyncFilter.value = savedList.filter
-                            syncGalleryWithFilter(savedList.filter)
-                        }
-                        com.example.comfyui_remote.data.SavedGalleryList.ListType.SNAPSHOT -> {
-                            // For snapshots, we just set the filter but don't sync
-                            // The UI will need to handle displaying the snapshot items
-                            _gallerySyncFilter.value = savedList.filter
-                            android.util.Log.d("GALLERY_FILTER", "Applied snapshot filter: ${savedList.name} with ${savedList.savedItemIds.size} items")
-                        }
-                    }
-                } else {
-                    android.util.Log.e("GALLERY_FILTER", "Saved list not found: $listId")
-                }
+                if (savedList != null) _gallerySyncFilter.value = savedList.filter
             } catch (e: Exception) {
                 android.util.Log.e("GALLERY_FILTER", "Error applying saved filter", e)
             }
         }
     }
+
 
     /**
      * Delete a saved gallery list.
@@ -251,8 +185,26 @@ class MainViewModel(
     private val _executionProgress = MutableStateFlow(ExecutionProgress())
     val executionProgress: StateFlow<ExecutionProgress> = _executionProgress.asStateFlow()
 
+    /** The prompt this app's websocket reports progress for (Phase 102: matched to the server queue's running job). */
+    private val _runningPromptId = MutableStateFlow<String?>(null)
+    val runningPromptId: StateFlow<String?> = _runningPromptId.asStateFlow()
+
     val themeMode: StateFlow<Int> = userPreferencesRepository.themeMode.stateIn(viewModelScope, SharingStarted.Lazily, 0)
     val maxSyncItems: StateFlow<Int> = userPreferencesRepository.maxSyncItems.stateIn(viewModelScope, SharingStarted.Lazily, 100)
+
+    /** Connect to the saved server on start (Phase 102). */
+    val autoConnect: StateFlow<Boolean> = userPreferencesRepository.autoConnect.stateIn(viewModelScope, SharingStarted.Lazily, true)
+
+    /** Vibration on Generate/Queue and on a finished run (Phase 105). */
+    val vibration: StateFlow<Boolean> = userPreferencesRepository.vibration.stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    fun setVibration(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.saveVibration(enabled) }
+    }
+
+    fun setAutoConnect(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.saveAutoConnect(enabled) }
+    }
 
     val serverProfiles: StateFlow<List<com.example.comfyui_remote.data.ServerProfile>> = userPreferencesRepository.serverProfiles
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -267,10 +219,6 @@ class MainViewModel(
         viewModelScope.launch {
             userPreferencesRepository.saveMaxSyncItems(items)
         }
-    }
-    
-    fun onNavigatedToWorkflows() {
-        _shouldNavigateToWorkflows.value = false
     }
     
 
@@ -300,6 +248,7 @@ class MainViewModel(
         viewModelScope.launch {
             val p = _port.value.toIntOrNull() ?: 8188
             userPreferencesRepository.saveConnectionDetails(_host.value, p, _isSecure.value)
+            _hasSavedServer.value = _host.value.isNotBlank()
             
             // Phase 59: Save to profiles list
             userPreferencesRepository.saveServerProfile(
@@ -345,6 +294,26 @@ class MainViewModel(
 
     // Phase 8/9: Gallery Data
     val allMedia = mediaRepository.allMediaListings
+
+    /** The gallery grid's items: stored media narrowed and ordered by the gallery filter (Phase 104). */
+    val galleryMedia: StateFlow<List<com.example.comfyui_remote.data.GeneratedMediaListing>> =
+        kotlinx.coroutines.flow.combine(allMedia, gallerySyncFilter) { media, filter ->
+            com.example.comfyui_remote.domain.GalleryView.apply(media, filter)
+        }
+            .flowOn(kotlinx.coroutines.Dispatchers.Default)
+            .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** How many items the user removed from the gallery (they stay hidden through syncs). */
+    val removedMediaCount: StateFlow<Int> = mediaRepository.hiddenCount
+        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), 0)
+
+    /** The last sync failure, for the gallery's error banner; null when the last sync worked. */
+    private val _syncError = MutableStateFlow<String?>(null)
+    val syncError: StateFlow<String?> = _syncError.asStateFlow()
+
+    fun clearSyncError() {
+        _syncError.value = null
+    }
 
     fun getMediaById(id: Long): kotlinx.coroutines.flow.Flow<com.example.comfyui_remote.data.GeneratedMediaEntity?> {
         return mediaRepository.allMedia.map { list ->
@@ -399,13 +368,6 @@ class MainViewModel(
     private val _serverWorkflowsError = MutableStateFlow<String?>(null)
     val serverWorkflowsError: StateFlow<String?> = _serverWorkflowsError.asStateFlow()
 
-    private val _syncError = MutableStateFlow<String?>(null)
-    val syncError: StateFlow<String?> = _syncError.asStateFlow()
-
-    fun consumeSyncError() {
-        _syncError.value = null
-    }
-
     /** Plain-language text for an exception, with the connected server's address and any HTTP code. */
     private fun describeFailure(e: Throwable): String =
         com.example.comfyui_remote.domain.WorkflowImportPrep.describe(
@@ -433,26 +395,49 @@ class MainViewModel(
     private val _selectedWorkflow = MutableStateFlow<WorkflowEntity?>(null)
     val selectedWorkflow: StateFlow<WorkflowEntity?> = _selectedWorkflow.asStateFlow()
 
-    fun selectWorkflow(workflow: WorkflowEntity) {
+    /**
+     * [lastResult] is the workflow's last result as the list already knows it (Phase 106): the preview URL and
+     * media id are then set at once, so the card → form transition starts from the same image.
+     */
+    fun selectWorkflow(workflow: WorkflowEntity, lastResult: com.example.comfyui_remote.data.GeneratedMediaListing? = null) {
         _selectedWorkflow.value = workflow
         _inputImages.value = emptyMap() // Reset inputs
-        
-        // Fix: Update generated image view to show the last result if available
+        _resultText.value = null
         if (workflow.lastImageName != null) {
-             val protocol = if (_isSecure.value) "https" else "http"
-             val url = "$protocol://${_serverAddress.value}/view?filename=${workflow.lastImageName}&type=output"
-            _generatedImage.value = url
-            
-            // Phase 60: Fetch ID for navigation
+            viewModelScope.launch {
+                val text = mediaRepository.getLatestByFilename(workflow.lastImageName)?.resultText
+                if (_selectedWorkflow.value?.id == workflow.id && _resultText.value == null) _resultText.value = text
+            }
+        }
+
+        // Phase 103: "Last used" sort; history previews (id 0) aren't stored workflows
+        if (workflow.id != 0L) {
+            viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { repository.markUsed(workflow.id) }
+        }
+
+        if (lastResult != null && lastResult.fileName == workflow.lastImageName && lastResult.mediaType != "VIDEO") {
+            _generatedImage.value = lastResult.constructUrl(_host.value, _port.value, _isSecure.value)
+            _generatedMediaId.value = lastResult.id
+        } else if (workflow.lastImageName != null) {
+            // Fix: Update generated image view to show the last result if available
+            val base = "${if (_isSecure.value) "https" else "http"}://${_serverAddress.value}"
+            _generatedImage.value = com.example.comfyui_remote.domain.MediaUrls.view(base, workflow.lastImageName)
+
+            // Phase 60: Fetch ID for navigation. Phase 103: the stored row also gives the subfolder and type.
             viewModelScope.launch {
                 val media = mediaRepository.getLatestByFilename(workflow.lastImageName)
                 _generatedMediaId.value = media?.id
+                if (media != null && _selectedWorkflow.value?.id == workflow.id) {
+                    _generatedImage.value = com.example.comfyui_remote.domain.MediaUrls.view(
+                        base, media.fileName, media.subfolder, media.serverType
+                    )
+                }
             }
         } else {
             _generatedImage.value = null
             _generatedMediaId.value = null
         }
-        
+
         // Reset execution state when switching workflows
         clearErrorMessage()
     }
@@ -479,6 +464,63 @@ class MainViewModel(
 
     fun parseWorkflowInputs(json: String): List<com.example.comfyui_remote.domain.InputField> {
         return workflowParser.parse(json, _nodeMetadata.value)
+    }
+
+    /** The workflow's inputs with its remembered values applied (Phase 101). */
+    fun parseWorkflowInputs(workflow: WorkflowEntity): List<com.example.comfyui_remote.domain.InputField> =
+        com.example.comfyui_remote.domain.FormValues.overlay(
+            parseWorkflowInputs(workflow.jsonContent),
+            com.example.comfyui_remote.domain.FormValues.decode(workflow.savedInputs)
+        )
+
+    /** The workflow's pinned field keys ("nodeId/fieldName", Phase 106); empty when none or unreadable. */
+    fun pinnedFields(workflow: WorkflowEntity): Set<String> = try {
+        workflow.pinnedFields?.let {
+            com.google.gson.Gson().fromJson(it, Array<String>::class.java)?.toSet()
+        } ?: emptySet()
+    } catch (e: Exception) {
+        emptySet()
+    }
+
+    /** Pins or unpins a node-group field; the form re-lays out from the updated selection at once. */
+    fun togglePin(workflow: WorkflowEntity, key: String) {
+        val current = pinnedFields(_selectedWorkflow.value?.takeIf { it.id == workflow.id } ?: workflow)
+        val next = if (key in current) current - key else current + key
+        val json = if (next.isEmpty()) null else com.google.gson.Gson().toJson(next.toList())
+        if (_selectedWorkflow.value?.id == workflow.id) {
+            _selectedWorkflow.value = _selectedWorkflow.value?.copy(pinnedFields = json)
+        }
+        if (workflow.id == 0L) return // history previews aren't stored workflows
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { repository.setPinned(workflow.id, json) }
+    }
+
+    /** Positive and negative prompt source nodes, for the form layout (Phase 101). */
+    fun promptNodeIds(json: String): Pair<String?, String?> =
+        workflowParser.findPositivePromptNodeId(json) to workflowParser.findNegativePromptNodeId(json)
+
+    private var saveFormJob: kotlinx.coroutines.Job? = null
+
+    /** Remembers the form's values for this workflow, at most every 500 ms (each save rewrites the row). */
+    fun saveFormValues(workflow: WorkflowEntity, inputs: List<com.example.comfyui_remote.domain.InputField>) {
+        if (workflow.id == 0L) return // history previews aren't stored workflows
+        saveFormJob?.cancel()
+        saveFormJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            kotlinx.coroutines.delay(500)
+            val current = repository.allWorkflows.first().firstOrNull { it.id == workflow.id } ?: return@launch
+            repository.insert(current.copy(savedInputs = com.example.comfyui_remote.domain.FormValues.encode(inputs)))
+        }
+    }
+
+    /** Forgets the remembered values and returns the workflow's own inputs. */
+    suspend fun resetFormValues(workflow: WorkflowEntity): List<com.example.comfyui_remote.domain.InputField> {
+        saveFormJob?.cancel()
+        if (workflow.id != 0L) {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                val current = repository.allWorkflows.first().firstOrNull { it.id == workflow.id }
+                if (current != null) repository.insert(current.copy(savedInputs = null))
+            }
+        }
+        return parseWorkflowInputs(workflow.jsonContent)
     }
 
     fun parseAllNodes(json: String): List<com.example.comfyui_remote.domain.NodeInfo> {
@@ -550,14 +592,20 @@ class MainViewModel(
                     name = "History: ${DATE_FORMATTER_SHORT.withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(media.timestamp))}",
                     jsonContent = media.promptJson,
                     createdAt = media.timestamp,
-                    lastImageName = media.fileName
+                    lastImageName = media.fileName,
+                    // Phase 104: restored seeds start Fixed, so Generate reproduces the item's settings
+                    savedInputs = com.example.comfyui_remote.domain.FormValues.encode(
+                        parseWorkflowInputs(media.promptJson)
+                            .filterIsInstance<com.example.comfyui_remote.domain.InputField.SeedInput>()
+                            .map { it.copy(fixed = true) }
+                    )
                 )
                 android.util.Log.d("HISTORY_DEBUG", "Temp workflow created: ${tempWorkflow.name}")
                 _selectedWorkflow.value = tempWorkflow
                 
                 // Set the preview image for the DynamicFormScreen
                 val protocol = if (_isSecure.value) "https" else "http"
-                val url = "$protocol://${_serverAddress.value}/view?filename=${media.fileName}&type=output"
+                val url = com.example.comfyui_remote.domain.MediaUrls.view("$protocol://${_serverAddress.value}", media.fileName, media.subfolder, media.serverType)
                 android.util.Log.d("HISTORY_DEBUG", "Setting preview image URL: $url")
                 _generatedImage.value = url
                 _generatedMediaId.value = media.id
@@ -613,6 +661,14 @@ class MainViewModel(
         _inputImages.value = current
     }
 
+    /** The prompt Generate would send with [inputs], without uploads: what pre-flight and the list badge check. */
+    private fun buildCheckPrompt(
+        workflow: WorkflowEntity,
+        inputs: List<com.example.comfyui_remote.domain.InputField>
+    ): com.google.gson.JsonObject = com.google.gson.JsonParser.parseString(
+        workflowExecutionService.buildPrompt(workflow.jsonContent, emptyMap(), inputs)
+    ).asJsonObject
+
     /**
      * Checks the prompt that Generate / Add to Queue would send against the server's live /object_info
      * (Phase 91). Returns null when the server's node list can't be obtained; the caller then queues
@@ -633,10 +689,7 @@ class MainViewModel(
         val pendingUploads = _inputImages.value.filterValues { it != null }.keys
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
             try {
-                val prompt = com.google.gson.JsonParser.parseString(
-                    workflowExecutionService.buildPrompt(workflow.jsonContent, emptyMap(), inputs)
-                ).asJsonObject
-                com.example.comfyui_remote.domain.PromptValidator.validate(prompt, metadata).filterNot {
+                com.example.comfyui_remote.domain.PromptValidator.validate(buildCheckPrompt(workflow, inputs), metadata).filterNot {
                     it.kind == com.example.comfyui_remote.domain.PromptValidator.Kind.VALUE_NOT_IN_LIST &&
                         it.inputName == "image" && it.nodeId in pendingUploads
                 }
@@ -687,14 +740,11 @@ class MainViewModel(
 
                 // Loop for Batch Generation
                 repeat(batchCount) { iteration ->
-                    // Randomize Seed for each run in the batch
-                    val runInputs = inputs.map { field ->
-                        if (field is com.example.comfyui_remote.domain.InputField.SeedInput) {
-                            field.copy(value = kotlin.random.Random.nextLong(1, Long.MAX_VALUE))
-                        } else {
-                            field
-                        }
+                    // Phase 101: random seeds get a new value each run; Fixed seeds are sent as typed
+                    val (runInputs, usedSeeds) = com.example.comfyui_remote.domain.SeedPolicy.resolve(inputs) {
+                        kotlin.random.Random.nextLong(1, Long.MAX_VALUE)
                     }
+                    _lastUsedSeeds.value = usedSeeds
 
                     // Patch & Queue via Service
                     val (updatedJson, response) = workflowExecutionService.prepareAndQueue(
@@ -707,6 +757,8 @@ class MainViewModel(
 
                     // CACHE INPUT for History
                     _executionCache[response.prompt_id] = updatedJson
+                    (getApplication<Application>() as ComfyApplication).serverQueueRepository
+                        .rememberName(response.prompt_id, workflow.name)
 
                     // Accepted, but outputs depending on these nodes were skipped (Phase 92)
                     com.example.comfyui_remote.domain.ServerErrorReport.fromPartialAcceptance(
@@ -745,6 +797,10 @@ class MainViewModel(
     }
 
 
+    /** The latest text result (display nodes) of the selected workflow; shown read-only in Main settings. */
+    private val _resultText = MutableStateFlow<String?>(null)
+    val resultText: StateFlow<String?> = _resultText.asStateFlow()
+
     private val _generatedImage = MutableStateFlow<String?>(null)
     val generatedImage: StateFlow<String?> = _generatedImage.asStateFlow()
 
@@ -757,38 +813,67 @@ class MainViewModel(
     private val _nodeMetadata = MutableStateFlow<com.google.gson.JsonObject?>(null)
     val nodeMetadata: StateFlow<com.google.gson.JsonObject?> = _nodeMetadata.asStateFlow()
 
-    // Phase 100: per-workflow compatibility with the connected server, for the badge on the workflow list.
-    // Empty unless connected with a node list; results are cached per (workflow id, JSON) for one node list.
-    private val compatCache = java.util.concurrent.ConcurrentHashMap<Long, Pair<Int, com.example.comfyui_remote.domain.WorkflowCompatibility.Result?>>()
-    private var compatCacheMetadata: com.google.gson.JsonObject? = null
+    // ---- Phase 103: workflow list cards ----
 
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val compatibility: StateFlow<Map<Long, com.example.comfyui_remote.domain.WorkflowCompatibility.Result>> =
-        kotlinx.coroutines.flow.combine(repository.allWorkflows, nodeMetadata, connectionState) { workflows, metadata, state ->
-            Triple(workflows, metadata, state)
-        }.mapLatest { (workflows, metadata, state) ->
-            if (metadata == null || state != WebSocketState.CONNECTED) return@mapLatest emptyMap<Long, com.example.comfyui_remote.domain.WorkflowCompatibility.Result>()
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                if (compatCacheMetadata !== metadata) {
-                    compatCache.clear()
-                    compatCacheMetadata = metadata
-                }
-                val out = HashMap<Long, com.example.comfyui_remote.domain.WorkflowCompatibility.Result>()
-                for (wf in workflows) {
-                    kotlinx.coroutines.currentCoroutineContext().ensureActive()
-                    val hash = wf.jsonContent.hashCode()
-                    val cached = compatCache[wf.id]
-                    val result = if (cached != null && cached.first == hash) {
-                        cached.second
-                    } else {
-                        com.example.comfyui_remote.domain.WorkflowCompatibility.check(wf.jsonContent, metadata)
-                            .also { compatCache[wf.id] = hash to it }
-                    }
-                    if (result != null) out[wf.id] = result
-                }
-                out
+    /** The models each stored workflow loads, by workflow id. */
+    val workflowModels: StateFlow<Map<Long, List<com.example.comfyui_remote.domain.ModelRef>>> = run {
+        val memo = HashMap<Long, Pair<String, List<com.example.comfyui_remote.domain.ModelRef>>>()
+        allWorkflows.map { list ->
+            list.associate { wf ->
+                val cached = memo[wf.id]?.takeIf { it.first == wf.jsonContent }?.second
+                wf.id to (cached ?: com.example.comfyui_remote.domain.WorkflowModels.of(wf.jsonContent)
+                    .also { memo[wf.id] = wf.jsonContent to it })
             }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+        }.flowOn(kotlinx.coroutines.Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+    }
+
+    private data class StatusKey(val json: String, val savedInputs: String?, val metadata: com.google.gson.JsonObject)
+
+    /**
+     * Whether each stored workflow will run on the connected server, checked like Generate's pre-flight
+     * against the cached /object_info. Empty without metadata (offline): no badges. Unchanged workflows
+     * aren't re-checked when the list re-emits (form values are saved every 500 ms).
+     */
+    val workflowStatus: StateFlow<Map<Long, com.example.comfyui_remote.domain.Compatibility>> = run {
+        val memo = HashMap<Long, Pair<StatusKey, com.example.comfyui_remote.domain.Compatibility>>()
+        kotlinx.coroutines.flow.combine(allWorkflows, _nodeMetadata) { list, metadata ->
+            if (metadata == null) return@combine emptyMap()
+            val result = LinkedHashMap<Long, com.example.comfyui_remote.domain.Compatibility>()
+            for (wf in list) {
+                val key = StatusKey(wf.jsonContent, wf.savedInputs, metadata)
+                val cached = memo[wf.id]?.takeIf { it.first.json == key.json && it.first.savedInputs == key.savedInputs && it.first.metadata === metadata }
+                val status = cached?.second ?: try {
+                    com.example.comfyui_remote.domain.WorkflowCompatibility
+                        .check(buildCheckPrompt(wf, parseWorkflowInputs(wf)), metadata)
+                        .also { memo[wf.id] = key to it }
+                } catch (e: Exception) {
+                    android.util.Log.w("WORKFLOW_STATUS", "Check failed for ${wf.name}: ${e.message}")
+                    null
+                }
+                if (status != null) result[wf.id] = status
+            }
+            result
+        }.flowOn(kotlinx.coroutines.Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+    }
+
+    /** Each stored workflow's last result, found through its lastImageName (media rows' workflowName isn't reliable). */
+    val lastResults: StateFlow<Map<Long, com.example.comfyui_remote.data.GeneratedMediaListing>> =
+        kotlinx.coroutines.flow.combine(allWorkflows, allMedia) { list, _ -> list }
+            .map { list ->
+                val byName = mediaRepository.latestListingsByFileNames(list.mapNotNull { it.lastImageName }.toSet())
+                list.mapNotNull { wf -> wf.lastImageName?.let { byName[it] }?.let { wf.id to it } }.toMap()
+            }
+            .flowOn(kotlinx.coroutines.Dispatchers.IO)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    val workflowSort: StateFlow<com.example.comfyui_remote.domain.WorkflowSort> = userPreferencesRepository.workflowSort
+        .stateIn(viewModelScope, SharingStarted.Eagerly, com.example.comfyui_remote.domain.WorkflowSort.LAST_USED)
+
+    fun setWorkflowSort(sort: com.example.comfyui_remote.domain.WorkflowSort) {
+        viewModelScope.launch { userPreferencesRepository.saveWorkflowSort(sort) }
+    }
 
     fun fetchAvailableModels() {
         viewModelScope.launch {
@@ -812,6 +897,133 @@ class MainViewModel(
         }
     }
 
+    // Phase 97/99: model downloads through the server's comfyui_remote_helper extension; the queue itself lives
+    // in the app-scoped ModelDownloadRepository, shared with the Queue screen and ExecutionService
+    private val modelDownloadRepository =
+        (getApplication<Application>() as ComfyApplication).modelDownloadRepository
+
+    /** Completed once the saved host/port are loaded; server calls before that would go to an empty address. */
+    private val settingsLoaded = kotlinx.coroutines.CompletableDeferred<Unit>()
+
+    /** null until checked after connecting; false when the server doesn't have the extension. */
+    val helperAvailable: StateFlow<Boolean?> = modelDownloadRepository.helperAvailable
+    val helperHasToken: StateFlow<Boolean> = modelDownloadRepository.hasToken
+    val helperHasCivitaiToken: StateFlow<Boolean> = modelDownloadRepository.hasCivitaiToken
+    val helperVersion: StateFlow<Int> = modelDownloadRepository.helperVersion
+
+    /** Keyed by "directory/filename"; an active download wins over older finished ones for the same file. */
+    val modelDownloads: StateFlow<Map<String, com.example.comfyui_remote.domain.ModelDownload>> =
+        modelDownloadRepository.downloads
+            .map { list -> list.reversed().associateBy { it.key } }
+            .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, emptyMap())
+
+    /** Bumped when a download finishes, so screens recompute their missing models. */
+    private val _modelsVersion = MutableStateFlow(0)
+    val modelsVersion: StateFlow<Int> = _modelsVersion.asStateFlow()
+
+    private val modelListCache = java.util.concurrent.ConcurrentHashMap<String, List<String>>()
+
+    init {
+        viewModelScope.launch {
+            modelDownloadRepository.finished.collect { download ->
+                modelListCache.remove(download.directory)
+                fetchNodeMetadata()
+                _modelsVersion.value++
+            }
+        }
+    }
+
+    /** Checks for the server extension again unless it is known to be there (e.g. when a workflow screen opens). */
+    fun refreshModelHelper() {
+        if (helperAvailable.value == true) return
+        if (connectionRepository.connectionState.value == WebSocketState.CONNECTED) modelDownloadRepository.refresh()
+    }
+
+    /**
+     * Models this workflow needs that the server doesn't have: those its stored download links name that the
+     * server's model lists lack, plus those the prompt names that /object_info doesn't offer, which may have
+     * no link (url ""). [overrides] holds the form's current values, keyed "nodeId/fieldName".
+     */
+    suspend fun missingModels(
+        workflow: WorkflowEntity,
+        overrides: Map<String, String> = emptyMap()
+    ): List<com.example.comfyui_remote.domain.ModelSource> {
+        val stored = if (workflow.id == 0L) workflow
+        else repository.allWorkflows.first().firstOrNull { it.id == workflow.id } ?: workflow
+        val sources = com.example.comfyui_remote.domain.ModelSources.fromJson(stored.modelSources)
+        settingsLoaded.await()
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val available = HashMap<String, List<String>>()
+            for (dir in sources.map { it.directory }.distinct()) {
+                modelList(dir)?.let { available[dir] = it } // unknown folder: its models aren't reported
+            }
+            val missing = com.example.comfyui_remote.domain.ModelSources.missing(sources, available).toMutableList()
+            val meta = _nodeMetadata.value ?: return@withContext missing
+            val inPrompt = com.example.comfyui_remote.domain.ModelSources.missingInPrompt(workflow.jsonContent, meta, overrides)
+            var folders: Map<String, List<String>>? = null
+            for (model in inPrompt) {
+                if (missing.any { it.name == model.name }) continue
+                val link = sources.firstOrNull { it.name == model.name }
+                // A linked model the server's folder list has is there: /object_info may just be older
+                if (link != null && available[link.directory]?.any { it == model.name || it.substringAfterLast('/') == model.name } == true) continue
+                val directory = link?.directory ?: model.directory ?: run {
+                    if (folders == null) folders = allModelLists()
+                    com.example.comfyui_remote.domain.ModelSources.guessFolder(model.options, folders!!)
+                } ?: continue // folder unknown: the pre-flight check still reports it
+                missing += com.example.comfyui_remote.domain.ModelSource(model.name, link?.url ?: "", directory)
+            }
+            missing
+        }
+    }
+
+    private suspend fun modelList(dir: String): List<String>? = modelListCache[dir] ?: try {
+        buildApiService().getModels(dir).also { modelListCache[dir] = it }
+    } catch (e: Exception) {
+        null
+    }
+
+    /** Every models folder's file list, for placing inputs whose folder can't be told from their name. */
+    private suspend fun allModelLists(): Map<String, List<String>> {
+        val names = try {
+            buildApiService().getModelFolders()
+        } catch (e: Exception) {
+            return emptyMap()
+        }
+        return names.filter { it != "custom_nodes" && it != "configs" }
+            .mapNotNull { dir -> modelList(dir)?.let { dir to it } }
+            .toMap()
+    }
+
+    /** Saves a download link the user gave for a model with this workflow, so the model can be downloaded. */
+    suspend fun saveModelLink(workflow: WorkflowEntity, source: com.example.comfyui_remote.domain.ModelSource) {
+        if (workflow.id != 0L) {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                val current = repository.allWorkflows.first().firstOrNull { it.id == workflow.id } ?: return@withContext
+                val sources = com.example.comfyui_remote.domain.ModelSources.withSource(
+                    com.example.comfyui_remote.domain.ModelSources.fromJson(current.modelSources), source
+                )
+                repository.insert(current.copy(modelSources = com.example.comfyui_remote.domain.ModelSources.toJson(sources)))
+            }
+        }
+        _modelsVersion.value++
+    }
+
+    /** (size in bytes or null, gated) from the server's HEAD request, or null when the probe failed. */
+    suspend fun probeModel(source: com.example.comfyui_remote.domain.ModelSource): Pair<Long?, Boolean>? =
+        modelDownloadRepository.probe(source)
+
+    fun downloadModel(source: com.example.comfyui_remote.domain.ModelSource) = modelDownloadRepository.download(source)
+
+    fun downloadAllModels(sources: List<com.example.comfyui_remote.domain.ModelSource>) =
+        modelDownloadRepository.downloadAll(sources)
+
+    fun cancelModelDownload(download: com.example.comfyui_remote.domain.ModelDownload) =
+        modelDownloadRepository.cancel(download)
+
+    /** Seeds sent by the latest run, keyed "nodeId/fieldName" (Phase 101), so the form can offer to pin one. */
+    private val _lastUsedSeeds = MutableStateFlow<Map<String, Long>>(emptyMap())
+    val lastUsedSeeds: StateFlow<Map<String, Long>> = _lastUsedSeeds.asStateFlow()
+
     private val _serverWorkflows = MutableStateFlow<List<ServerWorkflowFile>>(emptyList())
     val serverWorkflows: StateFlow<List<ServerWorkflowFile>> = _serverWorkflows.asStateFlow()
 
@@ -830,6 +1042,10 @@ class MainViewModel(
 
     private val _templateImportError = MutableStateFlow<String?>(null)
     val templateImportError: StateFlow<String?> = _templateImportError.asStateFlow()
+
+    fun clearTemplatesError() {
+        _templatesError.value = null
+    }
 
     fun clearTemplateImportError() {
         _templateImportError.value = null
@@ -981,15 +1197,16 @@ class MainViewModel(
         // Connect via Repository
         val p = _port.value.toIntOrNull() ?: 8188
         connectionRepository.connect(_host.value, p, _isSecure.value)
+        viewModelScope.launch { userPreferencesRepository.saveAutoConnect(true) }
         fetchAvailableModels()
         fetchNodeMetadata()
-        fetchServerWorkflows()
     }
     
     fun disconnect() {
         connectionRepository.disconnect()
-        _shouldNavigateToWorkflows.value = false
-        
+        // Phase 102: a deliberate disconnect stops auto-connect on the next start
+        viewModelScope.launch { userPreferencesRepository.saveAutoConnect(false) }
+
         // Stop Service
         val context = getApplication<Application>()
         context.stopService(Intent(context, ExecutionService::class.java))
@@ -1004,6 +1221,8 @@ class MainViewModel(
                 "execution_start" -> {
                     // Confirm execution has begun
                     _executionStatus.value = ExecutionStatus.EXECUTING
+                    _runningPromptId.value = obj.getAsJsonObject("data")?.get("prompt_id")
+                        ?.takeIf { it.isJsonPrimitive }?.asString
                     _executionProgress.value = ExecutionProgress()
                     val wf = _selectedWorkflow.value
                     if (wf != null) ensureNodeTitles(wf)
@@ -1022,6 +1241,7 @@ class MainViewModel(
                     // When node is null, the prompt execution is complete
                     if (data.has("node") && data.get("node").isJsonNull) {
                         progressTracker.finish()
+                        _runningPromptId.value = null
                         _executionStatus.value = ExecutionStatus.FINISHED
                         _executionProgress.value = ExecutionProgress()
                         
@@ -1073,7 +1293,9 @@ class MainViewModel(
                     }
                     _executionStatus.value = ExecutionStatus.ERROR
                     _executionProgress.value = ExecutionProgress()
+                    _runningPromptId.value = null
                 }
+                "execution_interrupted" -> _runningPromptId.value = null
             }
         } catch (e: Exception) {
             // Ignore parsing errors for non-matching messages
@@ -1141,7 +1363,7 @@ class MainViewModel(
                                     val subfolder = if (mediaObj.has("subfolder")) mediaObj.get("subfolder").asString else null
 
                                     val protocol = if (_isSecure.value) "https" else "http"
-                                    val url = "$protocol://${_serverAddress.value}/view?filename=$filename&type=output"
+                                    val url = com.example.comfyui_remote.domain.MediaUrls.view("$protocol://${_serverAddress.value}", filename, subfolder)
                                     _generatedImage.value = url
 
                                     val hostParts = _serverAddress.value.split(":")
@@ -1176,15 +1398,26 @@ class MainViewModel(
                                         _generatedMediaId.value = existing?.id
                                     }
 
+                                    // Phase 106: a targeted update; rewriting the row from the selection-time copy
+                                    // undid pins and form values saved since then
                                     _selectedWorkflow.value?.let { workflow ->
                                         if (workflow.id != 0L) {
-                                            repository.insert(workflow.copy(lastImageName = filename))
+                                            repository.setLastImage(workflow.id, filename)
+                                            if (_selectedWorkflow.value?.id == workflow.id) {
+                                                _selectedWorkflow.value = _selectedWorkflow.value?.copy(lastImageName = filename)
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
                     }
+                }
+
+                // Text results of display nodes: shown in the form's Main settings and kept with the run's media
+                com.example.comfyui_remote.domain.TextOutputs.from(outputs)?.let { text ->
+                    _resultText.value = text
+                    if (promptId.isNotEmpty()) mediaRepository.setResultText(promptId, text)
                 }
             } catch (e: Exception) {
                 android.util.Log.e("SYNC_DEBUG", "Error syncing history item $promptId: ${e.message}", e)
@@ -1291,6 +1524,14 @@ class MainViewModel(
                 failImport(com.example.comfyui_remote.domain.WorkflowImportPrep.Step.CONVERT, name, e)
                 return
             }
+            // Phase 97: keep the graph's model download links for the models the prompt uses
+            val modelSources = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                com.example.comfyui_remote.domain.ModelSources.usedBy(
+                    com.example.comfyui_remote.domain.ModelSources.extract(json),
+                    conversionResult.json
+                )
+            }
+            android.util.Log.d("IMPORT_DEBUG", "Model download links kept: ${modelSources.size}")
             android.util.Log.d("IMPORT_DEBUG", "Normalization complete")
             android.util.Log.d("IMPORT_DEBUG", "Normalized JSON size: ${normalized.jsonContent.length} bytes")
             android.util.Log.d("IMPORT_DEBUG", "Base models detected: ${normalized.baseModels.joinToString(", ")}")
@@ -1313,11 +1554,14 @@ class MainViewModel(
                 jsonContent = normalized.jsonContent,
                 createdAt = replacing?.createdAt ?: System.currentTimeMillis(),
                 lastImageName = replacing?.lastImageName,
+                pinnedFields = replacing?.pinnedFields,
+                lastUsedAt = replacing?.lastUsedAt,
                 baseModelName = normalized.baseModels.firstOrNull(), // Keep legacy field updated
                 baseModels = baseModelsShort,
                 source = normalized.source.name,
                 formatVersion = normalized.formatVersion,
-                missingNodes = if (normalized.missingNodes.isNotEmpty()) normalized.missingNodes.joinToString(", ") else null
+                missingNodes = if (normalized.missingNodes.isNotEmpty()) normalized.missingNodes.joinToString(", ") else null,
+                modelSources = if (modelSources.isNotEmpty()) com.example.comfyui_remote.domain.ModelSources.toJson(modelSources) else null
             )
             
             // Database insert on IO thread
@@ -1349,10 +1593,14 @@ class MainViewModel(
         }
     }
     
-    fun fetchServerWorkflows() {
+    /**
+     * The workflows saved on the server (userdata). [showProgress] drives the list's refresh indicator; the
+     * automatic fetch on every connection (Phase 103 device check) runs quietly, without the loading overlay.
+     */
+    fun fetchServerWorkflows(showProgress: Boolean = true) {
         viewModelScope.launch {
             android.util.Log.d("WORKFLOW_FETCH", "Starting fetchServerWorkflows()")
-            _isSyncing.value = true
+            if (showProgress) _isSyncing.value = true
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 try {
                     val response = buildApiService().getUserData(dir = "workflows")
@@ -1371,7 +1619,7 @@ class MainViewModel(
                     e.printStackTrace()
                     _serverWorkflowsError.value = describeFailure(e)
                 } finally {
-                    _isSyncing.value = false
+                    if (showProgress) _isSyncing.value = false
                 }
             }
         }
@@ -1381,6 +1629,7 @@ class MainViewModel(
         viewModelScope.launch {
             android.util.Log.d("SYNC_DEBUG", "syncHistory() called with date range: $startDate - $endDate, override: $maxItemsOverride")
             _isSyncing.value = true
+            _syncError.value = null
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 val startTime = System.currentTimeMillis()
                 var parsedCount = 0
@@ -1448,7 +1697,6 @@ class MainViewModel(
                                     if (item.has("prompt")) {
                                         android.util.Log.d("SYNC_DEBUG", "Item $executionId has 'prompt' field")
                                         val promptElement = item.get("prompt")
-                                        val currentFilter = _gallerySyncFilter.value
                                         
                                         var workflowJson: String? = null
 
@@ -1472,13 +1720,6 @@ class MainViewModel(
                                             android.util.Log.d("SYNC_DEBUG", "workflowJson is NOT null for $executionId")
                                             val name = extractNameFromHistoryItem(item, executionId)
                                             
-                                            // **Filter by Workflow Name**
-                                            if (!com.example.comfyui_remote.data.GallerySyncFilter.matches(name, currentFilter.workflowNameFilter)) {
-                                                android.util.Log.d("SYNC_DEBUG", "Skipping item $executionId: Workflow name '$name' doesn't match filter '${currentFilter.workflowNameFilter}'")
-                                                filteredCount++
-                                                continue
-                                            }
-
                                             val hostParts = _serverAddress.value.split(":")
                                             val host = hostParts.getOrNull(0) ?: ""
                                             val port = hostParts.getOrNull(1)?.toIntOrNull() ?: 8188
@@ -1497,12 +1738,6 @@ class MainViewModel(
                                                                     val mediaObj = mediaElement.asJsonObject
                                                                     val filename = mediaObj.get("filename").asString
                                                                     
-                                                                    // **Filter by Filename**
-                                                                    if (!com.example.comfyui_remote.data.GallerySyncFilter.matches(filename, currentFilter.fileNameFilter)) {
-                                                                        android.util.Log.d("SYNC_DEBUG", "Skipping media item $filename: doesn't match filename filter '${currentFilter.fileNameFilter}'")
-                                                                        return@forEach
-                                                                    }
-
                                                                     val subfolder = if (mediaObj.has("subfolder")) mediaObj.get("subfolder").asString else null
                                                                     val serverType = if (mediaObj.has("type")) mediaObj.get("type").asString else "output"
 
@@ -1510,15 +1745,6 @@ class MainViewModel(
                                                                     val isVideo = key != "images" || extension in listOf("mp4", "gif", "webm", "mkv")
                                                                     val mediaType = if (isVideo) "VIDEO" else "IMAGE"
                                                                     
-                                                                    // **Filter by Media Type**
-                                                                    if (currentFilter.mediaType != null) {
-                                                                        val filterType = if (currentFilter.mediaType == com.example.comfyui_remote.data.GallerySyncFilter.MediaType.IMAGE) "IMAGE" else "VIDEO"
-                                                                        if (mediaType != filterType) {
-                                                                            android.util.Log.d("SYNC_DEBUG", "Skipping media item $filename: type $mediaType doesn't match filter ${currentFilter.mediaType}")
-                                                                            return@forEach
-                                                                        }
-                                                                    }
-
                                                                     imageCount++
                                                                     android.util.Log.d("SYNC_DEBUG", "Adding media item: $filename with promptJson length: ${workflowJson!!.length}")
                                                                     newMediaItems.add(
@@ -1532,7 +1758,8 @@ class MainViewModel(
                                                                             promptJson = workflowJson,
                                                                             promptId = executionId,
                                                                             serverType = serverType,
-                                                                            timestamp = itemTimestamp
+                                                                            timestamp = itemTimestamp,
+                                                                            resultText = com.example.comfyui_remote.domain.TextOutputs.from(outputs)
                                                                         )
                                                                     )
                                                                 }
@@ -1583,7 +1810,22 @@ class MainViewModel(
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 try {
                     android.util.Log.d("SYNC_DEBUG", "Starting full clear and refresh...")
-                    mediaRepository.deleteAll()
+                    // ComfyUI's history is empty after a server restart: then keep the gallery (Phase 104)
+                    val serverHasHistory = try {
+                        buildApiService().getHistory(maxItems = 1).use { body ->
+                            com.example.comfyui_remote.domain.HistoryCheck.hasEntries(body.charStream())
+                        }
+                    } catch (e: Exception) {
+                        _syncError.value = "Couldn't reach the server, so the gallery was kept: ${e.message ?: e.javaClass.simpleName}"
+                        return@withContext
+                    }
+                    if (!serverHasHistory) {
+                        _syncError.value = "The server's history is empty (ComfyUI clears it when it restarts), so the gallery was kept as it is."
+                        return@withContext
+                    }
+                    _syncError.value = null
+                    // Removed items keep their rows, so the sync below skips them (Phase 104)
+                    mediaRepository.deleteVisible()
                     
                     // Reset UI states related to selection/preview if necessary
                     // _generatedImage.value = null // This might be jarring if currently viewing an image.
@@ -1688,22 +1930,28 @@ class MainViewModel(
         }
     }
 
-    fun deleteMedia(mediaList: List<com.example.comfyui_remote.data.GeneratedMediaListing>) {
-        viewModelScope.launch {
-             // Room uses @Delete on Entity. We can construct dummy entities with just the ID for deletion if strict mode isn't on.
-             // But safer is to use a specific delete query in DAO or map back.
-             // Mapping back is impossible without full data.
-             // So we must use ID-based deletion.
-             // For now, let's map to entities with dummy data but correct ID.
-             val entities = mediaList.map { 
-                 com.example.comfyui_remote.data.GeneratedMediaEntity(
-                     id = it.id,
-                     workflowName = "", fileName = "", subfolder = "", serverHost = "", serverPort = 0
-                 )
-             }
-             mediaRepository.delete(entities)
-        }
+    /**
+     * Removes items from the gallery (Phase 104). Their rows are kept hidden, so a sync or "Reload from
+     * server" doesn't bring them back; the files on the server are untouched.
+     */
+    fun removeFromGallery(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        viewModelScope.launch { mediaRepository.hide(ids) }
     }
+
+    /** Shows every removed item again. */
+    fun restoreRemovedMedia() {
+        viewModelScope.launch { mediaRepository.unhideAll() }
+    }
+
+    /** How an item was made, for the viewer's Info sheet; empty for uploads without a stored prompt. */
+    suspend fun mediaInfo(id: Long): com.example.comfyui_remote.domain.MediaInfo =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val media = mediaRepository.getById(id)
+            com.example.comfyui_remote.domain.MediaInfo.from(
+                media?.promptJson, workflowParser, _nodeMetadata.value
+            ).copy(resultText = media?.resultText)
+        }
 
     override fun onCleared() {
         super.onCleared()
@@ -1805,7 +2053,17 @@ class MainViewModel(
             _saveFolderUri.value = userPreferencesRepository.saveFolderUri.first()
 
             updateServerAddressFull()
-        }
+            _hasSavedServer.value = savedHost.isNotBlank()
+
+            // Phase 102: connect to the last server unless the user disconnected. The connection outlives
+            // this view model (foreground service), so skip it when one is already up or starting.
+            val state = connectionRepository.connectionState.value
+            if (savedHost.isNotBlank() && userPreferencesRepository.autoConnect.first() &&
+                (state == WebSocketState.DISCONNECTED || state == WebSocketState.ERROR)
+            ) {
+                connect()
+            }
+        }.invokeOnCompletion { settingsLoaded.complete(Unit) }
 
         // Backfill baseModelName
         // Bolt: Moved to IO dispatcher to avoid blocking main thread with JSON parsing during startup
@@ -1839,6 +2097,9 @@ class MainViewModel(
             connectionRepository.connectionState.collect { state ->
                 // Auto-sync history on connection
                 if (state == WebSocketState.CONNECTED) {
+                    // The connection outlives this view model (foreground service), so a recreated one sees
+                    // CONNECTED at once; wait for the saved server address before calling the server.
+                    settingsLoaded.await()
                     syncHistory()
                     // Refresh node metadata/available models on every transition to CONNECTED,
                     // not just the initial explicit connect() call. Without this, a process
@@ -1848,6 +2109,12 @@ class MainViewModel(
                     // the user manually disconnects and reconnects.
                     fetchNodeMetadata()
                     fetchAvailableModels()
+                    // Phase 103: fetched on every connection, not only on connect(), whose request could fail
+                    // before the network was up (the server section stayed empty until a pull to refresh)
+                    fetchServerWorkflows(showProgress = false)
+                    // Phase 97: model folders may have changed while disconnected
+                    // (ModelDownloadRepository checks the helper itself)
+                    modelListCache.clear()
                 }
             }
         }

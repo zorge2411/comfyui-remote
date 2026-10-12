@@ -2,25 +2,42 @@
 
 ## Current Position
 
-- **Milestone**: none active. Milestone 5 completed 2026-10-12 and archived in `.gsd/milestones/Milestone 5/`.
-- **Phase**: none
-- **Status**: Device checks pending for Phases 97, 98, 100, 101 and 102 (see each phase summary).
+- **Milestone**: none active. Milestone 5 (UI/UX Overhaul, 2026-09-27 to 2026-10-01) is complete and archived in `.gsd/milestones/Milestone 5/` (summary: `Milestone 5-SUMMARY.md`, tag `milestone-5`).
+- **Phase**: none. Phases 100–106 are done and device-verified (database v16, 255 JVM tests).
+- **Status**: ready for `/new-milestone`.
+- **Merged work**: Milestone 6 (stability and remaining compatibility features, Phases 107–112, built on a parallel branch) was merged in; database is now v18 (`sourceKey`). Device checks pending for Phases 107, 108, 111 and 112; see `.gsd/milestones/Milestone 6-SUMMARY.md`.
+
+## Achievements (Milestone 6, merged)
+
+- [x] Phase 107 (visible import and sync failures), 108 (duplicate imports, queue recovery, Room 17 → 18), 109 (CI and repo hygiene), 111 (switch dynamic options), 112 (colour and bounding-box fields, PrimitiveNode text replace). Phase 110 (compatibility badge) was superseded by Phase 103. See `.gsd/milestones/Milestone 6/`.
 
 ## Achievements (Milestone 5)
 
-- [x] Implemented Phase 102 (custom widget kinds, text replace): PrimitiveNode replace in the converter; colour and bounding-box form fields; widget-kind pinning tests. See `.gsd/phases/102/102-SUMMARY.md`.
+- [x] Phase 104 (gallery and media viewer):
+  - local filter sheet with chips and saved lists as named filters;
+  - "Remove from gallery" that survives syncs (Room 13 → 14);
+  - selection Share, Save and Remove;
+  - full-screen viewer with Share, Save, Open in form (seeds Fixed) and Info (prompt, seed, settings);
+  - encoded `/view` URLs;
+  - Reload keeps the gallery when ComfyUI's history is empty;
+  - adaptive grid in landscape.
+  - See `.gsd/phases/104/104-VERIFICATION.md`. Open item: 6 gallery entries lost in the Reload test can be restored from a prepared database copy if the user approves.
+- [x] Civitai downloads (2026-09-28, outside a phase): helper v3 accepts civitai.com links and sends `CIVITAI_TOKEN` there only; the size probe falls back to a ranged GET (Civitai R2 links refuse HEAD). App: Civitai download links and model pages with `?modelVersionId=`, "Search Civitai", v2-helper notice. Server has v3 (verified: DreamShaper 8 sized 2.13 GB, FLUX.1-dev still gated). Not yet done: a real Civitai download from the phone.
+- [x] Fix (2026-09-28, outside a phase): missing models are also detected from the prompt's loader values against `/object_info`, so workflows without embedded download links (server or in-app imports) show them; models without a link get "Add link" (Hugging Face or GitHub, saved with the workflow). 218 JVM tests green; device-verified 2026-09-28 on `krea-2-turbo-pid` (both missing models listed with "Add link"; link validation and the "Will be saved as" hint checked; nothing saved).
+- [x] Phase 101 (workflow form declutter): prompt first, Main settings with human labels, other inputs in collapsed node sections; fixed top and bottom bars; status area with progress and the latest result; Random/Fixed seeds (verified in `/history`); form values remembered per workflow with Reset (Room 12 → 13). See `.gsd/phases/101/101-VERIFICATION.md`.
+- [x] Phase 100 (UI audit and shared components):
+  - on-device audit and a UI spec approved by the user;
+  - `ui/components`: Dimens, AppTopBar, SectionHeader, AppCard, StatusBanner, ConfirmDialog, ConnectionStatus;
+  - fixed the inverted status-bar icons, the double top inset (37 dp), and landscape on Connection and Settings;
+  - Connection and Settings rebuilt as reference screens.
 
-- [x] Implemented Phase 101 (switch dynamic options): DynamicOptionSwitch rewrites the per-run prompt; SaveVideo format/codec/encoding switchable in the form; snapshot-wide validity test. See `.gsd/phases/101/101-SUMMARY.md`.
+## Achievements (Milestone 4)
 
-- [x] Implemented Phase 100 (compatibility badge): WorkflowCompatibility over PromptValidator; cached per workflow, refreshed on reconnect; badge on each workflow card; corpus guard. See `.gsd/phases/100/100-SUMMARY.md`.
+- [x] Implemented Phase 98 (pre-flight missed missing input files): an empty server file list no longer hides a missing file, and upload inputs get a "pick another file or upload it" hint. Device-verified with the Real-ESRGAN template.
 
-- [x] Implemented Phase 99 (CI and repo hygiene): GitHub Actions runs unit tests + debug build on every push/PR (green first run, APK artifact); 9 tracked logs removed; README test section. CI also confirmed Phases 97/98 compile. See `.gsd/phases/99/99-SUMMARY.md`.
+- [x] Implemented Phase 99 (model download queue): extension v2 (ordered queue, move, retry, clear, `remote_helper.queue` event); app-scoped `ModelDownloadRepository`; Download all; a Model downloads section on the Queue screen; progress and finished notifications. 197 JVM tests and 16 Python tests green. See `.gsd/phases/99/`.
 
-- [x] Implemented Phase 98 (duplicate imports, queue recovery): sourceKey + Room 11 → 12; Open/Copy/Replace dialog; stale EXECUTING recovery, Retry, no-server reason. See `.gsd/phases/98/98-SUMMARY.md`.
-
-- [x] Implemented Phase 97 (visible import and sync failures): WorkflowImportPrep never stores an unconverted graph workflow; import failure dialog, server-list error card with Retry, sync snackbars; ErrorCard Retry now works. See `.gsd/phases/97/97-SUMMARY.md`.
-
-## Achievements (Milestone 4, completed)
+- [x] Implemented Phase 97 (download missing models): model download links kept at import (`ModelSources`, Room 11 → 12); companion ComfyUI extension `server/comfyui_remote_helper` (Hugging Face / GitHub only, safe file types, progress events, cancel, HF_TOKEN); Missing Models card with Download / progress / Cancel / Copy link. ComfyUI-Manager rejected after research (see `97-RESEARCH.md`). See `.gsd/phases/97/97-VERIFICATION.md`.
 
 - [x] Implemented Phase 92 (server errors): ServerErrorReport parser; every failing node and reason shown by title with Copy; partial acceptance ("Some outputs were skipped"); runtime execution_error message; local-queue failure reasons (Room 10 → 11). See `.gsd/phases/92/92-SUMMARY.md`.
 
@@ -119,9 +136,17 @@
 
 ## Roadmap Evolution
 
-- **2026-10-12**: Milestone 5 created, stability focus: Phases 97–99 are must-haves; 100–102 carry the remaining compatibility features.
+- **2026-10-01**: Milestone 5 completed and archived (`.gsd/milestones/Milestone 5/`, `Milestone 5-SUMMARY.md`, tag `milestone-5`). Phases 100–106: all six must-haves and all three nice-to-haves.
 
-- **2026-10-12**: Milestone 4 completed and archived (`.gsd/milestones/Milestone 4/`, `Milestone 4-SUMMARY.md`).
+- **2026-09-27**: Milestone 5 created: UI/UX Overhaul, Phases 100–105. Scope: form, navigation, gallery, workflow list and templates; polish Material 3; phone portrait (landscape must not break). The compatibility badge carried over from Milestone 4 is in Phase 103.
+
+- **2026-09-27**: Milestone 4 completed and archived (`.gsd/milestones/Milestone 4/`, `Milestone 4-SUMMARY.md`). Phases 89–99: 5 must-haves, the template browser, plus model downloads to the server (97, 99) and the empty-list pre-flight fix (98).
+
+- **2026-09-26**: Phase 99 added (model download queue: Download all, Queue-screen section, reorder/remove, retry, notifications; memory-only queue).
+
+- **2026-09-26**: Phase 98 added (pre-flight misses missing input files, e.g. `LoadVideo` `gan_input.mp4`; found in the Phase 97 device check).
+
+- **2026-09-26**: Phase 97 added (download missing models to the server through ComfyUI-Manager, using the download links stored in workflows).
 
 - **2026-09-25**: Phases 93–95 added from the Phase 89 corpus baseline (subgraph input mapping by name, `COMFY_DYNAMICCOMBO_V3`, V3 widget-mapping gaps); Phase 90 scope extended (PrimitiveNode, bypass fallback).
 
@@ -140,5 +165,8 @@
 
 ## Next Steps
 
-1. **Build and device check Phase 97**: `gradlew.bat testDebugUnitTest`, `assembleDebug`, `installDebug`; then the checks in `.gsd/phases/97/97-SUMMARY.md`.
-2. **Plan Phase 98** (`/plan 98`): duplicate imports and queue re-check.
+1. `/new-milestone` to start Milestone 6.
+2. Optional checks carried over, not yet done on the device:
+   - Milestone 5: a live Remove/Stop on the server queue; the templates reload-error banner in aeroplane mode; the pin row in landscape.
+   - Milestone 4: queue controls hidden on a helper v1 server; a Gemini, Grok or SaveVideo run (API nodes cost money).
+   - Milestone 3: Phase 80 themed icon under Android 13+ Material You.

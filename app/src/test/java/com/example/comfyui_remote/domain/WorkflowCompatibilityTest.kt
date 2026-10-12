@@ -1,77 +1,67 @@
 package com.example.comfyui_remote.domain
 
-import com.example.comfyui_remote.domain.PromptValidator.Issue
-import com.example.comfyui_remote.domain.PromptValidator.Kind
-import com.example.comfyui_remote.domain.WorkflowCompatibility.Level
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class WorkflowCompatibilityTest {
 
-    private fun issue(kind: Kind, cls: String = "K", title: String = "Sampler", input: String? = null, msg: String = "m") =
-        Issue("1", cls, title, kind, input, msg)
+    private fun obj(s: String): JsonObject = JsonParser.parseString(s.trimIndent()).asJsonObject
 
-    private val info: JsonObject = JsonParser.parseString("""
+    private val objectInfo = obj("""
         {
-          "Load": {"input": {"required": {"image": [["a.png", "b.png"], {}]}}, "output": ["IMAGE"]},
-          "Ckpt": {"input": {"required": {"ckpt_name": [["good.safetensors"], {}]}}, "output": ["MODEL"]},
-          "Img": {"input": {"required": {"ckpt_name": [["good.safetensors"], {}]}}, "output": ["IMAGE"]},
-          "Save": {"input": {"required": {"images": ["IMAGE", {}]}}, "output": [], "output_node": true}
+          "Ckpt": { "input": { "required": { "ckpt_name": [["sd_xl_base.safetensors"], {}] } },
+                    "output": ["MODEL"], "output_node": false },
+          "LoadImage": { "input": { "required": { "image": [["cat.png"], {"image_upload": true}] } },
+                    "output": ["IMAGE"], "output_node": false },
+          "Sampler": { "input": { "required": { "model": ["MODEL", {}], "steps": ["INT", {"min": 1, "max": 150}] },
+                                  "optional": { "image": ["IMAGE", {}] } },
+                    "output": ["LATENT"], "output_node": false },
+          "Save": { "input": { "required": { "samples": ["LATENT", {}] } }, "output": [], "output_node": true }
         }
-    """.trimIndent()).asJsonObject
+    """)
 
-    @Test fun `no issues is ready`() {
-        assertEquals(WorkflowCompatibility.Result(Level.READY, ""), WorkflowCompatibility.assess(emptyList()))
+    private fun prompt(ckpt: String = "sd_xl_base.safetensors", steps: Int = 30, image: String? = null, extra: String = ""): JsonObject {
+        val load = image?.let { """, "5": {"class_type": "LoadImage", "inputs": {"image": "$it"}}""" } ?: ""
+        val imageLink = if (image != null) """, "image": ["5", 0]""" else ""
+        return obj("""
+            {
+              "1": {"class_type": "Ckpt", "inputs": {"ckpt_name": "$ckpt"}},
+              "2": {"class_type": "Sampler", "inputs": {"model": ["1", 0], "steps": $steps$imageLink}},
+              "3": {"class_type": "Save", "inputs": {"samples": ["2", 0]}}
+              $load $extra
+            }
+        """)
     }
 
-    @Test fun `warnings only counts them`() {
-        val one = WorkflowCompatibility.assess(listOf(issue(Kind.OUT_OF_RANGE)))
-        assertEquals(WorkflowCompatibility.Result(Level.WARNINGS, "1 warning"), one)
-        val two = WorkflowCompatibility.assess(listOf(issue(Kind.OUT_OF_RANGE), issue(Kind.VALUE_NOT_IN_LIST)))
-        assertEquals("2 warnings", two.summary)
+    @Test
+    fun `a clean prompt is ready`() {
+        assertEquals(Compatibility.Ready, WorkflowCompatibility.check(prompt(), objectInfo))
     }
 
-    @Test fun `missing nodes are listed once each, sorted, ahead of other errors`() {
-        val r = WorkflowCompatibility.assess(listOf(
-            issue(Kind.BAD_LINK, msg = "bad"),
-            issue(Kind.MISSING_NODE_TYPE, cls = "Zed"),
-            issue(Kind.MISSING_NODE_TYPE, cls = "Alpha"),
-            issue(Kind.MISSING_NODE_TYPE, cls = "Zed")
-        ))
-        assertEquals(Level.WILL_FAIL, r.level)
-        assertEquals("Missing nodes: Alpha, Zed", r.summary)
+    @Test
+    fun `a missing node type will fail`() {
+        val result = WorkflowCompatibility.check(prompt(extra = """, "9": {"class_type": "Custom", "inputs": {}}"""), objectInfo)
+        assertTrue(result is Compatibility.WillFail)
+        assertEquals(PromptValidator.Kind.MISSING_NODE_TYPE, (result as Compatibility.WillFail).issues.first().kind)
     }
 
-    @Test fun `other errors use the node title and message`() {
-        val r = WorkflowCompatibility.assess(listOf(issue(Kind.REQUIRED_INPUT_MISSING, title = "KSampler", msg = "Required input is missing")))
-        assertEquals(WorkflowCompatibility.Result(Level.WILL_FAIL, "KSampler: Required input is missing"), r)
+    @Test
+    fun `an out of range value only warns`() {
+        assertTrue(WorkflowCompatibility.check(prompt(steps = 500), objectInfo) is Compatibility.Warnings)
     }
 
-    @Test fun `check of a valid workflow is ready`() {
-        val json = """{"1": {"class_type": "Load", "inputs": {"image": "a.png"}}, "2": {"class_type": "Save", "inputs": {"images": ["1", 0]}}}"""
-        assertEquals(Level.READY, WorkflowCompatibility.check(json, info)?.level)
+    @Test
+    fun `an input image missing on the server only warns`() {
+        val result = WorkflowCompatibility.check(prompt(image = "dog.png"), objectInfo)
+        assertTrue(result is Compatibility.Warnings)
+        assertEquals(PromptValidator.Kind.VALUE_NOT_IN_LIST, (result as Compatibility.Warnings).issues.single().kind)
     }
 
-    @Test fun `check of an unknown class fails with the class name`() {
-        val json = """{"1": {"class_type": "Nope", "inputs": {}}, "2": {"class_type": "Save", "inputs": {"images": ["1", 0]}}}"""
-        val r = WorkflowCompatibility.check(json, info)!!
-        assertEquals(Level.WILL_FAIL, r.level)
-        assertEquals("Missing nodes: Nope", r.summary)
-    }
-
-    @Test fun `an image file the server lacks is not flagged`() {
-        val json = """{"1": {"class_type": "Load", "inputs": {"image": "gone.png"}}, "2": {"class_type": "Save", "inputs": {"images": ["1", 0]}}}"""
-        assertEquals(Level.READY, WorkflowCompatibility.check(json, info)?.level)
-    }
-
-    @Test fun `a model file the server lacks is a warning`() {
-        val json = """{"1": {"class_type": "Img", "inputs": {"ckpt_name": "other.safetensors"}}, "2": {"class_type": "Save", "inputs": {"images": ["1", 0]}}}"""
-        assertEquals(WorkflowCompatibility.Result(Level.WARNINGS, "1 warning"), WorkflowCompatibility.check(json, info))
-    }
-
-    @Test fun `unreadable JSON gives no result`() {
-        for (t in listOf("{nope", "[1]", "")) assertNull(t, WorkflowCompatibility.check(t, info))
+    @Test
+    fun `a missing checkpoint will fail`() {
+        assertTrue(WorkflowCompatibility.check(prompt(ckpt = "juggernaut.safetensors"), objectInfo) is Compatibility.WillFail)
     }
 }

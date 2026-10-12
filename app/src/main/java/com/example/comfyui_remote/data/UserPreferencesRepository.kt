@@ -32,6 +32,9 @@ class UserPreferencesRepository(private val context: Context) {
     private val THEME_MODE_KEY = intPreferencesKey("theme_mode")
     private val SERVER_PROFILES_KEY = stringPreferencesKey("server_profiles")
     private val MAX_SYNC_ITEMS_KEY = intPreferencesKey("max_sync_items")
+    private val AUTO_CONNECT_KEY = booleanPreferencesKey("auto_connect")
+    private val WORKFLOW_SORT_KEY = stringPreferencesKey("workflow_sort")
+    private val VIBRATION_KEY = booleanPreferencesKey("vibration")
 
     private val gson = Gson()
 
@@ -64,6 +67,44 @@ class UserPreferencesRepository(private val context: Context) {
         .map { preferences ->
             preferences[MAX_SYNC_ITEMS_KEY] ?: 100
         }
+
+    /** Connect to the saved server on start (Phase 102). Connect sets it, Disconnect clears it. */
+    val autoConnect: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[AUTO_CONNECT_KEY] ?: true
+        }
+
+    suspend fun saveAutoConnect(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[AUTO_CONNECT_KEY] = enabled
+        }
+    }
+
+    /** Vibrate on Generate/Queue and when a run finishes (Phase 105). */
+    val vibration: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[VIBRATION_KEY] ?: true
+        }
+
+    suspend fun saveVibration(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[VIBRATION_KEY] = enabled
+        }
+    }
+
+    /** The workflow list's sort (Phase 103); unknown values fall back to Last used. */
+    val workflowSort: Flow<com.example.comfyui_remote.domain.WorkflowSort> = context.dataStore.data
+        .map { preferences ->
+            preferences[WORKFLOW_SORT_KEY]
+                ?.let { name -> com.example.comfyui_remote.domain.WorkflowSort.entries.firstOrNull { it.name == name } }
+                ?: com.example.comfyui_remote.domain.WorkflowSort.LAST_USED
+        }
+
+    suspend fun saveWorkflowSort(sort: com.example.comfyui_remote.domain.WorkflowSort) {
+        context.dataStore.edit { preferences ->
+            preferences[WORKFLOW_SORT_KEY] = sort.name
+        }
+    }
 
     suspend fun saveThemeMode(mode: Int) {
         context.dataStore.edit { preferences ->

@@ -1,32 +1,66 @@
-# Phase 100: Compatibility Badge on the Workflow List - Context
+# Phase 100 Context: UI Audit and Shared Components
 
-**Gathered:** 2026-10-12
-**Status:** Ready for execution
+**Gathered:** 2026-09-28. Milestone 5 (UI/UX Overhaul).
 
-<domain>
-## Phase Boundary
+## Milestone scope (from the user)
 
-Each workflow card on the Workflows screen shows, at a glance, whether it should run on the connected server: ready, warnings, or will fail (with the first reason). It reuses `PromptValidator`; no new validation rules. Opening the workflow still shows the full detail (the live missing-nodes banner, the pre-flight dialog). Filtering or sorting by compatibility, and badges on server-side files, are not in this phase.
+- Areas: the workflow form, navigation, gallery and viewer, and the workflow list and templates.
+- Polish Material 3 and keep dynamic colour; no new brand.
+- Pain points: **the form is cluttered** and **screens are inconsistent**.
+- Phone portrait. Landscape must not break.
 
-</domain>
+## Code survey (read-only, 2026-09-28)
 
-<research>
-## Findings
+Paths are relative to `app/src/main/java/com/example/comfyui_remote/`.
 
-- `PromptValidator.validate(prompt, objectInfo)` already returns `Issue`s with `Kind.severity` ERROR / WARNING, and is cheap enough to run per workflow. `MainViewModel.missingNodeTypes(workflow)` already runs it on a stored workflow for the form banner (Phase 91), so validating the stored `jsonContent` directly is an established pattern.
-- Live node list: `_nodeMetadata` (`nodeMetadata` StateFlow) is re-fetched on every transition to CONNECTED (`fetchNodeMetadata()`), producing a new `JsonObject` each time. A flow keyed on it recomputes badges on reconnect with no extra trigger.
-- Workflows come from `repository.allWorkflows` (`allWorkflows` flow); the list screen renders `WorkflowItem` cards from it.
-- Validating the *stored* JSON, not the filled-in form, has one known false positive: image/video/audio inputs in the stored workflow name a file that usually isn't on this server (the form replaces it at run time). Pre-flight already skips those for pending uploads. Model-file mismatches (checkpoints, LoRAs, VAEs) are real and stay.
-- The node list can be stale if the server's custom nodes change while connected; reconnecting refreshes it. Acceptable.
-- Server-address changes: metadata from the previous server stays in memory until the next connect replaces it, so the badge is only shown while CONNECTED.
-</research>
+**Top bars**
+- `TopAppBar` is used in WorkflowList, Templates, Queue, History, Gallery and MediaDetail.
+- DynamicForm uses a custom Row (`ui/DynamicFormScreen.kt:147`). Connection (`MainActivity.kt:409`) and Settings (`ui/SettingsScreen.kt:42`) have only a headlineMedium Text.
+- Settings is pushed from History but has no back button. Queue is a tab but has one (`QueueScreen.kt:64`).
+- `Icons.Default.ArrowBack` isn't AutoMirrored in DynamicForm, MediaDetail, Queue and Templates.
 
-<decisions>
+**Shared components**
+- `LoadingOverlay` is unused; WorkflowList (:157) and Templates (:200) rebuild it with `Color.Black`/`Color.White`.
+- `SmallLoadingIndicator` is unused.
+- `ErrorCard`'s Retry row isn't clickable (`ui/components/ErrorCard.kt:115-131`).
+- `EmptyState` doesn't scroll.
+- SavedListsDrawer has its own copy of EmptyState (:88-114).
+
+**Cards**
+- Outer padding 0, 4 or 8; inner 8, 10, 12 or 16; corners 4, 8, 12 or the default.
+- Only History sets elevation (2 dp).
+- Container colours: default, surfaceVariant, or surfaceVariant at 0.5 alpha.
+
+**Dialogs**
+- Destructive confirms come in three styles: TextButton with the error content colour, `Text(color = error)`, and a filled `Button(containerColor = error)`.
+- Confirm buttons mix TextButton and filled Button.
+- Gallery multi-delete (`GalleryScreen.kt:144`) has no confirm.
+- ImportWorkflowDialog uses a filled `TextField`, a non-scrolling text slot, and `Color(0xFF4CAF50)`/`Color(0xFF2196F3)`.
+
+**Colour and emoji**
+- The connection dot uses `Color.Green/Yellow/Red/Gray` (`MainActivity.kt:547-550`).
+- Emoji status prefixes: "⚠️ Missing Nodes", "⚠️ Missing Models", "⚠️ Some outputs were skipped", "✓", "📦", "✖/⚠".
+
+**Scrolling and landscape**
+- The Connection screen's `Column(fillMaxSize, Arrangement.Center)` has no `verticalScroll` (`MainActivity.kt:398-404`). About 400 dp of content doesn't fit in landscape (roughly 250 dp after the status bar and the 80 dp NavigationBar), so the Connect button is cut off.
+- Settings and `EmptyState` don't scroll either.
+
+**Insets**
+- targetSdk 35 means Android 15 forces edge-to-edge, but there's no `enableEdgeToEdge()`.
+- The outer Scaffold's `innerPadding` goes to the NavHost (`MainActivity.kt:244`) without `consumeWindowInsets`. Inner Scaffolds and TopAppBars add the status bar again, which likely pads the top twice.
+- MediaDetail's sheet uses a hard-coded 32 dp bottom padding; DynamicForm guesses too (around `:696`).
+
+**Theme**
+- Stock template: purple 80/40, one Typography override, no Shapes, no spacing tokens.
+- `window.statusBarColor` (`ui/theme/Theme.kt:54`) is deprecated.
+- `isAppearanceLightStatusBars = darkTheme` (`:55`) looks inverted.
+
+**Deprecations**
+- No-arg `menuAnchor()` at `MainActivity.kt:432` and DynamicForm `:349`, `:385`.
+- `Icons.Default.PlaylistAdd` in SavedListsDrawer.
+
 ## Decisions
 
-- **D-01** Pure-Kotlin `WorkflowCompatibility.assess(issues)` → `Result(level, summary)`. Levels: `READY` (no issues), `WARNINGS` (warnings only), `WILL_FAIL` (any error). Summary is the first reason in plain words: missing node types listed ("Missing nodes: A, B"), otherwise the first error as "<node title>: <message>", otherwise "N warning(s)". `UNKNOWN` is not a level of the result: no result means no badge.
-- **D-02** `WorkflowCompatibility.check(json, objectInfo)` wraps parse + `PromptValidator.validate` and drops `VALUE_NOT_IN_LIST` issues on input names `image`, `video`, `audio` and `mask` (replaced by the form). Returns null for unparseable JSON.
-- **D-03** `MainViewModel.compatibility: StateFlow<Map<Long, Result>>` = combine(`allWorkflows`, `nodeMetadata`, `connectionState`), `mapLatest` on `Dispatchers.Default`; empty map unless CONNECTED and metadata non-null. Cached per workflow by `(id, jsonContent.hashCode())` inside the collector so renames and unrelated list changes don't revalidate everything.
-- **D-04** UI: a small badge on `WorkflowItem` (check / warning / error icon + text, theme colours: primary / tertiary / error) and, for non-READY, the one-line summary under the name. No badge while disconnected or loading.
-- **D-05** Regression guard: a corpus test runs `check` on every converted corpus workflow against the corpus `object_info.json` and asserts none is `WILL_FAIL`, so a validator or converter change that would badge good workflows red fails CI.
-</decisions>
+- **D-01:** Phase 100 builds the components and applies them only to the **Connection and Settings** screens (as references), plus the app-wide fixes (insets, theme, landscape, AutoMirrored back icons). Other screens migrate in 101 (form), 102 (navigation), 103 (list and templates), 104 (gallery) and the 105 sweep.
+- **D-02:** The user approves the UI spec (`100-UI-SPEC.md`) at a checkpoint before components are built.
+- **D-03:** No Compose UI tests; the repo has none. Components get `@Preview`s. Verification is `assembleDebug` plus on-device screenshots over adb: portrait light and dark, and landscape. Screenshots stay in the session scratchpad because they may show personal images and prompts; only findings are committed.

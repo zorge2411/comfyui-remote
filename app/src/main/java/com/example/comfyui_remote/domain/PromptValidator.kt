@@ -10,6 +10,10 @@ import com.google.gson.JsonObject
  *
  * The server skips range and list checks for inputs a node validates itself, which /object_info does not
  * reveal, so those findings are warnings; structural problems the server always rejects are errors.
+ * A file name (model, image...) missing from the server's list is an error too: loaders use the list
+ * check, and nodes that validate files themselves (LoadImage) reject a missing file anyway.
+ * An empty list means the server has no such files (Phase 98): that is reported for file values and upload
+ * inputs (image/video/audio_upload), but not for other combos, whose lists may be filled in dynamically.
  */
 object PromptValidator {
 
@@ -32,9 +36,9 @@ object PromptValidator {
         val nodeTitle: String,
         val kind: Kind,
         val inputName: String?,
-        val message: String
+        val message: String,
+        val severity: Severity = kind.severity
     ) {
-        val severity: Severity get() = kind.severity
         override fun toString() = "${kind.name} node $nodeId ($classType)${inputName?.let { ".$it" } ?: ""}: $message"
     }
 
@@ -47,6 +51,22 @@ object PromptValidator {
         """[\\/]|\.(safetensors|ckpt|pt|pth|bin|gguf|onnx|sft|png|jpe?g|webp|gif|mp4|webm|mov|wav|mp3|flac|glb|gltf|fbx|obj|ply|stl|usdz|spz|splat)$""",
         RegexOption.IGNORE_CASE
     )
+
+    // The same file types without the path rule: what an empty server list is checked for
+    private val FILE_EXTENSION = Regex(
+        """\.(safetensors|ckpt|pt|pth|bin|gguf|onnx|sft|png|jpe?g|webp|gif|mp4|webm|mov|wav|mp3|flac|glb|gltf|fbx|obj|ply|stl|usdz|spz|splat)$""",
+        RegexOption.IGNORE_CASE
+    )
+
+    private val UPLOAD_FLAGS = listOf("image_upload", "video_upload", "audio_upload")
+
+    /** A file input the frontend offers an upload button for, in the legacy `[[files], {...}]` or V3 `["COMBO", {...}]` form. */
+    private fun isUploadInput(spec: JsonArray): Boolean {
+        val config = spec.takeIf { it.size() > 1 }?.get(1)?.takeIf { it.isJsonObject }?.asJsonObject ?: return false
+        return UPLOAD_FLAGS.any { flag ->
+            config.get(flag)?.takeIf { it.isJsonPrimitive }?.let { it.asJsonPrimitive.isBoolean && it.asBoolean } == true
+        }
+    }
 
     /**
      * @param checkFileValues check file-name values (model, image...) against the server's lists
@@ -66,8 +86,8 @@ object PromptValidator {
         fun classOf(node: JsonObject) = node.get("class_type")?.takeIf { it.isJsonPrimitive }?.asString ?: "<none>"
         fun titleOf(node: JsonObject) =
             node.getAsJsonObject("_meta")?.get("title")?.takeIf { it.isJsonPrimitive }?.asString ?: classOf(node)
-        fun issue(id: String, node: JsonObject, kind: Kind, input: String?, message: String) {
-            issues += Issue(id, classOf(node), titleOf(node), kind, input, message)
+        fun issue(id: String, node: JsonObject, kind: Kind, input: String?, message: String, severity: Severity = kind.severity) {
+            issues += Issue(id, classOf(node), titleOf(node), kind, input, message, severity)
         }
 
         // Missing node types are reported for every node: the server rejects the whole prompt
@@ -138,9 +158,21 @@ object PromptValidator {
                 if (valueChecks) valueIssue(spec, value)?.let { (kind, message) -> issue(id, n, kind, key, message) }
                 val options = GraphToApiConverter.comboOptions(spec) ?: continue
                 val text = value.asString
-                if (options.isNotEmpty() && text !in options && (checkFileValues || !FILE_VALUE.containsMatchIn(text))) {
+                val isUpload = isUploadInput(spec)
+                val isFile = FILE_VALUE.containsMatchIn(text) || isUpload
+                // An empty list is only a missing file when the value is clearly one: a slash alone isn't enough,
+                // since remote-model tags ("hf.co/user/model:Q8_0") are filled in by the node itself (Phase 103)
+                val emptyListFile = isUpload || FILE_EXTENSION.containsMatchIn(text)
+                val listKnown = options.isNotEmpty() || (emptyListFile && checkFileValues)
+                if (listKnown && text !in options && (checkFileValues || !isFile)) {
                     val shown = options.take(5).joinToString(", ") + if (options.size > 5) ", …" else ""
-                    issue(id, n, Kind.VALUE_NOT_IN_LIST, key, "Value not in list: '$text' not in [$shown]")
+                    if (isFile) {
+                        val where = if (options.isEmpty()) "(the server has none for this input)" else "not in [$shown]"
+                        val hint = if (isUpload) "; pick another file or upload it" else ""
+                        issue(id, n, Kind.VALUE_NOT_IN_LIST, key, "File not on the server: '$text' $where$hint", Severity.ERROR)
+                    } else {
+                        issue(id, n, Kind.VALUE_NOT_IN_LIST, key, "Value not in list: '$text' not in [$shown]")
+                    }
                 }
             }
 

@@ -23,11 +23,22 @@ interface WorkflowDao {
     @Update
     suspend fun update(workflow: WorkflowEntity)
 
+    // A targeted update, so it can't race the form's REPLACE saves (Phase 103)
+    @Query("UPDATE workflows SET lastUsedAt = :time WHERE id = :id")
+    suspend fun markUsed(id: Long, time: Long)
+
+    // Phase 106: also targeted, so pins and the last result never rewrite the row from a stale copy
+    @Query("UPDATE workflows SET pinnedFields = :json WHERE id = :id")
+    suspend fun setPinned(id: Long, json: String?)
+
+    @Query("UPDATE workflows SET lastImageName = :name WHERE id = :id")
+    suspend fun setLastImage(id: Long, name: String)
+
     @Delete
     suspend fun delete(workflow: WorkflowEntity)
 }
 
-@Database(entities = [WorkflowEntity::class, GeneratedMediaEntity::class, LocalQueueItem::class], version = 12, exportSchema = false)
+@Database(entities = [WorkflowEntity::class, GeneratedMediaEntity::class, LocalQueueItem::class], version = 18, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun workflowDao(): WorkflowDao
@@ -116,8 +127,58 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        // Phase 98: identifies re-imports of the same template / server workflow
+        // Phase 97: model download links. missingNodes was added in 39d2597 without a migration, so add it if absent.
         val MIGRATION_11_12 = object : androidx.room.migration.Migration(11, 12) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                val columns = mutableSetOf<String>()
+                database.query("PRAGMA table_info(workflows)").use { c ->
+                    val nameIndex = c.getColumnIndex("name")
+                    while (c.moveToNext()) columns.add(c.getString(nameIndex))
+                }
+                if ("missingNodes" !in columns) {
+                    database.execSQL("ALTER TABLE workflows ADD COLUMN missingNodes TEXT")
+                }
+                database.execSQL("ALTER TABLE workflows ADD COLUMN modelSources TEXT")
+            }
+        }
+
+        // Phase 101: remembered form values per workflow
+        val MIGRATION_12_13 = object : androidx.room.migration.Migration(12, 13) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE workflows ADD COLUMN savedInputs TEXT")
+            }
+        }
+
+        // Phase 104: "Remove from gallery" hides rows instead of deleting them
+        val MIGRATION_13_14 = object : androidx.room.migration.Migration(13, 14) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE generated_media ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        // Phase 103: "Last used" sort on the workflow list
+        val MIGRATION_14_15 = object : androidx.room.migration.Migration(14, 15) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE workflows ADD COLUMN lastUsedAt INTEGER")
+            }
+        }
+
+        // Phase 106: pinned form fields per workflow
+        val MIGRATION_15_16 = object : androidx.room.migration.Migration(15, 16) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE workflows ADD COLUMN pinnedFields TEXT")
+            }
+        }
+
+        // Text results of display nodes, kept with the run's media
+        val MIGRATION_16_17 = object : androidx.room.migration.Migration(16, 17) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE generated_media ADD COLUMN resultText TEXT")
+            }
+        }
+
+        // Milestone 6, duplicate imports: identifies re-imports of the same template / server workflow
+        val MIGRATION_17_18 = object : androidx.room.migration.Migration(17, 18) {
             override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
                 database.execSQL("ALTER TABLE workflows ADD COLUMN sourceKey TEXT")
             }
@@ -130,7 +191,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "comfy_database"
                 )
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

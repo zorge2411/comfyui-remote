@@ -25,7 +25,9 @@ sealed class InputField(
         override val nodeId: String,
         override val fieldName: String,
         val value: Long,
-        override val nodeTitle: String
+        override val nodeTitle: String,
+        // Phase 101: true sends the value as typed; null (older saved or queued JSON) or false randomizes each run
+        val fixed: Boolean? = null
     ) : InputField("Seed")
 
     data class FloatInput(
@@ -102,3 +104,7 @@ object ColorHex {
     /** 0xRRGGBB, or null if invalid. */
     fun toRgb(text: String): Int? = normalize(text)?.substring(1)?.toInt(16)
 }
+
+/** Identifies a field across re-parses and regrouping: "nodeId/fieldName". */
+val InputField.key: String
+    get() = "$nodeId/$fieldName"

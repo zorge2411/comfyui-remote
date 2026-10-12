@@ -58,6 +58,14 @@ class ConnectionRepository {
     val clientId: String?
         get() = comfyWebSocket?.clientId
 
+    /** "http(s)://host:port/" of the current connection, or null before the first connect. */
+    val baseUrl: String?
+        get() {
+            val host = currentHost?.removePrefix("http://")?.removePrefix("https://") ?: return null
+            if (host.isBlank()) return null
+            return "${if (currentIsSecure) "https" else "http"}://$host:${currentPort ?: 8188}/"
+        }
+
     fun connect(host: String, port: Int, isSecure: Boolean) {
         currentHost = host
         currentPort = port

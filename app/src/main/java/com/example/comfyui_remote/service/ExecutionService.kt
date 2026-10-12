@@ -27,6 +27,12 @@ class ExecutionService : Service() {
     private val CHANNEL_ID = "comfy_connection_channel"
     private val NOTIFICATION_ID = 1
 
+    // Phase 99: model downloads on the server (comfyui_remote_helper)
+    private val DOWNLOADS_CHANNEL_ID = "model_downloads"
+    private val DOWNLOAD_PROGRESS_ID = 2
+    private val DOWNLOADS_FINISHED_ID = 3
+    private var downloadsJob: kotlinx.coroutines.Job? = null
+
     override fun onBind(intent: Intent?): IBinder? {
         return null
     }
@@ -52,6 +58,11 @@ class ExecutionService : Service() {
             }
         }
         
+        // onStartCommand runs again on every connect; watch the download queue once
+        if (downloadsJob?.isActive != true) {
+            downloadsJob = scope.launch { watchModelDownloads(app) }
+        }
+
         // Start immediately with current state
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIFICATION_ID, buildNotification(WebSocketState.CONNECTING), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
@@ -66,6 +77,62 @@ class ExecutionService : Service() {
         super.onDestroy()
         scope.cancel()
     }
+
+    /**
+     * Progress while the server downloads models, then one summary when the queue goes idle. A batch is every
+     * job seen since the queue was last idle.
+     */
+    private suspend fun watchModelDownloads(app: ComfyApplication) {
+        val manager = androidx.core.app.NotificationManagerCompat.from(this)
+        val batch = LinkedHashMap<String, com.example.comfyui_remote.domain.ModelDownload>()
+        var wasActive = false
+        app.modelDownloadRepository.downloads.collect { list ->
+            val active = list.filter { it.active }
+            if (active.isNotEmpty()) {
+                active.forEach { d -> d.id?.let { batch[it] = d } }
+                list.filter { it.finished && it.id in batch }.forEach { batch[it.id!!] = it }
+                val finishedInBatch = batch.values.count { it.finished }
+                val summary = com.example.comfyui_remote.domain.ModelDownloads.summary(list, finishedInBatch)
+                if (summary != null && manager.areNotificationsEnabled()) {
+                    notifySafely(manager, DOWNLOAD_PROGRESS_ID, NotificationCompat.Builder(this, DOWNLOADS_CHANNEL_ID)
+                        .setSmallIcon(R.drawable.ic_launcher_foreground)
+                        .setContentTitle(summary.title)
+                        .setContentText(summary.text)
+                        .setProgress(100, summary.percent ?: 0, summary.percent == null)
+                        .setContentIntent(openAppIntent())
+                        .setOngoing(true)
+                        .setOnlyAlertOnce(true)
+                        .build())
+                }
+                wasActive = true
+            } else if (wasActive) {
+                list.filter { it.finished && it.id in batch }.forEach { batch[it.id!!] = it }
+                manager.cancel(DOWNLOAD_PROGRESS_ID)
+                if (batch.isNotEmpty() && manager.areNotificationsEnabled()) {
+                    notifySafely(manager, DOWNLOADS_FINISHED_ID, NotificationCompat.Builder(this, DOWNLOADS_CHANNEL_ID)
+                        .setSmallIcon(R.drawable.ic_launcher_foreground)
+                        .setContentTitle("Model downloads finished")
+                        .setContentText(com.example.comfyui_remote.domain.ModelDownloads.finishedSummary(batch.values.toList()))
+                        .setContentIntent(openAppIntent())
+                        .setAutoCancel(true)
+                        .build())
+                }
+                batch.clear()
+                wasActive = false
+            }
+        }
+    }
+
+    private fun notifySafely(manager: androidx.core.app.NotificationManagerCompat, id: Int, notification: Notification) {
+        try {
+            manager.notify(id, notification)
+        } catch (e: SecurityException) {
+            // POST_NOTIFICATIONS not granted (Android 13+)
+        }
+    }
+
+    private fun openAppIntent(): PendingIntent =
+        PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
 
     private fun updateNotification(state: WebSocketState) {
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -112,6 +179,11 @@ class ExecutionService : Service() {
             val notificationManager: NotificationManager =
                 getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
+            notificationManager.createNotificationChannel(
+                NotificationChannel(DOWNLOADS_CHANNEL_ID, "Model downloads", NotificationManager.IMPORTANCE_LOW).apply {
+                    description = "Progress of model downloads on the ComfyUI server"
+                }
+            )
         }
     }
 }

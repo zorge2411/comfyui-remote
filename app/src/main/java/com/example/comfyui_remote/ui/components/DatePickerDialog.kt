@@ -25,18 +25,18 @@ fun DateRangePickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select Date Range") },
+        title = { Text("Date range") },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(Dimens.s)
             ) {
                 // Start Date Picker
                 OutlinedButton(
                     onClick = { showStartDatePicker = true },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Start Date: ${startDate?.toString() ?: "Not Set"}")
+                    Text("Start date: ${startDate?.toString() ?: "not set"}")
                 }
                 
                 // End Date Picker
@@ -44,7 +44,7 @@ fun DateRangePickerDialog(
                     onClick = { showEndDatePicker = true },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("End Date: ${endDate?.toString() ?: "Not Set"}")
+                    Text("End date: ${endDate?.toString() ?: "not set"}")
                 }
                 
                 // Clear Button
@@ -55,7 +55,7 @@ fun DateRangePickerDialog(
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Clear Date Range")
+                    Text("Clear date range")
                 }
             }
         },
