@@ -3,7 +3,7 @@
 ## Current Position
 
 - **Milestone**: 5 (Stability, then remaining compatibility features): planned
-- **Phase**: 98 (Duplicate Imports and Queue Recovery): code done. Phases 97 and 98 device checks pending
+- **Phase**: 99 (CI and Repo Hygiene): planned. Phases 97 and 98 device checks pending
 - **Status**: Milestone 5 created 2026-10-12 with Phases 97–102. Milestone 4 is archived.
 
 ## Achievements (Milestone 5)

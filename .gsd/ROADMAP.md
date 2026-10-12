@@ -35,8 +35,8 @@
 
 ### Phase 99: CI and Repo Hygiene
 
-**Status**: ⬜ Not Started
-**Objective**: Add a GitHub Actions workflow running `testDebugUnitTest` and `assembleDebug` on push and pull request (the repo has no `.github/`). Remove the 9 tracked log files in the repo root (`build_run_log.txt`, `test_log*.txt`, …) and ignore them; document how to run the tests, including the corpus, in the README.
+**Status**: 📝 Planned (`.gsd/phases/99/`)
+**Objective**: Add a GitHub Actions workflow (JDK 17, `testDebugUnitTest` + `assembleDebug`, test reports on failure, debug APK as an artifact) on push and pull request; the repo has no `.github/`. Remove the 9 tracked log files in the repo root and ignore that naming; add a "Building and testing" section to the README, including the corpus and `known-failures.json`. The first CI run can't be tried in the cloud container, so execution includes reading the run and fixing it.
 
 ### Phase 100: Compatibility Badge on the Workflow List
 
