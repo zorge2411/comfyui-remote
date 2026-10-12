@@ -355,11 +355,10 @@ fun WorkflowItem(
 /** Phase 100: whether the workflow should run on the connected server, with the first reason if not. */
 @Composable
 private fun CompatibilityBadge(result: com.example.comfyui_remote.domain.WorkflowCompatibility.Result) {
-    val level = com.example.comfyui_remote.domain.WorkflowCompatibility.Level
     val (label, color) = when (result.level) {
-        level.READY -> "✓ Ready" to MaterialTheme.colorScheme.primary
-        level.WARNINGS -> "⚠ ${result.summary}" to MaterialTheme.colorScheme.tertiary
-        level.WILL_FAIL -> "✕ ${result.summary}" to MaterialTheme.colorScheme.error
+        com.example.comfyui_remote.domain.WorkflowCompatibility.Level.READY -> "✓ Ready" to MaterialTheme.colorScheme.primary
+        com.example.comfyui_remote.domain.WorkflowCompatibility.Level.WARNINGS -> "⚠ ${result.summary}" to MaterialTheme.colorScheme.tertiary
+        com.example.comfyui_remote.domain.WorkflowCompatibility.Level.WILL_FAIL -> "✕ ${result.summary}" to MaterialTheme.colorScheme.error
     }
     Text(
         text = label,
