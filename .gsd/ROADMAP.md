@@ -8,7 +8,7 @@
 
 - [x] Import and sync failures are shown to the user (Phase 97; device check pending)
 - [ ] Importing the same template or workflow twice doesn't silently create duplicates
-- [ ] Local-queue items are re-checked when they run, not only when added
+- [ ] Local-queue items can't get stuck: interrupted items recovered, failed items retryable, every failure has a reason
 - [ ] Unit tests and the debug build run automatically on every push (GitHub Actions)
 - [ ] Repo hygiene: stray build/test log files removed from version control, with a short README section on running the tests
 
@@ -27,10 +27,10 @@
 **Objective**: Make every import and sync failure visible. `importWorkflowInternal`, `importServerWorkflow` and `fetchServerWorkflows` catch exceptions and only log them, so a bad workflow or an unreachable server looks like nothing happened. Report them through the existing error UI (Workflows screen), with the failing step in the message (fetching, converting, saving). Research found the worse problem: when conversion fails or the server's node list is missing, the raw graph JSON is saved as the workflow, so it looks imported but can never run. Never store an unconverted graph workflow. Also report server workflow list and history sync failures.
 **Discovered**: Milestone 4 review (2026-10-12): 6 `WORKFLOW_ERROR` log-only catch blocks in `MainViewModel`
 
-### Phase 98: Duplicate Imports and Queue Re-check
+### Phase 98: Duplicate Imports and Queue Recovery
 
-**Status**: ⬜ Not Started
-**Objective**: (A) Importing the same template or server workflow twice should reopen or ask, not create a second copy (Phase 96 noted this). (B) `QueueViewModel.processQueueItem` should run the pre-flight check against the live server when an item runs and fail it with the reason if the server would reject it, instead of failing later.
+**Status**: 📝 Planned (`.gsd/phases/98/`)
+**Objective**: (A) Importing the same template or server workflow twice asks (Open existing / Import another copy / Replace) instead of silently duplicating; needs a `sourceKey` column and Room migration 11 → 12. (B) Changed from "re-run the pre-flight when a queue item runs": Phase 92 already stores the server's rejection reasons, so that would be redundant. Instead fix the real gaps: items stuck in EXECUTING after an app kill (and undeletable), no Retry for failed items, and a failure with no reason when no server is saved.
 **Depends on**: Phase 97
 
 ### Phase 99: CI and Repo Hygiene
