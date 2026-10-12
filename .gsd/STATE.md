@@ -3,7 +3,7 @@
 ## Current Position
 
 - **Milestone**: 5 (Stability, then remaining compatibility features): planned
-- **Phase**: 101 (Switch Dynamic Options): code done. Phases 97, 98, 100, 101 device checks pending
+- **Phase**: 102 (Custom Widget Kinds, Text Replace): planned. Phases 97, 98, 100, 101 device checks pending
 - **Status**: Milestone 5 created 2026-10-12 with Phases 97–102. Milestone 4 is archived.
 
 ## Achievements (Milestone 5)

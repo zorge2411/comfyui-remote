@@ -52,5 +52,6 @@
 
 ### Phase 102: Custom Widget Kinds and PrimitiveNode Text Replace
 
-**Status**: ⬜ Not Started
-**Objective**: Handle widget kinds with their own save rules (COLOR, BOUNDING_BOX, VIDEO_EDIT, CURVE), driven by templates that use them. Apply PrimitiveNode "Run widget replace on values" text replacement. Legacy Group Nodes only if templates in the wild need them.
+**Status**: 📝 Planned (`.gsd/phases/102/`)
+**Objective**: Narrowed by evidence from the 572 templates: the converter already passes COLOR / BOUNDING_BOX / CURVE / VIDEO_EDIT values through correctly, so the work is (A) PrimitiveNode "Run widget replace on values" in the converter (no template uses it; it serves user-made workflows), (B) a colour field and a bounding-box field in the form (8 templates use COLOR widgets, 1 uses a BOUNDING_BOX widget), (C) tests pinning the widget-kind handling. CURVE / VIDEO_EDIT editors and legacy Group Nodes are dropped: 1 / 0 / 0 templates need them.
+**Depends on**: Phase 95
