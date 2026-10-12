@@ -78,3 +78,8 @@ Implemented a persistent local queue and significant improvements to graph-to-AP
 ## 2026-10-12: Milestone 4 Device Checks Passed
 
 - The user built the app locally and confirmed the device checks for Phases 90, 91, 92, 95 and 96 on the phone. All Milestone 4 must-haves are delivered and verified, so the milestone is ready to complete.
+
+## 2026-10-12: Milestone 4 Complete
+
+- Archived Phases 89–95 and the roadmap to `.gsd/milestones/Milestone 4/`; summary in `Milestone 4-SUMMARY.md`. Phase 96 had no plan folder (built directly) and is recorded in the archived roadmap.
+- Templates converting cleanly: 123 → 565 of 572. Next: plan Milestone 5.

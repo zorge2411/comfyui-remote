@@ -2,11 +2,11 @@
 
 ## Current Position
 
-- **Milestone**: 4 (Workflow compatibility): all 5 must-haves delivered and device-checked
-- **Phase**: none in progress
-- **Status**: ✅ Device checks for Phases 90, 91, 92, 95 and 96 passed 2026-10-12 (local Android build + phone). Ready to audit and complete Milestone 4.
+- **Milestone**: none. Milestone 4 (Workflow compatibility) completed and archived 2026-10-12.
+- **Phase**: none
+- **Status**: All Phases 89–96 delivered and device-checked. Next: plan Milestone 5.
 
-## Achievements (Milestone 4)
+## Achievements (Milestone 4, completed)
 
 - [x] Implemented Phase 92 (server errors): ServerErrorReport parser; every failing node and reason shown by title with Copy; partial acceptance ("Some outputs were skipped"); runtime execution_error message; local-queue failure reasons (Room 10 → 11). See `.gsd/phases/92/92-SUMMARY.md`.
 
@@ -105,6 +105,8 @@
 
 ## Roadmap Evolution
 
+- **2026-10-12**: Milestone 4 completed and archived (`.gsd/milestones/Milestone 4/`, `Milestone 4-SUMMARY.md`).
+
 - **2026-09-25**: Phases 93–95 added from the Phase 89 corpus baseline (subgraph input mapping by name, `COMFY_DYNAMICCOMBO_V3`, V3 widget-mapping gaps); Phase 90 scope extended (PrimitiveNode, bypass fallback).
 
 - **2026-09-25**: Milestone 3 completed and archived (`.gsd/milestones/Milestone 3/`, `Milestone 3-SUMMARY.md`). Milestone 4 created: workflow compatibility, Phases 89–92.
@@ -122,12 +124,4 @@
 
 ## Next Steps
 
-1. **Complete Milestone 4** (`/audit-milestone`, `/complete-milestone`): archive Phases 89–96, write the milestone summary.
-2. **Then**: plan Milestone 5. Candidates:
-   - the compatibility badge on the workflow list (the Milestone 4 nice-to-have; can reuse `preflight`);
-   - switching dynamic-combo options in the app;
-   - PrimitiveNode text replacement;
-   - custom widget kinds (COLOR, BOUNDING_BOX, …).
-3. **Optional device checks carried over from Milestone 3**:
-   - Phase 82: confirm the positive prompt field appears first in a real workflow (unit-tested only).
-   - Phase 80: confirm themed-icon retinting under Android 13+ Material You.
+1. **Plan Milestone 5** (`/new-milestone`). Candidates are in `ROADMAP.md` (backlog) and `Milestone 4-SUMMARY.md` (Deferred).
