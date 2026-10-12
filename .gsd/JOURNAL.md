@@ -74,3 +74,7 @@ Implemented a persistent local queue and significant improvements to graph-to-AP
 
 - Server errors are shown per node, by title, everywhere: Generate, partial acceptance, runtime errors and the local queue.
 - Lesson: the database uses `fallbackToDestructiveMigration`, so every schema bump needs an explicit migration, or users lose their workflows.
+
+## 2026-10-12: Milestone 4 Device Checks Passed
+
+- The user built the app locally and confirmed the device checks for Phases 90, 91, 92, 95 and 96 on the phone. All Milestone 4 must-haves are delivered and verified, so the milestone is ready to complete.

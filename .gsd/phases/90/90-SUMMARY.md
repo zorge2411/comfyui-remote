@@ -49,3 +49,7 @@
   - a template with a PrimitiveNode, e.g. "SDXL Simple" (`sdxl_simple_example`) or any ACE-Step audio template;
   - a template with bypassed groups, e.g. `video_wan2_2_14B_s2v`, if your server has the models;
   - your MiniMax H3 workflow as a regression check.
+
+## Device Check (2026-10-12)
+
+✅ **Passed.** The user built the app locally (`testDebugUnitTest`, `assembleDebug`, `installDebug`) and ran the planned device checks on the phone; all passed.

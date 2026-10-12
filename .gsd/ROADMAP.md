@@ -1,6 +1,6 @@
 # ROADMAP.md
 
-> **Current Milestone**: Milestone 4 (all must-haves delivered in code; device checks pending)
+> **Current Milestone**: Milestone 4 (all must-haves delivered and device-checked; ready to complete)
 > **Goal**: Workflow compatibility — more real-world ComfyUI workflows run unmodified from the phone, and when one can't, the app says exactly why before or after queueing.
 > **Previous**: Milestone 3 archived in `.gsd/milestones/Milestone 3/` (summary: `Milestone 3-SUMMARY.md`)
 
@@ -9,8 +9,8 @@
 - [x] Regression corpus of representative graph workflows that the converter test suite runs on every build (Phase 89)
 - [x] Frontend-only / virtual nodes (Reroute, PrimitiveNode, SetNode/GetNode, Note) convert correctly, with type-aware passthrough (Phase 90)
 - [x] Every corpus fixture passes: `known-failures.json` is empty (Phases 90, 93–95); 565 of 572 official templates clean, the other 7 not converter bugs
-- [x] Pre-flight check against `/object_info` before queueing (missing node types, missing required inputs, invalid combo values), with no false "missing node" warnings for nodes the converter removes (Phase 91; device check pending)
-- [x] All server `node_errors` shown to the user, per node, not just the first one (Phase 92; device check pending)
+- [x] Pre-flight check against `/object_info` before queueing (missing node types, missing required inputs, invalid combo values), with no false "missing node" warnings for nodes the converter removes (Phase 91)
+- [x] All server `node_errors` shown to the user, per node, not just the first one (Phase 92)
 
 ## Nice-to-Haves
 
@@ -26,7 +26,7 @@
 
 ### Phase 90: Frontend-Only and Virtual Node Support
 
-**Status**: ✅ Done (code); device check pending (`.gsd/phases/90/90-SUMMARY.md`)
+**Status**: ✅ Done; device check passed 2026-10-12 (`.gsd/phases/90/90-SUMMARY.md`)
 **Objective**: Resolve the graph the way the ComfyUI frontend does before it builds the prompt:
 - bypass follows `_getBypassSlotIndex` exactly (target type, drop when nothing matches);
 - bypassed/muted **subgraph instances** aren't expanded (they pass through or produce nothing);
@@ -38,13 +38,13 @@
 
 ### Phase 91: Pre-flight Compatibility Check
 
-**Status**: ✅ Done (code); device check pending (`.gsd/phases/91/91-SUMMARY.md`)
+**Status**: ✅ Done; device check passed 2026-10-12 (`.gsd/phases/91/91-SUMMARY.md`)
 **Objective**: Before queueing, validate the converted prompt against the server's `/object_info`: report missing node types, missing required inputs and invalid combo values in the app. Replace the current missing-node list, which can include nodes the converter already removed (e.g. Reroute).
 **Depends on**: Phase 90
 
 ### Phase 92: Full Server Validation Error Reporting
 
-**Status**: ✅ Done (code); device check pending (`.gsd/phases/92/92-SUMMARY.md`)
+**Status**: ✅ Done; device check passed 2026-10-12 (`.gsd/phases/92/92-SUMMARY.md`)
 **Objective**: When `/prompt` returns `node_errors`, show every failing node with its title and type, and all of its errors, instead of only the first error of the first node. Research widened the scope:
 - partial acceptance (HTTP 200 with `node_errors`) is silently ignored today;
 - runtime `execution_error` shows no message;
@@ -67,7 +67,7 @@
 
 ### Phase 95: Widget Mapping Gaps for V3 Nodes
 
-**Status**: ✅ Done (code) (`.gsd/phases/95/95-SUMMARY.md`)
+**Status**: ✅ Done; device check passed 2026-10-12 (`.gsd/phases/95/95-SUMMARY.md`)
 **Objective**: Read `widgets_values` the way the frontend writes them:
 - skip control widgets (`control_after_generate`: 1 slot for INT/FLOAT, 2 for COMBO including the filter list);
 - don't let unlinked socket inputs consume widget values;
@@ -79,7 +79,7 @@
 
 ### Phase 96: In-App Template Browser
 
-**Status**: ✅ Done (code); device check pending
+**Status**: ✅ Done; device check passed 2026-10-12
 **Objective**: Show the connected server's workflow templates in the app without downloading files by hand. ComfyUI serves the `comfyui-workflow-templates` library at `/templates/` (`index.json` = 11 categories / 572 templates; thumbnails `/templates/<name>-1.<mediaSubtype>`; workflows `/templates/<name>.json`; checked in ComfyUI v0.37.2 `server.py` and frontend `useTemplateWorkflows.ts`).
 **Delivered**:
 - `WorkflowTemplateIndex` parser (4 tests; parses the real 572-template index);

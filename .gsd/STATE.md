@@ -2,9 +2,9 @@
 
 ## Current Position
 
-- **Milestone**: 4 (Workflow compatibility): all 5 must-haves delivered in code
-- **Phase**: 92 (Full Server Validation Error Reporting)
-- **Status**: ✅ Code done. Device checks pending for Phases 90, 91, 92, 95 and 96; Room DB now at version 11.
+- **Milestone**: 4 (Workflow compatibility): all 5 must-haves delivered and device-checked
+- **Phase**: none in progress
+- **Status**: ✅ Device checks for Phases 90, 91, 92, 95 and 96 passed 2026-10-12 (local Android build + phone). Ready to audit and complete Milestone 4.
 
 ## Achievements (Milestone 4)
 
@@ -122,11 +122,12 @@
 
 ## Next Steps
 
-1. **Build and device checks**: `gradlew.bat testDebugUnitTest`, `assembleDebug`, `installDebug`, then:
-   - Phase 92: two broken nodes (Queue anyway) → full per-node card and Copy; a runtime failure → node and exception; a failed queue item → reason shown; DB upgrade 10 → 11 keeps data.
-   - Phase 91: missing model → pre-flight warning; normal workflow → no dialog; stale banner gone.
-   - Phase 90: a PrimitiveNode template. Phase 95: Gemini/Grok/SaveVideo values. Phase 96: template browser.
-2. **Then**: `/audit-milestone` and `/complete-milestone` for Milestone 4 once the device checks pass.
+1. **Complete Milestone 4** (`/audit-milestone`, `/complete-milestone`): archive Phases 89–96, write the milestone summary.
+2. **Then**: plan Milestone 5. Candidates:
+   - the compatibility badge on the workflow list (the Milestone 4 nice-to-have; can reuse `preflight`);
+   - switching dynamic-combo options in the app;
+   - PrimitiveNode text replacement;
+   - custom widget kinds (COLOR, BOUNDING_BOX, …).
 3. **Optional device checks carried over from Milestone 3**:
    - Phase 82: confirm the positive prompt field appears first in a real workflow (unit-tested only).
    - Phase 80: confirm themed-icon retinting under Android 13+ Material You.

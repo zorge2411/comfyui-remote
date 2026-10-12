@@ -37,3 +37,7 @@
 ## Milestone 4
 
 All five must-haves are now delivered in code. Phases 90, 91, 92, 95 and 96 still await device checks.
+
+## Device Check (2026-10-12)
+
+✅ **Passed.** The user built the app locally (`testDebugUnitTest`, `assembleDebug`, `installDebug`) and ran the planned device checks on the phone; all passed.

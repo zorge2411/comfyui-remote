@@ -50,3 +50,7 @@
 
 - Local-queue items are checked when added, not again when they execute.
 - The workflow-list compatibility badge (nice-to-have) can reuse `preflight`.
+
+## Device Check (2026-10-12)
+
+✅ **Passed.** The user built the app locally (`testDebugUnitTest`, `assembleDebug`, `installDebug`) and ran the planned device checks on the phone; all passed.

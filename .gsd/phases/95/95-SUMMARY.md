@@ -60,3 +60,7 @@ The remaining 37 C4 are in 9 templates:
 
 - Plain-JVM suite: 89/89 pass.
 - Pending (user): `gradlew.bat testDebugUnitTest`, `assembleDebug`, `installDebug`. On the phone, a Gemini, Grok or SaveVideo workflow should run with the values shown in ComfyUI.
+
+## Device Check (2026-10-12)
+
+✅ **Passed.** The user built the app locally (`testDebugUnitTest`, `assembleDebug`, `installDebug`) and ran the planned device checks on the phone; all passed.
