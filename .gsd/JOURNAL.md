@@ -109,3 +109,7 @@ Implemented a persistent local queue and significant improvements to graph-to-AP
 ## 2026-10-12: Phase 101 Complete (code)
 
 - Dynamic combos (SaveVideo format etc.) are switchable in the form; the prompt is rebuilt for the new option with shared values kept. Also fixed a free-text field that appeared for dynamic combos when no node list was loaded.
+
+## 2026-10-12: Phase 102 Complete (code)
+
+- Research narrowed the phase: the converter already handled the custom widget kinds, so the work was form fields for colour and bounding box, PrimitiveNode text replace, and tests. Group nodes and CURVE/VIDEO_EDIT editors dropped for lack of any template using them. Milestone 5 phases are all implemented; device checks remain.

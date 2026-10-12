@@ -16,8 +16,8 @@
 
 - [x] Compatibility badge on the workflow list (Phase 100; device check pending) (runs / warnings / will fail), reusing the pre-flight check
 - [x] Switch dynamic-combo options (e.g. video format) in the form (Phase 101; device check pending)
-- [ ] Custom widget kinds: COLOR, BOUNDING_BOX, VIDEO_EDIT, CURVE
-- [ ] PrimitiveNode text replacement (`%date%`-style); legacy Group Nodes
+- [x] Custom widget kinds: COLOR and BOUNDING_BOX fields; CURVE / VIDEO_EDIT pass through (Phase 102; device check pending)
+- [x] PrimitiveNode text replacement (legacy Group Nodes dropped: no template uses them)
 
 ## Phases
 
@@ -52,6 +52,6 @@
 
 ### Phase 102: Custom Widget Kinds and PrimitiveNode Text Replace
 
-**Status**: 📝 Planned (`.gsd/phases/102/`)
+**Status**: ✅ Done (code); device check pending (`.gsd/phases/102/102-SUMMARY.md`)
 **Objective**: Narrowed by evidence from the 572 templates: the converter already passes COLOR / BOUNDING_BOX / CURVE / VIDEO_EDIT values through correctly, so the work is (A) PrimitiveNode "Run widget replace on values" in the converter (no template uses it; it serves user-made workflows), (B) a colour field and a bounding-box field in the form (8 templates use COLOR widgets, 1 uses a BOUNDING_BOX widget), (C) tests pinning the widget-kind handling. CURVE / VIDEO_EDIT editors and legacy Group Nodes are dropped: 1 / 0 / 0 templates need them.
 **Depends on**: Phase 95

@@ -1,5 +1,6 @@
 package com.example.comfyui_remote.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Spacer
@@ -98,6 +99,7 @@ fun DynamicFormScreen(
     var workingJson by remember(workflow) { mutableStateOf(workflow.jsonContent) }
     val active = remember(workflow, workingJson) { workflow.copy(jsonContent = workingJson) }
     var switchNote by remember(workflow) { mutableStateOf<String?>(null) }
+    val hasInvalidColor = inputs.any { it is InputField.ColorInput && !com.example.comfyui_remote.domain.ColorHex.isValid(it.value) }
 
     var showNodeSheet by remember { mutableStateOf(false) }
 
@@ -411,6 +413,71 @@ fun DynamicFormScreen(
                             }
                         }
                     }
+                    is InputField.ColorInput -> {
+                        val rgb = com.example.comfyui_remote.domain.ColorHex.toRgb(inputField.value)
+                        OutlinedTextField(
+                            value = inputField.value,
+                            onValueChange = { newValue ->
+                                inputs = inputs.toMutableList().also {
+                                    it[index] = inputField.copy(value = newValue)
+                                }
+                            },
+                            label = { Text("${inputField.nodeTitle} (${inputField.displayName})") },
+                            singleLine = true,
+                            isError = rgb == null,
+                            supportingText = if (rgb == null) ({ Text("Use a hex colour like #336699") }) else null,
+                            leadingIcon = {
+                                androidx.compose.foundation.layout.Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .background(
+                                            if (rgb != null) androidx.compose.ui.graphics.Color(rgb or 0xFF000000.toInt())
+                                            else MaterialTheme.colorScheme.surfaceVariant,
+                                            androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+                                        )
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    is InputField.BoundingBoxInput -> {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                "${inputField.nodeTitle} (${inputField.displayName})",
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                listOf("x", "y", "width", "height").forEach { part ->
+                                    val current = when (part) {
+                                        "x" -> inputField.x
+                                        "y" -> inputField.y
+                                        "width" -> inputField.width
+                                        else -> inputField.height
+                                    }
+                                    OutlinedTextField(
+                                        value = current.toString(),
+                                        onValueChange = { text ->
+                                            val n = text.toIntOrNull() ?: return@OutlinedTextField
+                                            inputs = inputs.toMutableList().also {
+                                                it[index] = when (part) {
+                                                    "x" -> inputField.copy(x = n)
+                                                    "y" -> inputField.copy(y = n)
+                                                    "width" -> inputField.copy(width = n)
+                                                    else -> inputField.copy(height = n)
+                                                }
+                                            }
+                                        },
+                                        label = { Text(part) },
+                                        singleLine = true,
+                                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                                        ),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                        }
+                    }
                     is InputField.ImageInput -> {
                         val context = LocalContext.current
                         val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -583,7 +650,7 @@ fun DynamicFormScreen(
                             withPreflight { viewModel.addToQueue(active, inputs, batchCount) }
                         },
                         modifier = Modifier.weight(1f),
-                        enabled = (executionStatus == ExecutionStatus.IDLE || executionStatus == ExecutionStatus.FINISHED) && pendingImageUploads.isEmpty() && !checking
+                        enabled = (executionStatus == ExecutionStatus.IDLE || executionStatus == ExecutionStatus.FINISHED) && pendingImageUploads.isEmpty() && !hasInvalidColor && !checking
                     ) {
                          Icon(Icons.Default.Add, contentDescription = null)
                          Spacer(Modifier.width(8.dp))
@@ -596,7 +663,7 @@ fun DynamicFormScreen(
                             withPreflight { viewModel.executeWorkflow(active, inputs, batchCount) }
                         },
                         modifier = Modifier.weight(1f),
-                        enabled = (executionStatus == ExecutionStatus.IDLE || executionStatus == ExecutionStatus.FINISHED) && pendingImageUploads.isEmpty() && !checking
+                        enabled = (executionStatus == ExecutionStatus.IDLE || executionStatus == ExecutionStatus.FINISHED) && pendingImageUploads.isEmpty() && !hasInvalidColor && !checking
                     ) {
                         if (executionStatus == ExecutionStatus.EXECUTING || executionStatus == ExecutionStatus.QUEUED) {
                             CircularProgressIndicator(

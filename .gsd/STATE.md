@@ -3,10 +3,12 @@
 ## Current Position
 
 - **Milestone**: 5 (Stability, then remaining compatibility features): planned
-- **Phase**: 102 (Custom Widget Kinds, Text Replace): planned. Phases 97, 98, 100, 101 device checks pending
+- **Phase**: 102 (Custom Widget Kinds, Text Replace): code done. All Milestone 5 phases implemented; device checks pending for 97, 98, 100, 101, 102
 - **Status**: Milestone 5 created 2026-10-12 with Phases 97–102. Milestone 4 is archived.
 
 ## Achievements (Milestone 5)
+
+- [x] Implemented Phase 102 (custom widget kinds, text replace): PrimitiveNode replace in the converter; colour and bounding-box form fields; widget-kind pinning tests. See `.gsd/phases/102/102-SUMMARY.md`.
 
 - [x] Implemented Phase 101 (switch dynamic options): DynamicOptionSwitch rewrites the per-run prompt; SaveVideo format/codec/encoding switchable in the form; snapshot-wide validity test. See `.gsd/phases/101/101-SUMMARY.md`.
 

@@ -27,6 +27,12 @@ class WorkflowParser {
                     if (classType != null && inputsObj != null) {
                         // Iterate through all keys in inputsObj
                         inputsObj.entrySet().forEach { (fieldName, fieldValue) ->
+                            // A BOUNDING_BOX widget is saved as an object (Phase 102)
+                            if (fieldValue.isJsonObject) {
+                                boundingBoxField(nodeId, fieldName, fieldValue.asJsonObject, title,
+                                    specFor(metadata, classType, fieldName, inputsObj))?.let { inputs.add(it) }
+                                return@forEach
+                            }
                             // Skip if it's a connection (JsonArray like ["4", 0])
                             if (!fieldValue.isJsonPrimitive) return@forEach
                             
@@ -72,6 +78,14 @@ class WorkflowParser {
                                         fieldName = fieldName,
                                         value = primitive.asString, // Likely the default filename
                                         localUri = null,
+                                        nodeTitle = title
+                                    )
+                                }
+                                spec?.let { specKind(it) } == "COLOR" && primitive.isString && ColorHex.isValid(primitive.asString) -> {
+                                    InputField.ColorInput(
+                                        nodeId = nodeId,
+                                        fieldName = fieldName,
+                                        value = ColorHex.normalize(primitive.asString)!!,
                                         nodeTitle = title
                                     )
                                 }
@@ -218,6 +232,15 @@ class WorkflowParser {
             e.printStackTrace()
             null
         }
+    }
+
+    private fun boundingBoxField(nodeId: String, fieldName: String, value: JsonObject, title: String, spec: JsonArray?): InputField? {
+        if (spec == null || specKind(spec) != "BOUNDING_BOX") return null
+        fun int(key: String): Int? = value.get(key)?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isNumber }?.asDouble?.toInt()
+        return InputField.BoundingBoxInput(
+            nodeId, fieldName, int("x") ?: return null, int("y") ?: return null,
+            int("width") ?: return null, int("height") ?: return null, title
+        )
     }
 
     private fun specKind(spec: JsonArray): String? {

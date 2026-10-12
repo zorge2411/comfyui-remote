@@ -14,7 +14,55 @@ object GraphToApiConverter {
 
     data class ConversionResult(val json: String, val missingNodes: List<String>)
 
-    fun convert(graphJson: String, objectInfo: ComfyObjectInfo): ConversionResult {
+    fun convert(
+        graphJson: String,
+        objectInfo: ComfyObjectInfo,
+        now: java.time.LocalDateTime = java.time.LocalDateTime.now()
+    ): ConversionResult {
+        val first = convertInternal(graphJson, objectInfo, null, now)
+        val refs = replacementNodes(graphJson, first.json) ?: return first
+        return convertInternal(graphJson, objectInfo, refs, now)
+    }
+
+    /**
+     * Nodes a PrimitiveNode's %pattern% can name, with their widget values as converted (Phase 102), or null
+     * when no PrimitiveNode has the replace property on and a value with a % in it. Only top-level graph
+     * nodes are listed; widget values come from a first conversion, which is why this takes two passes.
+     */
+    private fun replacementNodes(graphJson: String, firstPassJson: String): List<TextReplacement.NodeRef>? {
+        val graph = try { JsonParser.parseString(graphJson).asJsonObject } catch (e: Exception) { return null }
+        val nodes = graph.getAsJsonArray("nodes")?.mapNotNull { it.takeIf { n -> n.isJsonObject }?.asJsonObject } ?: return null
+        if (nodes.none { it.isReplacingPrimitive() }) return null
+        val api = JsonParser.parseString(firstPassJson).asJsonObject
+        return nodes.map { node ->
+            val id = node.get("id")?.asString
+            val inputs = api.get(id)?.takeIf { it.isJsonObject }?.asJsonObject?.getAsJsonObject("inputs")
+            val widgets = inputs?.entrySet()?.filter { it.value.isJsonPrimitive }?.associate { (k, v) ->
+                val p = v.asJsonPrimitive
+                k to if (p.isNumber && p.asDouble % 1.0 == 0.0 && Math.abs(p.asDouble) < 1e15) p.asLong.toString() else p.asString
+            }.orEmpty()
+            TextReplacement.NodeRef(
+                snrName = node.getAsJsonObject("properties")?.get("Node name for S&R")?.takeIf { it.isJsonPrimitive }?.asString,
+                title = (node.get("title")?.takeIf { it.isJsonPrimitive }?.asString) ?: node.get("type")?.asString,
+                widgets = widgets
+            )
+        }
+    }
+
+    private fun JsonObject.isReplacingPrimitive(): Boolean {
+        if (get("type")?.asString != "PrimitiveNode") return false
+        val replace = getAsJsonObject("properties")?.get("Run widget replace on values")
+        val on = replace != null && replace.isJsonPrimitive && replace.asJsonPrimitive.isBoolean && replace.asBoolean
+        val text = getAsJsonArray("widgets_values")?.takeIf { it.size() > 0 }?.get(0)
+        return on && text != null && text.isJsonPrimitive && text.asJsonPrimitive.isString && text.asString.contains('%')
+    }
+
+    private fun convertInternal(
+        graphJson: String,
+        objectInfo: ComfyObjectInfo,
+        refs: List<TextReplacement.NodeRef>?,
+        now: java.time.LocalDateTime
+    ): ConversionResult {
         var graph = JsonParser.parseString(graphJson).asJsonObject
         
         // 0. Parse Definitions and Expand Subgraphs
@@ -196,9 +244,8 @@ object GraphToApiConverter {
                     // PrimitiveNode.applyToGraph copies its first widget value into every target widget
                     "PrimitiveNode" -> {
                         val value = widgets?.takeIf { it.size() > 0 }?.get(0)?.takeIf { !it.isJsonNull } ?: return null
-                        val replace = virtual.getAsJsonObject("properties")?.get("Run widget replace on values")
-                        if (replace != null && replace.isJsonPrimitive && replace.asJsonPrimitive.isBoolean && replace.asBoolean) {
-                            println("CONVERT_DEBUG: PrimitiveNode $sourceId: text replacement is not applied")
+                        if (refs != null && virtual.isReplacingPrimitive()) {
+                            return Source.Literal(JsonPrimitive(TextReplacement.apply(value.asString, refs, now)))
                         }
                         return Source.Literal(value)
                     }

@@ -235,6 +235,8 @@ class InputFieldDeserializer : JsonDeserializer<InputField> {
             "Model" -> context.deserialize(jsonObject, InputField.ModelInput::class.java)
             "Selection" -> context.deserialize(jsonObject, InputField.SelectionInput::class.java)
             "Image" -> context.deserialize(jsonObject, InputField.ImageInput::class.java)
+            "Color" -> context.deserialize(jsonObject, InputField.ColorInput::class.java)
+            "Bounding Box" -> context.deserialize(jsonObject, InputField.BoundingBoxInput::class.java)
             else -> throw JsonParseException("Unknown InputField label: $label")
         }
     }

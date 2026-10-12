@@ -47,6 +47,21 @@ class WorkflowExecutor {
                                     inputsObj.addProperty(input.fieldName, input.value)
                                 }
                             }
+                            is InputField.ColorInput -> {
+                                val hex = ColorHex.normalize(input.value)
+                                if (inputsObj.has(input.fieldName) && hex != null) {
+                                    inputsObj.addProperty(input.fieldName, hex)
+                                }
+                            }
+                            is InputField.BoundingBoxInput -> {
+                                val box = inputsObj.get(input.fieldName)?.takeIf { it.isJsonObject }?.asJsonObject
+                                if (box != null) {
+                                    box.addProperty("x", input.x)
+                                    box.addProperty("y", input.y)
+                                    box.addProperty("width", input.width)
+                                    box.addProperty("height", input.height)
+                                }
+                            }
                             is InputField.ImageInput -> {
                                 if (inputsObj.has(input.fieldName) && input.value != null) {
                                     inputsObj.addProperty(input.fieldName, input.value)
