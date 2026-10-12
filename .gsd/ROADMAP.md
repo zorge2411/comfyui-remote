@@ -6,7 +6,7 @@
 
 ## Must-Haves
 
-- [ ] Import and sync failures are shown to the user (today they are only logged: `importWorkflowInternal`, `importServerWorkflow`, `fetchServerWorkflows`)
+- [x] Import and sync failures are shown to the user (Phase 97; device check pending)
 - [ ] Importing the same template or workflow twice doesn't silently create duplicates
 - [ ] Local-queue items are re-checked when they run, not only when added
 - [ ] Unit tests and the debug build run automatically on every push (GitHub Actions)
@@ -23,7 +23,7 @@
 
 ### Phase 97: Visible Import and Sync Failures
 
-**Status**: 📝 Planned (`.gsd/phases/97/`: 97-CONTEXT, 97-01-PLAN, 97-02-PLAN)
+**Status**: ✅ Done (code); device check pending (`.gsd/phases/97/97-SUMMARY.md`)
 **Objective**: Make every import and sync failure visible. `importWorkflowInternal`, `importServerWorkflow` and `fetchServerWorkflows` catch exceptions and only log them, so a bad workflow or an unreachable server looks like nothing happened. Report them through the existing error UI (Workflows screen), with the failing step in the message (fetching, converting, saving). Research found the worse problem: when conversion fails or the server's node list is missing, the raw graph JSON is saved as the workflow, so it looks imported but can never run. Never store an unconverted graph workflow. Also report server workflow list and history sync failures.
 **Discovered**: Milestone 4 review (2026-10-12): 6 `WORKFLOW_ERROR` log-only catch blocks in `MainViewModel`
 

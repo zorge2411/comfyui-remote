@@ -88,3 +88,8 @@ Implemented a persistent local queue and significant improvements to graph-to-AP
 
 - Stability focus, chosen by the user. Must-haves: visible import failures, no silent duplicate imports, queue re-check, CI, repo hygiene. The four Milestone 4 backlog features follow as lower-priority phases.
 - Findings behind it: six log-only error handlers in `MainViewModel`, nine tracked log files in the repo root, and no `.github/` workflows.
+
+## 2026-10-12: Phase 97 Complete (code)
+
+- Import and sync failures are shown to the user. The important fix was behavioural: a workflow in editor format that could not be converted used to be saved as raw JSON and could never run; it is now refused with an explanation.
+- Found along the way: `ErrorCard`'s Retry had never been clickable.

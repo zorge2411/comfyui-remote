@@ -3,8 +3,12 @@
 ## Current Position
 
 - **Milestone**: 5 (Stability, then remaining compatibility features): planned
-- **Phase**: 97 (Visible Import and Sync Failures): planning complete, 2 plans in 2 waves
+- **Phase**: 97 (Visible Import and Sync Failures): code done, device check pending
 - **Status**: Milestone 5 created 2026-10-12 with Phases 97–102. Milestone 4 is archived.
+
+## Achievements (Milestone 5)
+
+- [x] Implemented Phase 97 (visible import and sync failures): WorkflowImportPrep never stores an unconverted graph workflow; import failure dialog, server-list error card with Retry, sync snackbars; ErrorCard Retry now works. See `.gsd/phases/97/97-SUMMARY.md`.
 
 ## Achievements (Milestone 4, completed)
 
@@ -126,4 +130,5 @@
 
 ## Next Steps
 
-1. **Execute Phase 97** (`/execute 97`): Plan 97.1 (WorkflowImportPrep + failure messages, pure Kotlin), then Plan 97.2 (ViewModel + UI; ends with a device check).
+1. **Build and device check Phase 97**: `gradlew.bat testDebugUnitTest`, `assembleDebug`, `installDebug`; then the checks in `.gsd/phases/97/97-SUMMARY.md`.
+2. **Plan Phase 98** (`/plan 98`): duplicate imports and queue re-check.
