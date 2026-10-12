@@ -3,10 +3,12 @@
 ## Current Position
 
 - **Milestone**: 5 (Stability, then remaining compatibility features): planned
-- **Phase**: 101 (Switch Dynamic Options): planned. Phases 97, 98, 100 device checks pending
+- **Phase**: 101 (Switch Dynamic Options): code done. Phases 97, 98, 100, 101 device checks pending
 - **Status**: Milestone 5 created 2026-10-12 with Phases 97–102. Milestone 4 is archived.
 
 ## Achievements (Milestone 5)
+
+- [x] Implemented Phase 101 (switch dynamic options): DynamicOptionSwitch rewrites the per-run prompt; SaveVideo format/codec/encoding switchable in the form; snapshot-wide validity test. See `.gsd/phases/101/101-SUMMARY.md`.
 
 - [x] Implemented Phase 100 (compatibility badge): WorkflowCompatibility over PromptValidator; cached per workflow, refreshed on reconnect; badge on each workflow card; corpus guard. See `.gsd/phases/100/100-SUMMARY.md`.
 

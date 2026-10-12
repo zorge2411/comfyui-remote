@@ -287,13 +287,25 @@ class WorkflowParserTest {
     }
 
     @Test
-    fun `dynamic combo keys are not editable but stay in the prompt`() {
+    fun `dynamic combo with several options is an option switch and stays in the prompt`() {
         val fields = parser.parse(v3Prompt, v3Metadata)
-        assertNull(field(fields, "2", "format"))
-        assertNull(field(fields, "1", "resize_type"))
+        val format = field(fields, "2", "format") as InputField.SelectionInput
+        assertTrue(format.switchesOptions)
+        assertEquals(listOf("auto", "mp4"), format.options)
+        assertEquals("mp4", format.value)
+        // The switch comes before its sub-fields
+        assertTrue(fields.indexOfFirst { it.fieldName == "format" } < fields.indexOfFirst { it.fieldName == "format.codec" })
+        // Ordinary selections are not switches
+        assertFalse((field(fields, "1", "scale_method") as InputField.SelectionInput).switchesOptions)
 
         val patched = com.google.gson.JsonParser.parseString(WorkflowExecutor().injectValues(v3Prompt, fields)).asJsonObject
         assertEquals("mp4", patched.getAsJsonObject("2").getAsJsonObject("inputs").get("format").asString)
+    }
+
+    @Test
+    fun `dynamic combo with one option, or without the node list, is not editable`() {
+        assertNull(field(parser.parse(v3Prompt, v3Metadata), "1", "resize_type"))
+        assertNull(field(parser.parse(v3Prompt, null), "2", "format"))
     }
 
     @Test

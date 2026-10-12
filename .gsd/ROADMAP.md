@@ -15,7 +15,7 @@
 ## Nice-to-Haves (lower priority, by value)
 
 - [x] Compatibility badge on the workflow list (Phase 100; device check pending) (runs / warnings / will fail), reusing the pre-flight check
-- [ ] Switch dynamic-combo options (e.g. video format) in the form
+- [x] Switch dynamic-combo options (e.g. video format) in the form (Phase 101; device check pending)
 - [ ] Custom widget kinds: COLOR, BOUNDING_BOX, VIDEO_EDIT, CURVE
 - [ ] PrimitiveNode text replacement (`%date%`-style); legacy Group Nodes
 
@@ -46,7 +46,7 @@
 
 ### Phase 101: Switch Dynamic Options in the Form
 
-**Status**: 📝 Planned (`.gsd/phases/101/`)
+**Status**: ✅ Done (code); device check pending (`.gsd/phases/101/101-SUMMARY.md`)
 **Objective**: Let the user pick another option of a dynamic combo (e.g. `SaveVideo.format`). Switching rewrites the per-run prompt: delete the old option's `key.*` inputs, add the new option's sub-inputs recursively with carried-over values where the old and new option share a sub-input and spec defaults otherwise; options that need a required socket aren't offered. The form keeps a working copy of the JSON (the stored workflow is unchanged). Needs the node list, otherwise the combo stays hidden as in Phase 94.
 **Depends on**: Phase 94
 

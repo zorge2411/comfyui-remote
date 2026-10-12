@@ -48,7 +48,9 @@ sealed class InputField(
         override val fieldName: String,
         val value: String,
         val options: List<String>,
-        override val nodeTitle: String
+        override val nodeTitle: String,
+        /** True for a dynamic combo: picking another option rebuilds the node's sub-fields (Phase 101). */
+        val switchesOptions: Boolean = false
     ) : InputField("Selection")
 
     data class ImageInput(

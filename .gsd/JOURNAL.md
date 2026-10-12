@@ -105,3 +105,7 @@ Implemented a persistent local queue and significant improvements to graph-to-AP
 ## 2026-10-12: Phase 100 Complete (code)
 
 - Workflow cards show Ready / warnings / will fail with the first reason, from the existing pre-flight validator against the connected server; image/video/audio inputs are not flagged because the form replaces them.
+
+## 2026-10-12: Phase 101 Complete (code)
+
+- Dynamic combos (SaveVideo format etc.) are switchable in the form; the prompt is rebuilt for the new option with shared values kept. Also fixed a free-text field that appeared for dynamic combos when no node list was loaded.

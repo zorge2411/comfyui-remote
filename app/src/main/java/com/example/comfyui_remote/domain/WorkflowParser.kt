@@ -34,9 +34,30 @@ class WorkflowParser {
                             
                             // Guess or determine Type
                             val spec = specFor(metadata, classType, fieldName, inputsObj)
-                            // A dynamic combo's value decides which "key.sub" inputs exist; changing it here
-                            // would send the old option's inputs, so it is not offered for editing.
-                            if (spec?.let { specKind(it) } == DYNAMIC_COMBO) return@forEach
+                            // A dynamic combo's value decides which "key.sub" inputs exist, so it can't be a plain
+                            // field. With the node list it is offered as an option switch (Phase 101): the form
+                            // rewrites the prompt through DynamicOptionSwitch. Otherwise it is not editable.
+                            if (spec?.let { specKind(it) } == DYNAMIC_COMBO) {
+                                val keys = metadata?.let {
+                                    DynamicOptionSwitch.switchableKeys(it, classType, fieldName, inputsObj)
+                                }
+                                if (keys != null && keys.size >= 2 && primitive.isString) {
+                                    inputs.add(
+                                        InputField.SelectionInput(
+                                            nodeId = nodeId,
+                                            fieldName = fieldName,
+                                            value = primitive.asString,
+                                            options = keys,
+                                            nodeTitle = title,
+                                            switchesOptions = true
+                                        )
+                                    )
+                                }
+                                return@forEach
+                            }
+                            // Without the node list a field that has dotted sub-inputs next to it is a dynamic
+                            // combo; as a free-text field it would send the old option's inputs under a new key.
+                            if (spec == null && inputsObj.keySet().any { it.startsWith("$fieldName.") }) return@forEach
                             val options = spec?.let { comboOptions(it) }
                             
                             val inputField = when {

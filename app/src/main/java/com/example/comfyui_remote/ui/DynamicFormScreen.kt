@@ -93,10 +93,30 @@ fun DynamicFormScreen(
     // whatever image the node already had (default/placeholder), with no error.
     var pendingImageUploads by remember { mutableStateOf(setOf<Int>()) }
 
+    // Phase 101: switching a dynamic combo's option rewrites the prompt for this run only. Everything that
+    // runs, queues, checks or saves the workflow uses [active]; the stored workflow is not modified.
+    var workingJson by remember(workflow) { mutableStateOf(workflow.jsonContent) }
+    val active = remember(workflow, workingJson) { workflow.copy(jsonContent = workingJson) }
+    var switchNote by remember(workflow) { mutableStateOf<String?>(null) }
+
     var showNodeSheet by remember { mutableStateOf(false) }
 
     val executionStatus by viewModel.executionStatus.collectAsState()
     val nodeMetadata by viewModel.nodeMetadata.collectAsState()
+    fun switchOption(field: InputField.SelectionInput, option: String) {
+        val metadata = nodeMetadata ?: return
+        // Form edits go into the prompt first so shared values carry over
+        val current = com.example.comfyui_remote.domain.WorkflowExecutor().injectValues(workingJson, inputs)
+        val result = com.example.comfyui_remote.domain.DynamicOptionSwitch.switch(current, field.nodeId, field.fieldName, option, metadata)
+        if (result == null) {
+            switchNote = "Can't switch ${field.displayName} to \"$option\"."
+            return
+        }
+        workingJson = result.json
+        inputs = com.example.comfyui_remote.domain.DynamicOptionSwitch.keepImages(inputs, viewModel.parseWorkflowInputs(result.json))
+        switchNote = if (result.droppedLinks.isEmpty()) null
+        else "Connections to ${result.droppedLinks.joinToString(", ")} were removed because they belong to the previous option."
+    }
     // Phase 91: pre-flight check before Generate / Queue
     val preflightScope = androidx.compose.runtime.rememberCoroutineScope()
     var preflightIssues by remember { mutableStateOf<List<PromptValidator.Issue>?>(null) }
@@ -106,7 +126,7 @@ fun DynamicFormScreen(
         if (checking) return
         checking = true
         preflightScope.launch {
-            val issues = viewModel.preflight(workflow, inputs)
+            val issues = viewModel.preflight(active, inputs)
             checking = false
             if (issues.isNullOrEmpty()) {
                 action()
@@ -117,8 +137,8 @@ fun DynamicFormScreen(
         }
     }
     // Missing nodes against the connected server; the list stored at import may be stale
-    val liveMissingNodes by androidx.compose.runtime.produceState<List<String>?>(null, workflow, nodeMetadata) {
-        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { viewModel.missingNodeTypes(workflow) }
+    val liveMissingNodes by androidx.compose.runtime.produceState<List<String>?>(null, active, nodeMetadata) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { viewModel.missingNodeTypes(active) }
     }
     val missingNodesText = liveMissingNodes?.joinToString(", ") ?: workflow.missingNodes
     val errorMessage by viewModel.errorMessage.collectAsState()
@@ -218,6 +238,14 @@ fun DynamicFormScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            switchNote?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
             inputs.forEachIndexed { index, inputField ->
                 when (inputField) {
                     is InputField.StringInput -> {
@@ -330,9 +358,15 @@ fun DynamicFormScreen(
                                 inputField.options.forEach { option ->
                                     DropdownMenuItem(
                                         text = { Text(text = option) },
+                                        // An option switch changes which fields exist; not while an upload is in flight
+                                        enabled = !inputField.switchesOptions || pendingImageUploads.isEmpty(),
                                         onClick = {
-                                            inputs = inputs.toMutableList().also {
-                                                it[index] = inputField.copy(value = option)
+                                            if (inputField.switchesOptions) {
+                                                if (option != inputField.value) switchOption(inputField, option)
+                                            } else {
+                                                inputs = inputs.toMutableList().also {
+                                                    it[index] = inputField.copy(value = option)
+                                                }
                                             }
                                             expanded = false
                                         }
@@ -546,7 +580,7 @@ fun DynamicFormScreen(
                     // Add to Queue (Secondary)
                     androidx.compose.material3.OutlinedButton(
                         onClick = {
-                            withPreflight { viewModel.addToQueue(workflow, inputs, batchCount) }
+                            withPreflight { viewModel.addToQueue(active, inputs, batchCount) }
                         },
                         modifier = Modifier.weight(1f),
                         enabled = (executionStatus == ExecutionStatus.IDLE || executionStatus == ExecutionStatus.FINISHED) && pendingImageUploads.isEmpty() && !checking
@@ -559,7 +593,7 @@ fun DynamicFormScreen(
                     // Generate (Primary)
                     Button(
                         onClick = {
-                            withPreflight { viewModel.executeWorkflow(workflow, inputs, batchCount) }
+                            withPreflight { viewModel.executeWorkflow(active, inputs, batchCount) }
                         },
                         modifier = Modifier.weight(1f),
                         enabled = (executionStatus == ExecutionStatus.IDLE || executionStatus == ExecutionStatus.FINISHED) && pendingImageUploads.isEmpty() && !checking
@@ -599,7 +633,7 @@ fun DynamicFormScreen(
                         // Actually, saving the template means saving the jsonContent.
                         // But maybe we want to save with the current values?
                         // For now, save the base jsonContent. 
-                        viewModel.importWorkflow(workflow.name, workflow.jsonContent, com.example.comfyui_remote.domain.WorkflowSource.LOCAL_IMPORT, asNewCopy = true) {
+                        viewModel.importWorkflow(active.name, active.jsonContent, com.example.comfyui_remote.domain.WorkflowSource.LOCAL_IMPORT, asNewCopy = true) {
                             // No navigation needed when saving as template from here
                         }
                     },
@@ -672,7 +706,7 @@ fun DynamicFormScreen(
                 Text("Workflow Architecture", style = MaterialTheme.typography.headlineSmall)
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                val allNodes = viewModel.parseAllNodes(workflow.jsonContent)
+                val allNodes = viewModel.parseAllNodes(active.jsonContent)
                 LazyColumn {
                     items(allNodes) { node ->
                         Column(modifier = Modifier.padding(vertical = 4.dp)) {
