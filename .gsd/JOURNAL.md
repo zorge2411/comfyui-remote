@@ -113,3 +113,7 @@ Implemented a persistent local queue and significant improvements to graph-to-AP
 ## 2026-10-12: Phase 102 Complete (code)
 
 - Research narrowed the phase: the converter already handled the custom widget kinds, so the work was form fields for colour and bounding box, PrimitiveNode text replace, and tests. Group nodes and CURVE/VIDEO_EDIT editors dropped for lack of any template using them. Milestone 5 phases are all implemented; device checks remain.
+
+## 2026-10-12: Milestone 5 Complete
+
+- Stability first (visible failures, duplicate prompt, queue recovery, CI, clean repo), then the compatibility nice-to-haves. Archived in `milestones/Milestone 5/`; device checks for Phases 97, 98, 100, 101, 102 are still open.

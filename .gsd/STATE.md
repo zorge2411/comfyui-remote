@@ -2,9 +2,9 @@
 
 ## Current Position
 
-- **Milestone**: 5 (Stability, then remaining compatibility features): planned
-- **Phase**: 102 (Custom Widget Kinds, Text Replace): code done. All Milestone 5 phases implemented; device checks pending for 97, 98, 100, 101, 102
-- **Status**: Milestone 5 created 2026-10-12 with Phases 97–102. Milestone 4 is archived.
+- **Milestone**: none active. Milestone 5 completed 2026-10-12 and archived in `.gsd/milestones/Milestone 5/`.
+- **Phase**: none
+- **Status**: Device checks pending for Phases 97, 98, 100, 101 and 102 (see each phase summary).
 
 ## Achievements (Milestone 5)
 
