@@ -112,16 +112,19 @@ fun ErrorCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Spacer(modifier = Modifier.weight(1f))
-                    Icon(
-                        Icons.Default.Refresh,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        "Retry",
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
+                    // The retry row used to be plain text with no click handler (onRetry was never called)
+                    TextButton(onClick = onRetry) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            "Retry",
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
                 }
             }
         }

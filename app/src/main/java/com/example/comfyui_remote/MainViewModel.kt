@@ -386,6 +386,36 @@ class MainViewModel(
         }
     }
     
+    // Failures shown to the user instead of only being logged (Phase 97)
+    private val _importFailure = MutableStateFlow<com.example.comfyui_remote.domain.WorkflowImportPrep.ImportFailure?>(null)
+    val importFailure: StateFlow<com.example.comfyui_remote.domain.WorkflowImportPrep.ImportFailure?> = _importFailure.asStateFlow()
+
+    fun clearImportFailure() {
+        _importFailure.value = null
+    }
+
+    private val _serverWorkflowsError = MutableStateFlow<String?>(null)
+    val serverWorkflowsError: StateFlow<String?> = _serverWorkflowsError.asStateFlow()
+
+    private val _syncError = MutableStateFlow<String?>(null)
+    val syncError: StateFlow<String?> = _syncError.asStateFlow()
+
+    fun consumeSyncError() {
+        _syncError.value = null
+    }
+
+    /** Plain-language text for an exception, with the connected server's address and any HTTP code. */
+    private fun describeFailure(e: Throwable): String =
+        com.example.comfyui_remote.domain.WorkflowImportPrep.describe(
+            cause = e,
+            httpCode = (e as? retrofit2.HttpException)?.code(),
+            serverAddress = _serverAddress.value.takeIf { it.isNotBlank() }
+        )
+
+    private fun failImport(step: com.example.comfyui_remote.domain.WorkflowImportPrep.Step, name: String, e: Throwable) {
+        _importFailure.value = com.example.comfyui_remote.domain.WorkflowImportPrep.ImportFailure(step, name, describeFailure(e))
+    }
+
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
 
@@ -828,8 +858,14 @@ class MainViewModel(
             _isSyncing.value = true
             _importStatus.value = "Fetching workflow..."
             try {
+                _importFailure.value = null
                 val fullPath = serverFile.fullpath ?: run {
                     android.util.Log.e("WORKFLOW_ERROR", "Cannot import workflow: serverFile.fullpath is null for ${serverFile.name}")
+                    _importFailure.value = com.example.comfyui_remote.domain.WorkflowImportPrep.ImportFailure(
+                        com.example.comfyui_remote.domain.WorkflowImportPrep.Step.FETCH,
+                        serverFile.name ?: "Unnamed Server Workflow",
+                        "The server didn't give a path for this file."
+                    )
                     return@launch
                 }
                 android.util.Log.d("WORKFLOW_IMPORT", "Full path: $fullPath")
@@ -850,6 +886,7 @@ class MainViewModel(
             } catch (e: Exception) {
                 android.util.Log.e("WORKFLOW_ERROR", "Error importing workflow ${serverFile.name}: ${e.javaClass.simpleName} - ${e.message}", e)
                 e.printStackTrace()
+                failImport(com.example.comfyui_remote.domain.WorkflowImportPrep.Step.FETCH, serverFile.name ?: "Unnamed Server Workflow", e)
             } finally {
                 _isSyncing.value = false
                 _importStatus.value = ""
@@ -1102,82 +1139,69 @@ class MainViewModel(
         onSuccess: (WorkflowEntity) -> Unit
     ) {
         _isSyncing.value = true
+        _importFailure.value = null
         _importStatus.value = "Importing workflow..."
         try {
             var finalJson = json
             android.util.Log.d("IMPORT_DEBUG", "Starting import for: $name, source: $source")
             android.util.Log.d("IMPORT_DEBUG", "Input JSON size: ${json.length} bytes")
 
-            // Phase 30: Auto-convert Graph Format -> API Format
-            // Run heavy JSON parsing on IO thread
-            // Phase 30: Auto-convert Graph Format -> API Format
-            // Run heavy JSON parsing on IO thread
+            // Phase 30: Auto-convert Graph Format -> API Format (Phase 97: never store an unconverted graph)
             val conversionResult = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                try {
-                    val jsonObj = com.google.gson.JsonParser.parseString(json).asJsonObject
-                    val isFrontendFormat = jsonObj.has("nodes") && jsonObj.has("links")
-                    android.util.Log.d("IMPORT_DEBUG", "Is frontend format: $isFrontendFormat")
-                    
-                    if (isFrontendFormat) {
-                        var meta = _nodeMetadata.value
-                        android.util.Log.d("IMPORT_DEBUG", "NodeMetadata available: ${meta != null}, size: ${meta?.size() ?: 0}")
-                        
-                        if (meta == null) {
-                            try {
-                                _importStatus.value = "Fetching metadata..."
-                                android.util.Log.d("IMPORT_DEBUG", "Fetching metadata (raw)...")
-                                // Use raw endpoint and parse manually to avoid blocking OkHttp thread
-                                val responseBody = buildApiService().getObjectInfoRaw()
-                                
-                                _importStatus.value = "Parsing metadata..."
-                                android.util.Log.d("IMPORT_DEBUG", "Parsing metadata JSON...")
-                                val jsonString = responseBody.string()
-                                meta = com.google.gson.JsonParser.parseString(jsonString).asJsonObject
-                                _nodeMetadata.value = meta
-                                android.util.Log.d("IMPORT_DEBUG", "Metadata parsed, size: ${meta.size()}")
-                            } catch (e: Exception) {
-                                android.util.Log.e("WORKFLOW_ERROR", "Metadata fetch failed for workflow '$name': ${e.javaClass.simpleName} - ${e.message}", e)
-                                e.printStackTrace()
-                            }
-                        }
-                        
-                        val m = meta
-                        if (m != null) {
-                            _importStatus.value = "Converting format..."
-                            android.util.Log.d("IMPORT_DEBUG", "Converting frontend to API format...")
-                            val result = com.example.comfyui_remote.domain.GraphToApiConverter.convert(
-                                json, 
-                                com.example.comfyui_remote.data.ComfyObjectInfo(m)
-                            )
-                            android.util.Log.d("IMPORT_DEBUG", "Conversion complete. Result JSON size: ${result.json.length} bytes")
-                            android.util.Log.d("IMPORT_DEBUG", "Missing nodes after conversion: ${result.missingNodes.size}")
-                            if (result.missingNodes.isNotEmpty()) {
-                                android.util.Log.d("IMPORT_DEBUG", "Missing nodes: ${result.missingNodes.joinToString(", ")}")
-                            }
-                            result
-                        } else {
-                            android.util.Log.e("IMPORT_DEBUG", "No metadata available - conversion skipped!")
-                            com.example.comfyui_remote.domain.GraphToApiConverter.ConversionResult(json, emptyList())
-                        }
-                    } else {
-                        com.example.comfyui_remote.domain.GraphToApiConverter.ConversionResult(json, emptyList())
-                    }
+                var meta = _nodeMetadata.value
+                var metadataError: Exception? = null
+                val needsMetadata = meta == null && try {
+                    com.google.gson.JsonParser.parseString(json).asJsonObject.let { it.has("nodes") && it.has("links") }
                 } catch (e: Exception) {
-                    android.util.Log.e("WORKFLOW_ERROR", "Conversion error for workflow '$name': ${e.javaClass.simpleName} - ${e.message}", e)
-                    e.printStackTrace()
-                    com.example.comfyui_remote.domain.GraphToApiConverter.ConversionResult(json, emptyList())
+                    false
                 }
-            }
-            
+                if (needsMetadata) {
+                    try {
+                        _importStatus.value = "Fetching metadata..."
+                        // Use raw endpoint and parse manually to avoid blocking OkHttp thread
+                        val jsonString = buildApiService().getObjectInfoRaw().string()
+                        _importStatus.value = "Parsing metadata..."
+                        meta = com.google.gson.JsonParser.parseString(jsonString).asJsonObject
+                        _nodeMetadata.value = meta
+                        android.util.Log.d("IMPORT_DEBUG", "Metadata parsed, size: ${meta.size()}")
+                    } catch (e: Exception) {
+                        android.util.Log.e("WORKFLOW_ERROR", "Metadata fetch failed for workflow '$name': ${e.javaClass.simpleName} - ${e.message}", e)
+                        metadataError = e
+                    }
+                }
+                _importStatus.value = "Converting format..."
+                val prepared = com.example.comfyui_remote.domain.WorkflowImportPrep.prepare(json, meta)
+                if (prepared is com.example.comfyui_remote.domain.WorkflowImportPrep.Result.Failed) {
+                    android.util.Log.e("WORKFLOW_ERROR", "Import prep failed for '$name': ${prepared.reason} ${prepared.detail ?: ""}")
+                    _importFailure.value = if (prepared.reason == com.example.comfyui_remote.domain.WorkflowImportPrep.Reason.NEEDS_SERVER_NODE_LIST && metadataError != null) {
+                        com.example.comfyui_remote.domain.WorkflowImportPrep.ImportFailure(
+                            com.example.comfyui_remote.domain.WorkflowImportPrep.Step.METADATA, name, describeFailure(metadataError)
+                        )
+                    } else {
+                        com.example.comfyui_remote.domain.WorkflowImportPrep.fromPrepFailure(prepared, name)
+                    }
+                    null
+                } else {
+                    val ready = prepared as com.example.comfyui_remote.domain.WorkflowImportPrep.Result.Ready
+                    com.example.comfyui_remote.domain.GraphToApiConverter.ConversionResult(ready.json, ready.missingNodes)
+                }
+            } ?: return
+
             // Phase 50: Use Normalization Service (also on IO thread)
             _importStatus.value = "Normalizing..."
-            val normalized = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                normalizationService.normalize(
-                    name = name, 
-                    rawJson = conversionResult.json, 
-                    source = source,
-                    existingMissingNodes = conversionResult.missingNodes
-                )
+            val normalized = try {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    normalizationService.normalize(
+                        name = name, 
+                        rawJson = conversionResult.json, 
+                        source = source,
+                        existingMissingNodes = conversionResult.missingNodes
+                    )
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("WORKFLOW_ERROR", "Normalization failed for '$name': ${e.message}", e)
+                failImport(com.example.comfyui_remote.domain.WorkflowImportPrep.Step.CONVERT, name, e)
+                return
             }
             android.util.Log.d("IMPORT_DEBUG", "Normalization complete")
             android.util.Log.d("IMPORT_DEBUG", "Normalized JSON size: ${normalized.jsonContent.length} bytes")
@@ -1204,8 +1228,14 @@ class MainViewModel(
             _importStatus.value = "Saving..."
             android.util.Log.d("IMPORT_DEBUG", "Inserting workflow into database...")
             android.util.Log.d("IMPORT_DEBUG", "Workflow entity: name=\"${tempWorkflow.name}\", baseModels=\"${tempWorkflow.baseModels}\", missingNodes=\"${tempWorkflow.missingNodes}\"")
-            val id = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                repository.insert(tempWorkflow)
+            val id = try {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    repository.insert(tempWorkflow)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("WORKFLOW_ERROR", "Saving '$name' failed: ${e.message}", e)
+                failImport(com.example.comfyui_remote.domain.WorkflowImportPrep.Step.SAVE, name, e)
+                return
             }
             android.util.Log.d("IMPORT_DEBUG", "Database insert result: ID=$id")
             
@@ -1216,6 +1246,7 @@ class MainViewModel(
         } catch (e: Exception) {
             android.util.Log.e("WORKFLOW_ERROR", "Error in importWorkflowInternal for workflow '$name': ${e.javaClass.simpleName} - ${e.message}", e)
             e.printStackTrace()
+            failImport(com.example.comfyui_remote.domain.WorkflowImportPrep.Step.SAVE, name, e)
         } finally {
             _isSyncing.value = false
             _importStatus.value = ""
@@ -1237,10 +1268,12 @@ class MainViewModel(
                     }
                     
                     _serverWorkflows.value = response
+                    _serverWorkflowsError.value = null
                     android.util.Log.d("WORKFLOW_FETCH", "Fetch complete. Updated _serverWorkflows with ${response.size} items")
                 } catch (e: Exception) {
                     android.util.Log.e("WORKFLOW_ERROR", "Error in fetchServerWorkflows: ${e.javaClass.simpleName} - ${e.message}", e)
                     e.printStackTrace()
+                    _serverWorkflowsError.value = describeFailure(e)
                 } finally {
                     _isSyncing.value = false
                 }
@@ -1440,6 +1473,7 @@ class MainViewModel(
                 } catch (e: Exception) {
                     android.util.Log.e("SYNC_DEBUG", "Sync error: ${e.message}", e)
                     e.printStackTrace()
+                    _syncError.value = "Sync failed: ${describeFailure(e)}"
                 } finally {
                     _isSyncing.value = false
                 }
@@ -1466,6 +1500,7 @@ class MainViewModel(
                     syncHistory(maxItemsOverride = 2000)
                 } catch (e: Exception) {
                     android.util.Log.e("SYNC_DEBUG", "Error during clear and refresh: ${e.message}", e)
+                    _syncError.value = "Clear and refresh failed: ${describeFailure(e)}"
                 } finally {
                     _isSyncing.value = false
                 }

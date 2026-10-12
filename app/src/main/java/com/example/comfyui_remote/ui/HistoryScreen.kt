@@ -40,6 +40,15 @@ private val DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Loc
 fun HistoryScreen(viewModel: MainViewModel, onNavigateToSettings: () -> Unit = {}) {
     val historyList by viewModel.allMedia.collectAsState(initial = emptyList())
     val isSyncing by viewModel.isSyncing.collectAsState()
+    // Sync failures are shown, not just logged (Phase 97)
+    val syncError by viewModel.syncError.collectAsState()
+    val syncSnackbarHost = remember { androidx.compose.material3.SnackbarHostState() }
+    androidx.compose.runtime.LaunchedEffect(syncError) {
+        syncError?.let {
+            syncSnackbarHost.showSnackbar(it)
+            viewModel.consumeSyncError()
+        }
+    }
     val isSecure by viewModel.isSecure.collectAsState()
     val currentHost by viewModel.host.collectAsState()
     val currentPort by viewModel.port.collectAsState()
@@ -73,6 +82,7 @@ fun HistoryScreen(viewModel: MainViewModel, onNavigateToSettings: () -> Unit = {
     }
 
     Scaffold(
+        snackbarHost = { androidx.compose.material3.SnackbarHost(syncSnackbarHost) },
         topBar = {
             TopAppBar(
                 title = { Text("Execution History") },

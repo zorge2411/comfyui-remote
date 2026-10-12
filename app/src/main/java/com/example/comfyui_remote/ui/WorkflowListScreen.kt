@@ -1,5 +1,8 @@
 package com.example.comfyui_remote.ui
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -67,6 +70,8 @@ fun WorkflowListScreen(
     val serverWorkflows by viewModel.serverWorkflows.collectAsState()
     val isSyncing by viewModel.isSyncing.collectAsState()
     val importStatus by viewModel.importStatus.collectAsState()
+    val importFailure by viewModel.importFailure.collectAsState()
+    val serverWorkflowsError by viewModel.serverWorkflowsError.collectAsState()
     var showImportDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf<WorkflowEntity?>(null) }
     var showDeleteDialog by remember { mutableStateOf<WorkflowEntity?>(null) }
@@ -105,6 +110,17 @@ fun WorkflowListScreen(
                 )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    // Why the server's workflows didn't load (Phase 97)
+                    serverWorkflowsError?.let { error ->
+                        item {
+                            com.example.comfyui_remote.ui.components.ErrorCard(
+                                title = "Couldn't load workflows from the server",
+                                message = error,
+                                onRetry = { viewModel.fetchServerWorkflows() },
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                    }
                     if (workflows.isNotEmpty()) {
                         item {
                             Text(
@@ -187,6 +203,31 @@ fun WorkflowListScreen(
                     showImportDialog = false
                     onWorkflowValidation(newWorkflow)
                 }
+            }
+        )
+    }
+
+    // Every way an import can fail ends here (Phase 97); shown above the import dialog so the user can retry
+    importFailure?.let { failure ->
+        val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+        AlertDialog(
+            onDismissRequest = { viewModel.clearImportFailure() },
+            title = { Text("Import failed") },
+            text = {
+                Text(
+                    failure.format(),
+                    modifier = Modifier
+                        .heightIn(max = 280.dp)
+                        .verticalScroll(rememberScrollState())
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { viewModel.clearImportFailure() }) { Text("OK") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    clipboard.setText(androidx.compose.ui.text.AnnotatedString(failure.format()))
+                }) { Text("Copy") }
             }
         )
     }
