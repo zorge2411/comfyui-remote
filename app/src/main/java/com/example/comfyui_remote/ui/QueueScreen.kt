@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.ArrowBack
@@ -97,7 +98,8 @@ fun QueueScreen(
                     QueueItemCard(
                         item = item,
                         isExecuting = item.id == currentItemId,
-                        onDelete = { showDeleteDialog = item }
+                        onDelete = { showDeleteDialog = item },
+                        onRetry = { viewModel.retryItem(item) }
                     )
                 }
             }
@@ -135,7 +137,8 @@ fun QueueScreen(
 fun QueueItemCard(
     item: LocalQueueItem,
     isExecuting: Boolean,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onRetry: () -> Unit = {}
 ) {
     Card(
         colors = CardDefaults.cardColors(
@@ -189,7 +192,13 @@ fun QueueItemCard(
                     modifier = Modifier.size(24.dp),
                     strokeWidth = 2.dp
                 )
-            } else if (item.status != QueueStatus.EXECUTING) { // Don't show delete if executing (though isExecuting covers it mostly)
+            } else {
+                // An EXECUTING item that isn't running now is stale (app was killed mid-run); it can be deleted (Phase 98)
+                if (item.status == QueueStatus.FAILED) {
+                    IconButton(onClick = onRetry) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Retry")
+                    }
+                }
                 IconButton(onClick = onDelete) {
                     Icon(
                         Icons.Default.Delete, 

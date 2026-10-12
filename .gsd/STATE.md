@@ -3,10 +3,12 @@
 ## Current Position
 
 - **Milestone**: 5 (Stability, then remaining compatibility features): planned
-- **Phase**: 98 (Duplicate Imports and Queue Recovery): planned. Phase 97 code done, device check pending
+- **Phase**: 98 (Duplicate Imports and Queue Recovery): code done. Phases 97 and 98 device checks pending
 - **Status**: Milestone 5 created 2026-10-12 with Phases 97–102. Milestone 4 is archived.
 
 ## Achievements (Milestone 5)
+
+- [x] Implemented Phase 98 (duplicate imports, queue recovery): sourceKey + Room 11 → 12; Open/Copy/Replace dialog; stale EXECUTING recovery, Retry, no-server reason. See `.gsd/phases/98/98-SUMMARY.md`.
 
 - [x] Implemented Phase 97 (visible import and sync failures): WorkflowImportPrep never stores an unconverted graph workflow; import failure dialog, server-list error card with Retry, sync snackbars; ErrorCard Retry now works. See `.gsd/phases/97/97-SUMMARY.md`.
 

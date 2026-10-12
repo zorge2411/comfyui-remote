@@ -93,3 +93,7 @@ Implemented a persistent local queue and significant improvements to graph-to-AP
 
 - Import and sync failures are shown to the user. The important fix was behavioural: a workflow in editor format that could not be converted used to be saved as raw JSON and could never run; it is now refused with an explanation.
 - Found along the way: `ErrorCard`'s Retry had never been clickable.
+
+## 2026-10-12: Phase 98 Complete (code)
+
+- Re-importing a template or server workflow now asks (Open / Copy / Replace) via a new `sourceKey` column (Room 11 → 12, explicit migration). The queue half was re-scoped: the run-time re-check was redundant after Phase 92, so items stuck in EXECUTING are recovered, failed items can be retried, and a missing server gives a reason.

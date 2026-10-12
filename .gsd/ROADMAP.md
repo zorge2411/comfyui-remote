@@ -7,8 +7,8 @@
 ## Must-Haves
 
 - [x] Import and sync failures are shown to the user (Phase 97; device check pending)
-- [ ] Importing the same template or workflow twice doesn't silently create duplicates
-- [ ] Local-queue items can't get stuck: interrupted items recovered, failed items retryable, every failure has a reason
+- [x] Importing the same template or workflow twice doesn't silently create duplicates (Phase 98; device check pending)
+- [x] Local-queue items can't get stuck: interrupted items recovered, failed items retryable, every failure has a reason
 - [ ] Unit tests and the debug build run automatically on every push (GitHub Actions)
 - [ ] Repo hygiene: stray build/test log files removed from version control, with a short README section on running the tests
 
@@ -29,7 +29,7 @@
 
 ### Phase 98: Duplicate Imports and Queue Recovery
 
-**Status**: 📝 Planned (`.gsd/phases/98/`)
+**Status**: ✅ Done (code); device check pending (`.gsd/phases/98/98-SUMMARY.md`)
 **Objective**: (A) Importing the same template or server workflow twice asks (Open existing / Import another copy / Replace) instead of silently duplicating; needs a `sourceKey` column and Room migration 11 → 12. (B) Changed from "re-run the pre-flight when a queue item runs": Phase 92 already stores the server's rejection reasons, so that would be redundant. Instead fix the real gaps: items stuck in EXECUTING after an app kill (and undeletable), no Retry for failed items, and a failure with no reason when no server is saved.
 **Depends on**: Phase 97
 

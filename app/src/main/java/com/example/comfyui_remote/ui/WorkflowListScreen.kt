@@ -73,6 +73,7 @@ fun WorkflowListScreen(
     val importFailure by viewModel.importFailure.collectAsState()
     val serverWorkflowsError by viewModel.serverWorkflowsError.collectAsState()
     var showImportDialog by remember { mutableStateOf(false) }
+    com.example.comfyui_remote.ui.components.DuplicateImportDialog(viewModel)
     var showRenameDialog by remember { mutableStateOf<WorkflowEntity?>(null) }
     var showDeleteDialog by remember { mutableStateOf<WorkflowEntity?>(null) }
 

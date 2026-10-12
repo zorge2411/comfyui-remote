@@ -599,7 +599,7 @@ fun DynamicFormScreen(
                         // Actually, saving the template means saving the jsonContent.
                         // But maybe we want to save with the current values?
                         // For now, save the base jsonContent. 
-                        viewModel.importWorkflow(workflow.name, workflow.jsonContent, com.example.comfyui_remote.domain.WorkflowSource.LOCAL_IMPORT) {
+                        viewModel.importWorkflow(workflow.name, workflow.jsonContent, com.example.comfyui_remote.domain.WorkflowSource.LOCAL_IMPORT, asNewCopy = true) {
                             // No navigation needed when saving as template from here
                         }
                     },

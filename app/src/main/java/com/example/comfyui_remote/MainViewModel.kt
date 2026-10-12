@@ -833,6 +833,45 @@ class MainViewModel(
     }
 
     /** Downloads a template's workflow from the server and imports it like any other workflow. */
+    /** An import that matches an existing workflow, waiting for the user's choice (Phase 98). */
+    data class DuplicatePrompt(
+        val existing: WorkflowEntity,
+        val name: String,
+        val json: String,
+        val source: com.example.comfyui_remote.domain.WorkflowSource,
+        val sourceKey: String?,
+        val onSuccess: (WorkflowEntity) -> Unit
+    )
+
+    enum class DuplicateChoice { OPEN, COPY, REPLACE }
+
+    private val _duplicatePrompt = MutableStateFlow<DuplicatePrompt?>(null)
+    val duplicatePrompt: StateFlow<DuplicatePrompt?> = _duplicatePrompt.asStateFlow()
+
+    fun resolveDuplicate(choice: DuplicateChoice?) {
+        val prompt = _duplicatePrompt.value ?: return
+        _duplicatePrompt.value = null
+        when (choice) {
+            null -> Unit
+            DuplicateChoice.OPEN -> {
+                _selectedWorkflow.value = prompt.existing
+                prompt.onSuccess(prompt.existing)
+            }
+            DuplicateChoice.COPY -> viewModelScope.launch {
+                importWorkflowInternal(prompt.name, prompt.json, prompt.source, prompt.onSuccess, prompt.sourceKey, DuplicateMode.COPY)
+            }
+            DuplicateChoice.REPLACE -> viewModelScope.launch {
+                importWorkflowInternal(prompt.name, prompt.json, prompt.source, prompt.onSuccess, prompt.sourceKey, DuplicateMode.REPLACE(prompt.existing))
+            }
+        }
+    }
+
+    private sealed class DuplicateMode {
+        object ASK : DuplicateMode()
+        object COPY : DuplicateMode()
+        data class REPLACE(val existing: WorkflowEntity) : DuplicateMode()
+    }
+
     fun importTemplate(template: com.example.comfyui_remote.domain.WorkflowTemplate, onSuccess: (WorkflowEntity) -> Unit) {
         viewModelScope.launch {
             _isSyncing.value = true
@@ -841,7 +880,7 @@ class MainViewModel(
                 val json = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                     buildApiService().getTemplateFile("${template.name}.json").string()
                 }
-                importWorkflowInternal(template.title, json, com.example.comfyui_remote.domain.WorkflowSource.SERVER_TEMPLATE, onSuccess)
+                importWorkflowInternal(template.title, json, com.example.comfyui_remote.domain.WorkflowSource.SERVER_TEMPLATE, onSuccess, template.name)
             } catch (e: Exception) {
                 android.util.Log.e("TEMPLATES", "Error importing template ${template.name}", e)
                 _templateImportError.value = "Couldn't import '${template.title}': ${e.message ?: e.javaClass.simpleName}"
@@ -882,7 +921,7 @@ class MainViewModel(
                 
                 val name = serverFile.name?.removeSuffix(".json") ?: "Unnamed Server Workflow"
                 android.util.Log.d("WORKFLOW_IMPORT", "Import successful, calling importWorkflowInternal with name: $name")
-                importWorkflowInternal(name, json.toString(), com.example.comfyui_remote.domain.WorkflowSource.SERVER_USERDATA, onSuccess)
+                importWorkflowInternal(name, json.toString(), com.example.comfyui_remote.domain.WorkflowSource.SERVER_USERDATA, onSuccess, fullPath)
             } catch (e: Exception) {
                 android.util.Log.e("WORKFLOW_ERROR", "Error importing workflow ${serverFile.name}: ${e.javaClass.simpleName} - ${e.message}", e)
                 e.printStackTrace()
@@ -1125,10 +1164,11 @@ class MainViewModel(
         name: String, 
         json: String, 
         source: com.example.comfyui_remote.domain.WorkflowSource = com.example.comfyui_remote.domain.WorkflowSource.LOCAL_IMPORT,
+        asNewCopy: Boolean = false,
         onSuccess: (WorkflowEntity) -> Unit
     ) {
         viewModelScope.launch {
-            importWorkflowInternal(name, json, source, onSuccess)
+            importWorkflowInternal(name, json, source, onSuccess, null, if (asNewCopy) DuplicateMode.COPY else DuplicateMode.ASK)
         }
     }
 
@@ -1136,13 +1176,26 @@ class MainViewModel(
         name: String, 
         json: String, 
         source: com.example.comfyui_remote.domain.WorkflowSource,
-        onSuccess: (WorkflowEntity) -> Unit
+        onSuccess: (WorkflowEntity) -> Unit,
+        sourceKey: String? = null,
+        duplicateMode: DuplicateMode = DuplicateMode.ASK
     ) {
         _isSyncing.value = true
         _importFailure.value = null
         _importStatus.value = "Importing workflow..."
         try {
             var finalJson = json
+            if (duplicateMode == DuplicateMode.ASK) {
+                val all = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { repository.allWorkflows.first() }
+                val match = com.example.comfyui_remote.domain.WorkflowDuplicates.find(
+                    all.map { com.example.comfyui_remote.domain.WorkflowRef(it.id, it.name, it.source, it.sourceKey) },
+                    source.name, sourceKey, name
+                )
+                if (match != null) {
+                    _duplicatePrompt.value = DuplicatePrompt(all.first { it.id == match.id }, name, json, source, sourceKey, onSuccess)
+                    return
+                }
+            }
             android.util.Log.d("IMPORT_DEBUG", "Starting import for: $name, source: $source")
             android.util.Log.d("IMPORT_DEBUG", "Input JSON size: ${json.length} bytes")
 
@@ -1213,10 +1266,18 @@ class MainViewModel(
             
             val baseModelsShort = normalized.baseModels.joinToString(", ")
             
+            val replacing = (duplicateMode as? DuplicateMode.REPLACE)?.existing
+            val finalName = if (duplicateMode == DuplicateMode.COPY) {
+                val names = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { repository.allWorkflows.first() }.map { it.name }
+                com.example.comfyui_remote.domain.WorkflowDuplicates.uniqueName(normalized.name, names)
+            } else normalized.name
             val tempWorkflow = WorkflowEntity(
-                name = normalized.name,
+                id = replacing?.id ?: 0,
+                sourceKey = sourceKey,
+                name = if (replacing != null) replacing.name else finalName,
                 jsonContent = normalized.jsonContent,
-                createdAt = System.currentTimeMillis(),
+                createdAt = replacing?.createdAt ?: System.currentTimeMillis(),
+                lastImageName = replacing?.lastImageName,
                 baseModelName = normalized.baseModels.firstOrNull(), // Keep legacy field updated
                 baseModels = baseModelsShort,
                 source = normalized.source.name,

@@ -82,6 +82,8 @@ fun TemplatesScreen(
     val isImporting by viewModel.isSyncing.collectAsState()
     val importStatus by viewModel.importStatus.collectAsState()
 
+    com.example.comfyui_remote.ui.components.DuplicateImportDialog(viewModel)
+
     var query by rememberSaveable { mutableStateOf("") }
     var category by rememberSaveable { mutableStateOf<String?>(null) }
     var localOnly by rememberSaveable { mutableStateOf(false) }

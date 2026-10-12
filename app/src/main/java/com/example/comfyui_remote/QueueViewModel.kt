@@ -83,6 +83,7 @@ class QueueViewModel(
         _isQueueRunning.value = true
         
         executionJob = viewModelScope.launch {
+            recoverStaleItems()
             while (isActive && _isQueueRunning.value) {
                 val pendingItems = localQueueRepository.getPendingItems()
                 if (pendingItems.isEmpty()) {
@@ -105,7 +106,7 @@ class QueueViewModel(
         try {
             val api = buildApiService()
             if (api == null) {
-                localQueueRepository.updateStatus(item.id, QueueStatus.FAILED)
+                localQueueRepository.updateStatusAndError(item.id, QueueStatus.FAILED, com.example.comfyui_remote.domain.QueueRecovery.NO_SERVER_MESSAGE)
                 _isQueueRunning.value = false
                 return
             }
@@ -176,6 +177,22 @@ class QueueViewModel(
             localQueueRepository.updateStatusAndError(item.id, QueueStatus.FAILED, e.message ?: e.javaClass.simpleName)
         } finally {
             _currentExecutingItemId.value = null
+        }
+    }
+
+    /** Items left EXECUTING by a killed app would never finish or be deletable (Phase 98). */
+    private suspend fun recoverStaleItems() {
+        queueItems.value
+            .filter { com.example.comfyui_remote.domain.QueueRecovery.isStale(it.status.name, it.id, _currentExecutingItemId.value) }
+            .forEach {
+                localQueueRepository.updateStatusAndError(it.id, QueueStatus.FAILED, com.example.comfyui_remote.domain.QueueRecovery.INTERRUPTED_MESSAGE)
+            }
+    }
+
+    fun retryItem(item: LocalQueueItem) {
+        if (!com.example.comfyui_remote.domain.QueueRecovery.canRetry(item.status.name)) return
+        viewModelScope.launch {
+            localQueueRepository.updateStatusAndError(item.id, QueueStatus.PENDING, null)
         }
     }
 
