@@ -47,6 +47,8 @@ data class MediaInfo(
             is InputField.ModelInput -> field.value.substringAfterLast('/').substringAfterLast('\\')
             is InputField.SelectionInput -> field.value.substringAfterLast('/').substringAfterLast('\\')
             is InputField.ImageInput -> field.value
+            is InputField.ColorInput -> field.value
+            is InputField.BoundingBoxInput -> "${field.x}, ${field.y}, ${field.width}×${field.height}"
         }
     }
 }
