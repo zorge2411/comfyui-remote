@@ -97,3 +97,7 @@ Implemented a persistent local queue and significant improvements to graph-to-AP
 ## 2026-10-12: Phase 98 Complete (code)
 
 - Re-importing a template or server workflow now asks (Open / Copy / Replace) via a new `sourceKey` column (Room 11 → 12, explicit migration). The queue half was re-scoped: the run-time re-check was redundant after Phase 92, so items stuck in EXECUTING are recovered, failed items can be retried, and a missing server gives a reason.
+
+## 2026-10-12: Phase 99 Complete
+
+- GitHub Actions runs the unit tests and builds the debug APK on every push; the first run was green and also proved Phases 97 and 98 compile. The must-have stability items of Milestone 5 are now all done (device checks for 97 and 98 pending).

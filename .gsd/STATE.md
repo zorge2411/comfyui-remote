@@ -3,10 +3,12 @@
 ## Current Position
 
 - **Milestone**: 5 (Stability, then remaining compatibility features): planned
-- **Phase**: 99 (CI and Repo Hygiene): planned. Phases 97 and 98 device checks pending
+- **Phase**: 99 (CI and Repo Hygiene): done. Phases 97 and 98 device checks pending
 - **Status**: Milestone 5 created 2026-10-12 with Phases 97–102. Milestone 4 is archived.
 
 ## Achievements (Milestone 5)
+
+- [x] Implemented Phase 99 (CI and repo hygiene): GitHub Actions runs unit tests + debug build on every push/PR (green first run, APK artifact); 9 tracked logs removed; README test section. CI also confirmed Phases 97/98 compile. See `.gsd/phases/99/99-SUMMARY.md`.
 
 - [x] Implemented Phase 98 (duplicate imports, queue recovery): sourceKey + Room 11 → 12; Open/Copy/Replace dialog; stale EXECUTING recovery, Retry, no-server reason. See `.gsd/phases/98/98-SUMMARY.md`.
 
