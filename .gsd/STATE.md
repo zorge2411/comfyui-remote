@@ -3,7 +3,7 @@
 ## Current Position
 
 - **Milestone**: 5 (Stability, then remaining compatibility features): planned
-- **Phase**: 100 (Compatibility Badge): code done. Phases 97, 98, 100 device checks pending
+- **Phase**: 101 (Switch Dynamic Options): planned. Phases 97, 98, 100 device checks pending
 - **Status**: Milestone 5 created 2026-10-12 with Phases 97–102. Milestone 4 is archived.
 
 ## Achievements (Milestone 5)

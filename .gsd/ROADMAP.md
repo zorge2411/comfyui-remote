@@ -46,8 +46,8 @@
 
 ### Phase 101: Switch Dynamic Options in the Form
 
-**Status**: ⬜ Not Started
-**Objective**: Today a dynamic combo key (e.g. `SaveVideo.format`) is hidden because changing it would leave the old option's inputs. Let the user pick another option: rebuild that option's sub-fields from `/object_info`, keep values for inputs the options share, and send the new dotted keys.
+**Status**: 📝 Planned (`.gsd/phases/101/`)
+**Objective**: Let the user pick another option of a dynamic combo (e.g. `SaveVideo.format`). Switching rewrites the per-run prompt: delete the old option's `key.*` inputs, add the new option's sub-inputs recursively with carried-over values where the old and new option share a sub-input and spec defaults otherwise; options that need a required socket aren't offered. The form keeps a working copy of the JSON (the stored workflow is unchanged). Needs the node list, otherwise the combo stays hidden as in Phase 94.
 **Depends on**: Phase 94
 
 ### Phase 102: Custom Widget Kinds and PrimitiveNode Text Replace
