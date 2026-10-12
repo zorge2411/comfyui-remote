@@ -83,3 +83,8 @@ Implemented a persistent local queue and significant improvements to graph-to-AP
 
 - Archived Phases 89–95 and the roadmap to `.gsd/milestones/Milestone 4/`; summary in `Milestone 4-SUMMARY.md`. Phase 96 had no plan folder (built directly) and is recorded in the archived roadmap.
 - Templates converting cleanly: 123 → 565 of 572. Next: plan Milestone 5.
+
+## 2026-10-12: Milestone 5 Created
+
+- Stability focus, chosen by the user. Must-haves: visible import failures, no silent duplicate imports, queue re-check, CI, repo hygiene. The four Milestone 4 backlog features follow as lower-priority phases.
+- Findings behind it: six log-only error handlers in `MainViewModel`, nine tracked log files in the repo root, and no `.github/` workflows.

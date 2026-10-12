@@ -1,20 +1,56 @@
 # ROADMAP.md
 
-> **Current Milestone**: none (Milestone 4 completed 2026-10-12)
+> **Current Milestone**: Milestone 5 (Planned)
+> **Goal**: Stability first: failures are visible and recoverable, regressions are caught automatically, and the repo is clean. Then the remaining compatibility features, ordered by value.
 > **Previous**: Milestone 4 archived in `.gsd/milestones/Milestone 4/` (summary: `Milestone 4-SUMMARY.md`)
 
 ## Must-Haves
 
-- [ ] TBD (run `/new-milestone`)
+- [ ] Import and sync failures are shown to the user (today they are only logged: `importWorkflowInternal`, `importServerWorkflow`, `fetchServerWorkflows`)
+- [ ] Importing the same template or workflow twice doesn't silently create duplicates
+- [ ] Local-queue items are re-checked when they run, not only when added
+- [ ] Unit tests and the debug build run automatically on every push (GitHub Actions)
+- [ ] Repo hygiene: stray build/test log files removed from version control, with a short README section on running the tests
 
-## Backlog (candidates for Milestone 5)
+## Nice-to-Haves (lower priority, by value)
 
-- Compatibility badge on the workflow list (runs / warnings / will fail), based on the pre-flight check
-- Switch dynamic-combo options (e.g. video format) in the app
-- PrimitiveNode text replacement; legacy Group Nodes
-- Custom widget kinds (COLOR, BOUNDING_BOX, VIDEO_EDIT, CURVE, …)
-- Re-check local-queue items when they run
+- [ ] Compatibility badge on the workflow list (runs / warnings / will fail), reusing the pre-flight check
+- [ ] Switch dynamic-combo options (e.g. video format) in the form
+- [ ] Custom widget kinds: COLOR, BOUNDING_BOX, VIDEO_EDIT, CURVE
+- [ ] PrimitiveNode text replacement (`%date%`-style); legacy Group Nodes
 
 ## Phases
 
----
+### Phase 97: Visible Import and Sync Failures
+
+**Status**: ⬜ Not Started
+**Objective**: Make every import and sync failure visible. `importWorkflowInternal`, `importServerWorkflow` and `fetchServerWorkflows` catch exceptions and only log them, so a bad workflow or an unreachable server looks like nothing happened. Report them through the existing error UI (Workflows screen), with the failing step in the message (fetching, converting, saving). Use `ServerErrorReport` for HTTP errors.
+**Discovered**: Milestone 4 review (2026-10-12): 6 `WORKFLOW_ERROR` log-only catch blocks in `MainViewModel`
+
+### Phase 98: Duplicate Imports and Queue Re-check
+
+**Status**: ⬜ Not Started
+**Objective**: (A) Importing the same template or server workflow twice should reopen or ask, not create a second copy (Phase 96 noted this). (B) `QueueViewModel.processQueueItem` should run the pre-flight check against the live server when an item runs and fail it with the reason if the server would reject it, instead of failing later.
+**Depends on**: Phase 97
+
+### Phase 99: CI and Repo Hygiene
+
+**Status**: ⬜ Not Started
+**Objective**: Add a GitHub Actions workflow running `testDebugUnitTest` and `assembleDebug` on push and pull request (the repo has no `.github/`). Remove the 9 tracked log files in the repo root (`build_run_log.txt`, `test_log*.txt`, …) and ignore them; document how to run the tests, including the corpus, in the README.
+
+### Phase 100: Compatibility Badge on the Workflow List
+
+**Status**: ⬜ Not Started
+**Objective**: Show runs / warnings / will fail on each workflow card from `PromptValidator` against the connected server, cached per server connection and refreshed on reconnect.
+**Depends on**: Phase 98
+
+### Phase 101: Switch Dynamic Options in the Form
+
+**Status**: ⬜ Not Started
+**Objective**: Today a dynamic combo key (e.g. `SaveVideo.format`) is hidden because changing it would leave the old option's inputs. Let the user pick another option: rebuild that option's sub-fields from `/object_info`, keep values for inputs the options share, and send the new dotted keys.
+**Depends on**: Phase 94
+
+### Phase 102: Custom Widget Kinds and PrimitiveNode Text Replace
+
+**Status**: ⬜ Not Started
+**Objective**: Handle widget kinds with their own save rules (COLOR, BOUNDING_BOX, VIDEO_EDIT, CURVE), driven by templates that use them. Apply PrimitiveNode "Run widget replace on values" text replacement. Legacy Group Nodes only if templates in the wild need them.

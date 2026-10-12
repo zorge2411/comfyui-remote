@@ -2,9 +2,9 @@
 
 ## Current Position
 
-- **Milestone**: none. Milestone 4 (Workflow compatibility) completed and archived 2026-10-12.
-- **Phase**: none
-- **Status**: All Phases 89–96 delivered and device-checked. Next: plan Milestone 5.
+- **Milestone**: 5 (Stability, then remaining compatibility features): planned
+- **Phase**: not started (next: Phase 97, Visible Import and Sync Failures)
+- **Status**: Milestone 5 created 2026-10-12 with Phases 97–102. Milestone 4 is archived.
 
 ## Achievements (Milestone 4, completed)
 
@@ -105,6 +105,8 @@
 
 ## Roadmap Evolution
 
+- **2026-10-12**: Milestone 5 created, stability focus: Phases 97–99 are must-haves; 100–102 carry the remaining compatibility features.
+
 - **2026-10-12**: Milestone 4 completed and archived (`.gsd/milestones/Milestone 4/`, `Milestone 4-SUMMARY.md`).
 
 - **2026-09-25**: Phases 93–95 added from the Phase 89 corpus baseline (subgraph input mapping by name, `COMFY_DYNAMICCOMBO_V3`, V3 widget-mapping gaps); Phase 90 scope extended (PrimitiveNode, bypass fallback).
@@ -124,4 +126,4 @@
 
 ## Next Steps
 
-1. **Plan Milestone 5** (`/new-milestone`). Candidates are in `ROADMAP.md` (backlog) and `Milestone 4-SUMMARY.md` (Deferred).
+1. **Plan Phase 97** (`/plan 97`): make import and sync failures visible.
