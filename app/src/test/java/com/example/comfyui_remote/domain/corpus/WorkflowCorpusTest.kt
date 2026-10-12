@@ -67,13 +67,18 @@ class WorkflowCorpusTest {
     }
 
     @Test
-    fun `no converted corpus workflow is badged as will fail`() {
+    fun `no converted corpus workflow is badged as will fail for a structural reason`() {
         val objectInfo = readJson(resource("object_info.json"))
         val fixtures = resource("workflows").listFiles { f -> f.name.endsWith(".json") }!!.sortedBy { it.name }
         val bad = fixtures.mapNotNull { file ->
             val api = JsonParser.parseString(GraphToApiConverter.convert(file.readText(), ComfyObjectInfo(objectInfo)).json).asJsonObject
             val r = com.example.comfyui_remote.domain.WorkflowCompatibility.check(api, objectInfo)
-            if (r is com.example.comfyui_remote.domain.Compatibility.WillFail) "${file.name}: ${r.issues.firstOrNull()}" else null
+            // The snapshot server has no model files, so a missing file is expected; anything else would be a real fault
+            val structural = (r as? com.example.comfyui_remote.domain.Compatibility.WillFail)?.issues.orEmpty().filter {
+                it.severity == com.example.comfyui_remote.domain.PromptValidator.Severity.ERROR &&
+                    it.kind != com.example.comfyui_remote.domain.PromptValidator.Kind.VALUE_NOT_IN_LIST
+            }
+            if (structural.isNotEmpty()) "${file.name}: ${structural.first()}" else null
         }
         if (bad.isNotEmpty()) fail("Workflows that would be badged red:\n" + bad.joinToString("\n"))
     }
