@@ -14,7 +14,7 @@
 
 ## Nice-to-Haves (lower priority, by value)
 
-- [ ] Compatibility badge on the workflow list (runs / warnings / will fail), reusing the pre-flight check
+- [x] Compatibility badge on the workflow list (Phase 100; device check pending) (runs / warnings / will fail), reusing the pre-flight check
 - [ ] Switch dynamic-combo options (e.g. video format) in the form
 - [ ] Custom widget kinds: COLOR, BOUNDING_BOX, VIDEO_EDIT, CURVE
 - [ ] PrimitiveNode text replacement (`%date%`-style); legacy Group Nodes
@@ -40,7 +40,7 @@
 
 ### Phase 100: Compatibility Badge on the Workflow List
 
-**Status**: 📝 Planned (`.gsd/phases/100/`)
+**Status**: ✅ Done (code); device check pending (`.gsd/phases/100/100-SUMMARY.md`)
 **Objective**: Show ready / warnings / will fail (with the first reason) on each workflow card, from `PromptValidator` on the stored workflow against the connected server's node list. Computed off the main thread, cached per workflow, refreshed on reconnect, hidden while disconnected. File inputs that the form replaces at run time (image, video, audio, mask) are not flagged. A corpus test guards against good workflows turning red.
 **Depends on**: Phase 98
 

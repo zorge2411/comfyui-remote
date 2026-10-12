@@ -101,3 +101,7 @@ Implemented a persistent local queue and significant improvements to graph-to-AP
 ## 2026-10-12: Phase 99 Complete
 
 - GitHub Actions runs the unit tests and builds the debug APK on every push; the first run was green and also proved Phases 97 and 98 compile. The must-have stability items of Milestone 5 are now all done (device checks for 97 and 98 pending).
+
+## 2026-10-12: Phase 100 Complete (code)
+
+- Workflow cards show Ready / warnings / will fail with the first reason, from the existing pre-flight validator against the connected server; image/video/audio inputs are not flagged because the form replaces them.

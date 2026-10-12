@@ -65,4 +65,16 @@ class WorkflowCorpusTest {
             fail("${problems.size} corpus problem(s) across ${fixtures.size} fixtures:\n" + problems.joinToString("\n"))
         }
     }
+
+    @Test
+    fun `no converted corpus workflow is badged as will fail`() {
+        val objectInfo = readJson(resource("object_info.json"))
+        val fixtures = resource("workflows").listFiles { f -> f.name.endsWith(".json") }!!.sortedBy { it.name }
+        val bad = fixtures.mapNotNull { file ->
+            val api = GraphToApiConverter.convert(file.readText(), ComfyObjectInfo(objectInfo)).json
+            val r = com.example.comfyui_remote.domain.WorkflowCompatibility.check(api, objectInfo)
+            if (r == null || r.level == com.example.comfyui_remote.domain.WorkflowCompatibility.Level.WILL_FAIL) "${file.name}: ${r?.summary ?: "unreadable"}" else null
+        }
+        if (bad.isNotEmpty()) fail("Workflows that would be badged red:\n" + bad.joinToString("\n"))
+    }
 }

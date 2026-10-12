@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
@@ -754,6 +756,39 @@ class MainViewModel(
 
     private val _nodeMetadata = MutableStateFlow<com.google.gson.JsonObject?>(null)
     val nodeMetadata: StateFlow<com.google.gson.JsonObject?> = _nodeMetadata.asStateFlow()
+
+    // Phase 100: per-workflow compatibility with the connected server, for the badge on the workflow list.
+    // Empty unless connected with a node list; results are cached per (workflow id, JSON) for one node list.
+    private val compatCache = java.util.concurrent.ConcurrentHashMap<Long, Pair<Int, com.example.comfyui_remote.domain.WorkflowCompatibility.Result?>>()
+    private var compatCacheMetadata: com.google.gson.JsonObject? = null
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val compatibility: StateFlow<Map<Long, com.example.comfyui_remote.domain.WorkflowCompatibility.Result>> =
+        kotlinx.coroutines.flow.combine(repository.allWorkflows, nodeMetadata, connectionState) { workflows, metadata, state ->
+            Triple(workflows, metadata, state)
+        }.mapLatest { (workflows, metadata, state) ->
+            if (metadata == null || state != WebSocketState.CONNECTED) return@mapLatest emptyMap<Long, com.example.comfyui_remote.domain.WorkflowCompatibility.Result>()
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                if (compatCacheMetadata !== metadata) {
+                    compatCache.clear()
+                    compatCacheMetadata = metadata
+                }
+                val out = HashMap<Long, com.example.comfyui_remote.domain.WorkflowCompatibility.Result>()
+                for (wf in workflows) {
+                    kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                    val hash = wf.jsonContent.hashCode()
+                    val cached = compatCache[wf.id]
+                    val result = if (cached != null && cached.first == hash) {
+                        cached.second
+                    } else {
+                        com.example.comfyui_remote.domain.WorkflowCompatibility.check(wf.jsonContent, metadata)
+                            .also { compatCache[wf.id] = hash to it }
+                    }
+                    if (result != null) out[wf.id] = result
+                }
+                out
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     fun fetchAvailableModels() {
         viewModelScope.launch {

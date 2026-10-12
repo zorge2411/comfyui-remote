@@ -68,6 +68,7 @@ fun WorkflowListScreen(
 ) {
     val workflows by viewModel.allWorkflows.collectAsState(initial = emptyList())
     val serverWorkflows by viewModel.serverWorkflows.collectAsState()
+    val compatibility by viewModel.compatibility.collectAsState()
     val isSyncing by viewModel.isSyncing.collectAsState()
     val importStatus by viewModel.importStatus.collectAsState()
     val importFailure by viewModel.importFailure.collectAsState()
@@ -138,6 +139,7 @@ fun WorkflowListScreen(
                     ) { workflow ->
                         WorkflowItem(
                             workflow = workflow,
+                            compatibility = compatibility[workflow.id],
                             onDelete = { showDeleteDialog = workflow },
                             onRename = { showRenameDialog = workflow },
                             onClick = { onWorkflowValidation(workflow) }
@@ -292,6 +294,7 @@ fun WorkflowListScreen(
 @Composable
 fun WorkflowItem(
     workflow: WorkflowEntity,
+    compatibility: com.example.comfyui_remote.domain.WorkflowCompatibility.Result? = null,
     onDelete: () -> Unit,
     onRename: () -> Unit,
     onClick: () -> Unit
@@ -334,6 +337,10 @@ fun WorkflowItem(
                          }
                     }
                 }
+                if (compatibility != null) {
+                    androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(4.dp))
+                    CompatibilityBadge(compatibility)
+                }
             }
             IconButton(onClick = onRename) {
                 Icon(Icons.Default.Edit, contentDescription = "Rename")
@@ -343,6 +350,24 @@ fun WorkflowItem(
             }
         }
     }
+}
+
+/** Phase 100: whether the workflow should run on the connected server, with the first reason if not. */
+@Composable
+private fun CompatibilityBadge(result: com.example.comfyui_remote.domain.WorkflowCompatibility.Result) {
+    val level = com.example.comfyui_remote.domain.WorkflowCompatibility.Level
+    val (label, color) = when (result.level) {
+        level.READY -> "✓ Ready" to MaterialTheme.colorScheme.primary
+        level.WARNINGS -> "⚠ ${result.summary}" to MaterialTheme.colorScheme.tertiary
+        level.WILL_FAIL -> "✕ ${result.summary}" to MaterialTheme.colorScheme.error
+    }
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelMedium,
+        color = color,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis
+    )
 }
 
 @Composable

@@ -3,10 +3,12 @@
 ## Current Position
 
 - **Milestone**: 5 (Stability, then remaining compatibility features): planned
-- **Phase**: 100 (Compatibility Badge): planned. Phases 97 and 98 device checks pending
+- **Phase**: 100 (Compatibility Badge): code done. Phases 97, 98, 100 device checks pending
 - **Status**: Milestone 5 created 2026-10-12 with Phases 97–102. Milestone 4 is archived.
 
 ## Achievements (Milestone 5)
+
+- [x] Implemented Phase 100 (compatibility badge): WorkflowCompatibility over PromptValidator; cached per workflow, refreshed on reconnect; badge on each workflow card; corpus guard. See `.gsd/phases/100/100-SUMMARY.md`.
 
 - [x] Implemented Phase 99 (CI and repo hygiene): GitHub Actions runs unit tests + debug build on every push/PR (green first run, APK artifact); 9 tracked logs removed; README test section. CI also confirmed Phases 97/98 compile. See `.gsd/phases/99/99-SUMMARY.md`.
 
