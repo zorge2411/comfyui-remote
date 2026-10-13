@@ -19,6 +19,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.launch
 
 class ExecutionService : Service() {
@@ -37,6 +38,10 @@ class ExecutionService : Service() {
         return null
     }
 
+    private companion object {
+        const val ACTION_EXIT = "com.example.comfyui_remote.action.EXIT"
+    }
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
@@ -44,7 +49,12 @@ class ExecutionService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val app = application as ComfyApplication
-        
+
+        if (intent?.action == ACTION_EXIT) {
+            exitApp(app)
+            return START_NOT_STICKY
+        }
+
         // Observe connection state
         scope.launch {
             app.connectionRepository.connectionState.collect { state ->
@@ -76,6 +86,26 @@ class ExecutionService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         scope.cancel()
+    }
+
+    /** The notification's Exit action: drop the connection, clear the notifications, close the app and end the process. */
+    private fun exitApp(app: ComfyApplication) {
+        // Stop the observers first, or the DISCONNECTED state re-posts the status notification after it is removed
+        scope.coroutineContext[kotlinx.coroutines.Job]?.cancelChildren()
+        app.connectionRepository.disconnect()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.cancel(NOTIFICATION_ID)
+        manager.cancel(DOWNLOAD_PROGRESS_ID)
+        manager.cancel(DOWNLOADS_FINISHED_ID)
+        stopSelf()
+        (getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager)
+            .appTasks.forEach { it.finishAndRemoveTask() }
+        // Give the system a moment to remove the notification and close the activity before the process goes
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
+            { android.os.Process.killProcess(android.os.Process.myPid()) },
+            300
+        )
     }
 
     /**
@@ -134,6 +164,13 @@ class ExecutionService : Service() {
     private fun openAppIntent(): PendingIntent =
         PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
 
+    private fun exitIntent(): PendingIntent =
+        PendingIntent.getService(
+            this, 1,
+            Intent(this, ExecutionService::class.java).setAction(ACTION_EXIT),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
     private fun updateNotification(state: WebSocketState) {
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(NOTIFICATION_ID, buildNotification(state))
@@ -159,6 +196,7 @@ class ExecutionService : Service() {
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .addAction(0, "Exit", exitIntent())
 
         // Android 12+ requires stating foreground service type in manifest, but for general compatibility:
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
